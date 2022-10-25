@@ -4,6 +4,7 @@ from ..base import BaseFileIterable
 
 
 class ParquetIterable(BaseFileIterable):
+    datamode = 'binary'
     def __init__(self, filename=None, stream=None, codec=None):
         super(ParquetIterable, self).__init__(filename, stream, codec=codec, binary=True)
         self.reset()

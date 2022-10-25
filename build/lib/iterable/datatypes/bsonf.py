@@ -5,6 +5,7 @@ from ..base import BaseFileIterable
 
 
 class BSONIterable(BaseFileIterable):
+    datamode = 'binary'
     def __init__(self, filename=None, stream=None, codec=None, mode='r'):
         super(BSONIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode)
         self.reset()

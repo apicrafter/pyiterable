@@ -14,6 +14,7 @@ def read_row_keys(rownum, ncols, sheet):
 
 
 class XLSXIterable(BaseFileIterable):
+    datamode = 'binary'
     def __init__(self, filename=None, stream=None, codec=None, keys=None, page=0, start_line=0):
         super(XLSXIterable, self).__init__(filename, stream, codec=codec, binary=True, noopen=True)
         self.keys = keys
