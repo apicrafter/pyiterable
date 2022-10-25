@@ -1,0 +1,77 @@
+from openpyxl import load_workbook
+
+from ..base import BaseFileIterable
+
+def read_row_keys(rownum, ncols, sheet):
+    """Read single row by row num"""
+    tmp = list()
+    for i in range(0, ncols):
+        ct = sheet.cell_type(rownum, i)
+        cell_value = sheet.cell_value(rownum, i)
+        get_col = str(cell_value)
+        tmp.append(get_col)    
+    return tmp
+
+
+class XLSXIterable(BaseFileIterable):
+    def __init__(self, filename=None, stream=None, codec=None, keys=None, page=0, start_line=0):
+        super(XLSXIterable, self).__init__(filename, stream, codec=codec, binary=True, noopen=True)
+        self.keys = keys
+        self.start_line = start_line + 1
+        self.page = page
+        self.pos = self.start_line
+        self.extracted_keys = keys is None
+        self.reset()
+        pass
+
+    def reset(self):
+        super(XLSXIterable, self).reset()
+        self.workbook = load_workbook(self.filename)
+        self.sheet = self.workbook.active
+        self.pos = self.start_line
+        self.cursor = self.sheet.iter_rows()
+        if self.pos > 1:
+            self.skip(self.pos - 1)
+        if self.extracted_keys:
+            self.keys = list()
+            row = next(self.cursor)
+            for cell in row:
+                self.keys.append(str(cell.value))             
+            self.pos += 1
+
+    def skip(self, num):
+        while num > 0:
+            num -= 1
+            o = next(self.cursor)
+
+    
+    @staticmethod
+    def id():
+        return 'xlsx'
+
+    @staticmethod
+    def is_flatonly():
+        return True
+
+    def read(self):
+        """Read single XLSX record"""
+        row = next(self.cursor)
+        tmp = list()
+        for cell in row:
+            tmp.append(str(cell.value))
+        result = dict(zip(self.keys, tmp))
+        self.pos += 1
+        return result
+
+    def read_bulk(self, num):
+        """Read bulk XLSX records"""
+        chunk = []
+        for n in range(0, num):
+            row = next(self.cursor)
+            tmp = list()
+            for cell in row:
+                tmp.append(str(cell.value))
+            result = dict(zip(self.keys, tmp))
+            chunk.append(result)
+            self.pos += 1
+        return chunk

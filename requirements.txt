@@ -1,0 +1,5 @@
+chardet>=3.0.4
+jsonlines>=1.2.0
+openpyxl>=3.0.5
+orjson>=3.6.6
+xlrd>=1.2.0

@@ -1,0 +1,32 @@
+Metadata-Version: 2.1
+Name: iterable
+Version: 1.0.1
+Summary: Iterable data processing Python library
+Home-page: https://github.com/apicrafter/iterable/
+Download-URL: https://github.com/apicrafter/iterable/
+Author: Ivan Begtin
+Author-email: ivan@begtin.tech
+License: MIT
+Keywords: json jsonl csv bson xls xlsx dataset etl data-pipelines
+Platform: UNKNOWN
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: System Administrators
+Classifier: License :: OSI Approved :: BSD License
+Classifier: Topic :: Software Development
+Classifier: Topic :: Text Processing
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Provides-Extra: python_version == "3.8" or python_version == "3.8"
+
+# Iterable Data
+
+Iterable data is a Python lib to process data files with rows
+ 
+Supported files:
+* BSON
+
