@@ -31,10 +31,14 @@ tests_require = [
     'mock',
 ]
 
-
 install_requires = [
+    'xlrd',
+    'pyorc',
+    'parquet',
+    'openpyxl',
+    'jsonlines',
+    'orjson'
 ]
-
 
 # Conditional dependencies:
 

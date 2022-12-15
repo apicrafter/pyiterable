@@ -20,6 +20,10 @@ Supported file types:
 Supported file compression: GZip, BZip2, LZMA (.xz)
 
 
+## Requirements
+
+Python 3.8+
+
 ## Documentation
 
 In progress

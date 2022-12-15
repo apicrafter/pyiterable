@@ -1,3 +1,9 @@
+xlrd
+pyorc
+parquet
+openpyxl
+jsonlines
+orjson
 
 [python_version == "3.8" or python_version == "3.8"]
 argparse>=1.2.1
