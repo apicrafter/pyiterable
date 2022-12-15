@@ -1,3 +1,5 @@
+from __future__ import annotations
+import typing
 from xlrd import open_workbook
 import xlrd
 from ..base import BaseFileIterable
@@ -40,7 +42,7 @@ def read_single_row(rownum, ncols, datemode, keys, sheet):
 
 class XLSIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename=None, stream=None, codec=None, keys=None, page=0, start_line=0):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, keys: list[str] = None, page:int = 0, start_line:int = 0):
         super(XLSIterable, self).__init__(filename, stream, codec=codec, binary=True, noopen=True)
         self.page = page
         self.start_line = start_line
@@ -61,16 +63,16 @@ class XLSIterable(BaseFileIterable):
             self.pos += 1
 
     @staticmethod
-    def id():
+    def id() -> str:
         """ID of the data source type"""
         return 'xls'
 
     @staticmethod
-    def is_flatonly():
+    def is_flatonly() -> bool:
         """Flag that data is flat"""
         return True
 
-    def read(self):
+    def read(self) -> dict:
         """Read single XLS record"""
         if self.pos >= self.sheet.nrows:
             raise StopIteration
@@ -78,7 +80,7 @@ class XLSIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num):
+    def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk XLS records"""
         chunk = []
         ncols = self.sheet.ncols

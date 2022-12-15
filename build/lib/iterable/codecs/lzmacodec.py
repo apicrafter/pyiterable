@@ -1,3 +1,5 @@
+from __future__ import annotations
+import typing
 from ..base import BaseCodec
 
 import lzma
@@ -8,11 +10,11 @@ LZMA_FILTERS = [
 ]
 
 class LZMACodec(BaseCodec):
-    def __init__(self, filename, compression_level=5, mode='r', open_it=False):
+    def __init__(self, filename:str, compression_level:int = 5, mode:str = 'r', open_it:bool = False):
         self.compression_level = compression_level
         super(LZMACodec, self).__init__(filename, mode=mode, open_it=open_it)
 
-    def open(self):
+    def open(self) -> lzma.LZMAFile:
         filters = LZMA_FILTERS
         filters[0]['dist'] = self.compression_level
         self._fileobj = lzma.LZMAFile(self.filename, mode=self.mode, format=lzma.FORMAT_XZ)#, filters=filters)
@@ -28,8 +30,7 @@ class LZMACodec(BaseCodec):
     def close(self):
         self._fileobj.close()
 
-
-
+        
     @staticmethod
-    def fileexts():
+    def fileexts() -> list[str]:
         return ['xz', 'lzma']

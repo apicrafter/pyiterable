@@ -1,10 +1,12 @@
+from __future__ import annotations
+import typing
 from csv import DictReader, DictWriter
 
 from ..base import BaseFileIterable
 
 
 class CSVIterable(BaseFileIterable):
-    def __init__(self, filename=None, stream=None, codec=None, keys=None, delimiter=',', quotechar='"', mode='r', encoding=None):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, keys: list[str] = None, delimiter:str = ',', quotechar:str='"', mode:str='r', encoding:str = 'utf8'):
         super(CSVIterable, self).__init__(filename, stream, codec=codec, binary=False, encoding=encoding, mode=mode)
         self.delimiter = delimiter
         self.quotechar = quotechar
@@ -36,14 +38,14 @@ class CSVIterable(BaseFileIterable):
         self.pos = 0
 
     @staticmethod
-    def id():
+    def id() -> str:
         return 'csv'
 
     @staticmethod
-    def is_flatonly():
+    def is_flatonly() -> bool:
         return True
 
-    def read(self, skip_empty=True):
+    def read(self, skip_empty:bool = True):
         """Read single CSV record"""
         row = next(self.reader)
         if skip_empty and len(row) == 0:
@@ -51,7 +53,7 @@ class CSVIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num=10):
+    def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk CSV records"""
         chunk = []
         for n in range(0, num):
@@ -59,10 +61,10 @@ class CSVIterable(BaseFileIterable):
             self.pos += 1
         return chunk
 
-    def write(self, record):
+    def write(self, record:dict):
         """Write single CSV record"""
         self.writer.writerow(record)
 
-    def write_bulk(self, records):
+    def write_bulk(self, records: list[dict]):
         """Write bulk CSV records"""
         self.writer.writerows(records)

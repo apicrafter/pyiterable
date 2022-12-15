@@ -1,3 +1,5 @@
+from __future__ import annotations
+import typing
 import pyorc
 
 from ..base import BaseFileIterable
@@ -31,7 +33,7 @@ def fields_to_pyorc_schema(fields):
 
 class ORCIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename=None, stream=None, codec=None, mode='r', keys=None, schema=None, compression=5):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str = 'r', keys:list[str] = None, schema:list[str] = None, compression:int = 5):
         self.keys = keys
         self.schema = schema
         self.compression = compression
@@ -56,11 +58,11 @@ class ORCIterable(BaseFileIterable):
          
 
     @staticmethod
-    def id():
+    def id() -> str:
         return 'orc'
 
     @staticmethod
-    def is_flatonly():
+    def is_flatonly() -> bool:
         return True
 
     def close(self):
@@ -69,23 +71,23 @@ class ORCIterable(BaseFileIterable):
         super(ORCIterable, self).close()
 
 
-    def read(self):
+    def read(self) -> dict:
         """Read single record"""
         row = next(self.reader)
         self.pos += 1
         return row
 
-    def read_bulk(self, num=10):
+    def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk records"""
         chunk = []
         for n in range(0, num):
             chunk.append(self.read())
         return chunk
 
-    def write(self, record):
+    def write(self, record: dict):
         """Write single record"""
         self.writer.write(record)
 
-    def write_bulk(self, records):
+    def write_bulk(self, record: list[dict]):
         """Write bulk records"""
         self.writer.writerows(records)

@@ -5,11 +5,12 @@ ITERABLE_TYPE_CODEC = 30
 DEFAULT_BULK_NUMBER = 100
 
 import io
+import typing
 
 
 class BaseCodec:
     """Basic codec class"""
-    def __init__(self, filename=None, fileobj=None, mode='r', open_it=False):
+    def __init__(self, filename: str = None, fileobj: typing.IO = None, mode: str = 'r', open_it: bool = False):
         self._fileobj = fileobj
         self.filename = filename
         self.mode = mode
@@ -34,7 +35,7 @@ class BaseCodec:
     def close(self):
         raise NotImplementedError
 
-    def textIO(self, encoding='utf8'):
+    def textIO(self, encoding:str = 'utf8'):
         """Return text wrapper over binary stream"""
         return io.TextIOWrapper(self.fileobj(), encoding=encoding, write_through=True)
 
@@ -53,11 +54,11 @@ class BaseIterable:
         """Identifier of selected destination"""
         raise NotImplementedError
 
-    def read(self, skip_empty=True):
+    def read(self, skip_empty:bool = True):
         """Read single record"""
         raise NotImplementedError
 
-    def read_bulk(self, num=DEFAULT_BULK_NUMBER):
+    def read_bulk(self, num:int = DEFAULT_BULK_NUMBER):
         """Read multiple records"""
         raise NotImplementedError
 
@@ -96,7 +97,7 @@ class BaseFileIterable(BaseIterable):
     """Basic file iterable"""
     datamode = 'text'
 
-    def __init__(self, filename=None, stream=None, codec=None, binary=False, encoding='utf8', noopen=False, mode='r'):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, binary:bool = False, encoding:str = 'utf8', noopen:bool = False, mode:str = 'r'):
         """Init basic file iterable"""
         self.filename = filename
         self.noopen = noopen

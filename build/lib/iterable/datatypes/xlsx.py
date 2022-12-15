@@ -1,3 +1,5 @@
+from __future__ import annotations
+import typing
 from openpyxl import load_workbook
 
 from ..base import BaseFileIterable
@@ -15,7 +17,7 @@ def read_row_keys(rownum, ncols, sheet):
 
 class XLSXIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename=None, stream=None, codec=None, keys=None, page=0, start_line=0):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, keys: list[str] = None, page:int = 0, start_line:int = 0):
         super(XLSXIterable, self).__init__(filename, stream, codec=codec, binary=True, noopen=True)
         self.keys = keys
         self.start_line = start_line + 1
@@ -40,21 +42,21 @@ class XLSXIterable(BaseFileIterable):
                 self.keys.append(str(cell.value))             
             self.pos += 1
 
-    def skip(self, num):
+    def skip(self, num:int = 1):
         while num > 0:
             num -= 1
             o = next(self.cursor)
 
     
     @staticmethod
-    def id():
+    def id() -> str:
         return 'xlsx'
 
     @staticmethod
-    def is_flatonly():
+    def is_flatonly() -> bool:
         return True
 
-    def read(self):
+    def read(self) -> dict:
         """Read single XLSX record"""
         row = next(self.cursor)
         tmp = list()
@@ -64,7 +66,7 @@ class XLSXIterable(BaseFileIterable):
         self.pos += 1
         return result
 
-    def read_bulk(self, num):
+    def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk XLSX records"""
         chunk = []
         for n in range(0, num):

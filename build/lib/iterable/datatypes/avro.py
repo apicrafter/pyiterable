@@ -1,12 +1,14 @@
+from __future__ import annotations
+import typing
 import avro.schema
 from avro.datafile import DataFileReader, DataFileWriter
 from avro.io import DatumReader, DatumWriter
 
-from ..base import BaseFileIterable
+from ..base import BaseFileIterable, BaseCodec
 
 
 class AVROIterable(BaseFileIterable):
-    def __init__(self, filename=None, stream=None, codec=None):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None):
         super(AVROIterable, self).__init__(filename, stream, codec=codec, binary=True)
         self.reset()
         pass
@@ -19,21 +21,22 @@ class AVROIterable(BaseFileIterable):
 
 
     @staticmethod
-    def id():
+    def id() -> str:
         return 'avro'
 
+
     @staticmethod
-    def is_flatonly():
+    def is_flatonly() -> bool:
         return True
 
 
-    def read(self):
+    def read(self) -> dict:
         """Read single record"""
         row = next(self.cursor)
         self.pos += 1
         return row
 
-    def read_bulk(self, num=10):
+    def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk records"""
         chunk = []
         for n in range(0, num):

@@ -1,3 +1,5 @@
+from __future__ import annotations
+import typing
 import parquet
 
 from ..base import BaseFileIterable
@@ -5,7 +7,7 @@ from ..base import BaseFileIterable
 
 class ParquetIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename=None, stream=None, codec=None):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None):
         super(ParquetIterable, self).__init__(filename, stream, codec=codec, binary=True)
         self.reset()
         pass
@@ -18,21 +20,21 @@ class ParquetIterable(BaseFileIterable):
 
 
     @staticmethod
-    def id():
+    def id() -> str:
         return 'parquet'
 
     @staticmethod
-    def is_flatonly():
+    def is_flatonly() -> bool:
         return True
 
 
-    def read(self):
+    def read(self) -> dict:
         """Read single JSON lines record"""
         row = next(self.cursor)
         self.pos += 1
         return row
 
-    def read_bulk(self, num=10):
+    def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk JSON lines records"""
         chunk = []
         for n in range(0, num):

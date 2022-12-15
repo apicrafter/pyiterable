@@ -1,10 +1,12 @@
+from __future__ import annotations
+import typing
 import json
 
 from ..base import BaseFileIterable
 
 
 class JSONIterable(BaseFileIterable):
-    def __init__(self, filename=None, stream=None, codec=None, tagname=None):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, tagname:str= None):
         super(JSONIterable, self).__init__(filename, stream, codec=codec, binary=False)
         self.tagname = tagname
         self.reset()
@@ -19,14 +21,14 @@ class JSONIterable(BaseFileIterable):
         self.total = len(self.data)
 
     @staticmethod
-    def id():
+    def id() -> str:
         return 'json'
 
     @staticmethod
-    def is_flatonly():
+    def is_flatonly() -> bool:
         return False
 
-    def read(self, skip_empty=False):
+    def read(self, skip_empty:bool = False) -> dict:
         """Read single JSON record"""
         if self.pos >= self.total:
             raise StopIteration
@@ -35,7 +37,7 @@ class JSONIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num=10):
+    def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk JSON records"""
         chunk = []
         for n in range(0, num):

@@ -8,6 +8,7 @@ Author: Ivan Begtin
 Author-email: ivan@begtin.tech
 License: MIT
 Keywords: json jsonl csv bson parquet orc xml xls xlsx dataset etl data-pipelines
+Platform: UNKNOWN
 Classifier: Development Status :: 5 - Production/Stable
 Classifier: Programming Language :: Python
 Classifier: Programming Language :: Python :: 3 :: Only
@@ -45,6 +46,10 @@ Supported file types:
 Supported file compression: GZip, BZip2, LZMA (.xz)
 
 
+## Requirements
+
+Python 3.8+
+
 ## Documentation
 
 In progress
@@ -77,3 +82,4 @@ for row in iterable:
 ## Examples
 
 See [tests](tests/) for example usage
+

@@ -1,3 +1,5 @@
+from __future__ import annotations
+import typing
 from collections import defaultdict
 import lxml.etree as etree
 
@@ -35,7 +37,7 @@ def etree_to_dict(t, prefix_strip=True):
 
 
 class XMLIterable(BaseFileIterable):
-    def __init__(self, filename=None, stream=None, codec=None, tagname=None, prefix_strip=True):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, tagname:str = None, prefix_strip:bool = True):
         super(XMLIterable, self).__init__(filename, stream, codec=codec, binary=True, encoding='utf8')
         self.tagname = tagname
         self.prefix_strip = prefix_strip
@@ -48,15 +50,15 @@ class XMLIterable(BaseFileIterable):
         self.pos = 0
 
     @staticmethod
-    def id():
+    def id() -> str:
         return 'xml'
 
 
     @staticmethod
-    def is_flatonly():
+    def is_flatonly() -> bool:
         return False
 
-    def read(self):
+    def read(self) -> dict:
         """Read single XML record"""
         row = None
         while not row:
@@ -70,7 +72,7 @@ class XMLIterable(BaseFileIterable):
         self.pos += 1
         return row[self.tagname]
 
-    def read_bulk(self, num):
+    def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk XML records"""
         chunk = []
         for n in range(0, num):

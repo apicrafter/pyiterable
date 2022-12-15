@@ -1,3 +1,5 @@
+from __future__ import annotations
+import typing
 from json import loads, dumps
 import datetime
 
@@ -11,21 +13,21 @@ date_handler = lambda obj: (
 
 
 class JSONLinesIterable(BaseFileIterable):
-    def __init__(self, filename=None, stream=None, codec=None, mode='r', encoding='utf8'):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str = 'r', encoding:str = 'utf8'):
         super(JSONLinesIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding)
         self.pos = 0
         pass
 
     @staticmethod
-    def id():
+    def id() -> str:
         return 'jsonl'
 
     @staticmethod
-    def is_flatonly():
+    def is_flatonly() -> bool:
         return False
 
 
-    def read(self, skip_empty=False):
+    def read(self, skip_empty:bool = False) -> dict:
         """Read single JSON lines record"""
         line = next(self.fobj)
         if skip_empty and len(line) == 0:
@@ -35,18 +37,18 @@ class JSONLinesIterable(BaseFileIterable):
             return loads(line)
         return None
 
-    def read_bulk(self, num):
+    def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk JSON lines records"""
         chunk = []
         for n in range(0, num):
             chunk.append(loads(self.fobj.readline()))
         return chunk
 
-    def write(self, record):
+    def write(self, record: dict):
         """Write single JSON lines record"""
         self.fobj.write(dumps(record, ensure_ascii=False, default=date_handler) + '\n')
 
-    def write_bulk(self, records):
+    def write_bulk(self, records: list[dict]):
         """Write bulk JSON lines records"""
         for record in records:
             self.fobj.write(dumps(record, ensure_ascii=False, default=date_handler) + '\n')
