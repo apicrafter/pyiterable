@@ -13,6 +13,7 @@ iterable.egg-info/top_level.txt
 iterable/codecs/__init__.py
 iterable/codecs/bz2codec.py
 iterable/codecs/gzipcodec.py
+iterable/codecs/lz4codec.py
 iterable/codecs/lzmacodec.py
 iterable/codecs/rawcodec.py
 iterable/codecs/zipcodec.py
@@ -24,6 +25,7 @@ iterable/datatypes/json.py
 iterable/datatypes/jsonl.py
 iterable/datatypes/orc.py
 iterable/datatypes/parquet.py
+iterable/datatypes/picklef.py
 iterable/datatypes/xls.py
 iterable/datatypes/xlsx.py
 iterable/datatypes/xml.py

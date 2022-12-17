@@ -20,19 +20,23 @@ class BaseCodec:
 
     @staticmethod
     def fileexts():
+        """Return file extensions"""
         raise NotImplementedError
     
 
     def reset(self):
+        """Reset file"""
         self._fileobj.seek(0)
 
     def open(self):
         raise NotImplementedError
  
     def fileobj(self):
+        """Return file object"""
         return self._fileobj
     
     def close(self):
+        """Close codec. Not implemented by default"""
         raise NotImplementedError
 
     def textIO(self, encoding:str = 'utf8'):

@@ -37,7 +37,8 @@ install_requires = [
     'parquet',
     'openpyxl',
     'jsonlines',
-    'orjson'
+    'orjson',
+    'lz4'
 ]
 
 # Conditional dependencies:

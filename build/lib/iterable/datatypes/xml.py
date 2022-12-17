@@ -11,6 +11,7 @@ PREFIX = ""
 
 
 def etree_to_dict(t, prefix_strip=True):
+    """Converts tree of XML elements from lxml to python dictionary"""
     tag = t.tag if not prefix_strip else t.tag.rsplit('}', 1)[-1]
     d = {tag: {} if t.attrib else None}
     children = list(t)
