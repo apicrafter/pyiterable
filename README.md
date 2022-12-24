@@ -35,9 +35,14 @@ This code is used in several tools written by its author. It's command line tool
 
 Python 3.8+
 
+
+## Installation
+
+```pip install iterabledata``` or use this repository
+
 ## Documentation
 
-In progress
+In progress. Please see usage and examples.
 
 ## Usage and examples
 
@@ -129,6 +134,6 @@ for row in iterable:
 
 
 
-## Examples and tests
+## More examples and tests
 
-See [tests](tests/) for example usage
+See [tests](tests/) for example usage and tests

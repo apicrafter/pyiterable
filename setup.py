@@ -40,7 +40,6 @@ install_requires = [
     'orjson',
     'lz4',
     'chardet',
-    'lzma',
     'avro',
     'lxml'
 ]
@@ -65,7 +64,7 @@ extras_require = {
 
 
 setup(
-    name='iterable',
+    name='iterabledata',
     version=iterable.__version__,
     description=iterable.__doc__.strip(),
     long_description=open('README.md', 'r', encoding='utf8').read(),

@@ -6,6 +6,5 @@ xlrd
 pyorc
 parquet
 lz4
-lzma
 avro
 lxml
