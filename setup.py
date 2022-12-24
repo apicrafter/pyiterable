@@ -38,8 +38,8 @@ install_requires = [
     'openpyxl',
     'jsonlines',
     'orjson',
-    'lz4'.
-    'chardet'
+    'lz4',
+    'chardet',
     'lzma',
     'avro',
     'lxml'
