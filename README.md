@@ -16,8 +16,19 @@ Supported file types:
 * XLSX
 * Parquet
 * ORC
+* Avro
+* Pickle
 
-Supported file compression: GZip, BZip2, LZMA (.xz)
+Supported file compression: GZip, BZip2, LZMA (.xz), LZ4, ZIP
+
+## Why writing this lib? 
+
+Python has many high-quality data processing tools and libraries, especially pandas and other data frames lib. The only issue with most of them is flat data. Data frames don't support complex data types, and you must *flatten* data each time. 
+
+pyiterable helps you read any data as a Python dictionary instead of flattening data.
+It makes it much easier to work with such data sources as JSON, NDJSON, or BSON files.
+
+This code is used in several tools written by its author. It's command line tool [undatum](https://github.com/datacoon/undatum) and data processing ETL engine [datacrafter](https://github.com/apicrafter/datacrafter)
 
 
 ## Requirements
@@ -29,6 +40,71 @@ Python 3.8+
 In progress
 
 ## Usage and examples
+
+
+### Read compressed CSV file 
+
+Read compressed csv.xz file
+
+```{python}
+
+from iterable.helpers.detect import open_iterable
+
+source = open_iterable('data.csv.xz')
+n = 0
+for row in iterable:
+    n += 1
+    # Add data processing code here
+    if n % 1000 == 0: print('Processing %d' % (n))
+```
+
+### Detect encoding and file delimiter
+
+Detects encoding and delimiter of the selected CSV file and use it to open as iterable
+
+```{python}
+
+from iterable.helpers.detect import open_iterable
+from iterable.helpers.utils import detect_encoding, detect_delimiter
+
+delimiter = detect_delimiter('data.csv')
+encoding = detect_encoding('data.csv')
+
+source = open_iterable('data.csv', iterableargs={'encoding' : encoding['encoding'], 'delimiter' : delimiter)
+n = 0
+for row in iterable:
+    n += 1
+    # Add data processing code here
+    if n % 1000 == 0: print('Processing %d' % (n))
+```
+
+
+### Convert Parquet file to BSON compressed with LZMA using pipeline
+
+Uses pipeline class to iterate through parquet file and convert its selected fields to JSON lines (NDJSON)
+
+```{python}
+
+from iterable.helpers.detect import open_iterable
+from iterable.pipeline import pipeline
+
+source = open_iterable('data/data.parquet')
+destination = open_iterable('data/data.jsonl.xz', mode='w')
+
+def extract_fields(record, state):
+    out = {}
+    record = dict(record)
+    print(record)
+    for k in ['name',]:
+        out[k] = record[k]
+    return out
+
+def print_process(stats, state):
+    print(stats)
+
+pipeline(source, destination=destination, process_func=extract_fields, trigger_on=2, trigger_func=print_process, final_func=print_process, start_state={})
+
+```
 
 ### Convert gzipped JSON lines (NDJSON) file to BSON compressed with LZMA 
 
@@ -53,6 +129,6 @@ for row in iterable:
 
 
 
-## Examples
+## Examples and tests
 
 See [tests](tests/) for example usage
