@@ -42,8 +42,8 @@ def read_single_row(rownum, ncols, datemode, keys, sheet):
 
 class XLSIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, keys: list[str] = None, page:int = 0, start_line:int = 0):
-        super(XLSIterable, self).__init__(filename, stream, codec=codec, binary=True, noopen=True)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', keys: list[str] = None, page:int = 0, start_line:int = 0):
+        super(XLSIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, noopen=True)
         self.page = page
         self.start_line = start_line
         self.pos = start_line

@@ -6,8 +6,8 @@ from ..base import BaseFileIterable
 
 
 class JSONIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, tagname:str= None):
-        super(JSONIterable, self).__init__(filename, stream, codec=codec, binary=False)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', tagname:str= None):
+        super(JSONIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=False)
         self.tagname = tagname
         self.reset()
         pass

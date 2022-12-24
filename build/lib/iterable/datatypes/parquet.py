@@ -7,8 +7,8 @@ from ..base import BaseFileIterable
 
 class ParquetIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None):
-        super(ParquetIterable, self).__init__(filename, stream, codec=codec, binary=True)
+    def __init__(self, filename:str = None, stream:typing.IO = None, mode: str = 'r', codec: BaseCodec = None):
+        super(ParquetIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True)
         self.reset()
         pass
 
@@ -29,13 +29,13 @@ class ParquetIterable(BaseFileIterable):
 
 
     def read(self) -> dict:
-        """Read single JSON lines record"""
+        """Read single Parquet record"""
         row = next(self.cursor)
         self.pos += 1
         return row
 
     def read_bulk(self, num:int = 10) -> list[dict]:
-        """Read bulk JSON lines records"""
+        """Read bulk Parquet records"""
         chunk = []
         for n in range(0, num):
             chunk.append(self.read())

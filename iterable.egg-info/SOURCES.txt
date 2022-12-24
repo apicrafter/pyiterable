@@ -31,3 +31,9 @@ iterable/datatypes/xlsx.py
 iterable/datatypes/xml.py
 iterable/datatypes/zipped.py
 iterable/datatypes/zipxml.py
+iterable/helpers/__init__.py
+iterable/helpers/detect.py
+iterable/helpers/schema.py
+iterable/helpers/utils.py
+iterable/pipeline/__init__.py
+iterable/pipeline/core.py
