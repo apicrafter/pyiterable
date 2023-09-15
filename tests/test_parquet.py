@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*- 
 import pytest
 from iterable.datatypes import ParquetIterable
-from fixdata import FIXTURES_TYPES
+from fixdata import FIXTURES_TYPES, FIXTURES
 
 class TestParquet:
     def test_id(self):
@@ -55,3 +55,16 @@ class TestParquet:
             assert row == FIXTURES_TYPES[n]
             n += 1
         iterable.close()
+
+    def test_write_read(self):
+        iterable = ParquetIterable('testdata/2cols6rows.parquet', mode='w', keys=['id', 'name'], compression=None)
+        iterable.write_bulk(FIXTURES)
+        iterable.close()
+        iterable = ParquetIterable('testdata/2cols6rows.parquet', mode='r')
+        n = 0
+        for row in iterable:
+            assert row == FIXTURES[n]
+            n += 1
+        assert n == len(FIXTURES)
+        iterable.close()
+

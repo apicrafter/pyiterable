@@ -55,3 +55,17 @@ class TestORC:
             assert row == FIXTURES[n]
             n += 1
         iterable.close()
+
+    def test_write_read(self):
+        iterable = ORCIterable('testdata/2cols6rows.orc', mode='w', keys=['id', 'name'])
+        iterable.write_bulk(FIXTURES)
+        iterable.close()
+        iterable = ORCIterable('testdata/2cols6rows.orc', mode='r')
+        n = 0
+        for row in iterable:
+            assert row == FIXTURES[n]
+            n += 1
+        assert n == len(FIXTURES)
+        iterable.close()
+
+

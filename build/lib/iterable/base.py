@@ -88,11 +88,11 @@ class BaseIterable:
         self.reset()
         return self
 
-    def write(self, rec):
+    def write(self,  record: dict):
         """Write single record"""
         raise NotImplementedError
 
-    def write_bulk(self, records):
+    def write_bulk(self,  records: list[dict]):
         """Write multiple records"""
         raise NotImplementedError
 

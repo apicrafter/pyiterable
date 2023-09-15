@@ -88,6 +88,6 @@ class ORCIterable(BaseFileIterable):
         """Write single record"""
         self.writer.write(record)
 
-    def write_bulk(self, record: list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk records"""
         self.writer.writerows(records)

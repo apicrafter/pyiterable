@@ -8,3 +8,5 @@ parquet
 lz4
 avro
 lxml
+pyarrow
+snappy

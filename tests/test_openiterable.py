@@ -112,7 +112,7 @@ class TestOpenIterable:
         iterable = open_iterable('fixtures/books.xml', iterableargs={'tagname' : 'book'})
         n = 0
         years = [2005, 2005, 2003]
-        for row in iterable:
+        for row in iterable:            
             assert int(row['year']) == years[n]
             n += 1
         iterable.close()
