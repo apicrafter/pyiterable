@@ -28,6 +28,23 @@ class TestOpenIterable:
             n += 1
         iterable.close()
 
+    def test_iterate_zstd_csv(self):
+        iterable = open_iterable('fixtures/2cols6rows.csv.zst')
+        n = 0
+        for row in iterable:
+            assert row == FIXTURES[n]
+            n += 1
+        iterable.close()
+
+    def test_iterate_brotli_csv(self):
+        iterable = open_iterable('fixtures/2cols6rows.csv.br')
+        n = 0
+        for row in iterable:
+            assert row == FIXTURES[n]
+            n += 1
+        iterable.close()
+                        
+
     def test_iterate_bzip2_csv(self):
         iterable = open_iterable('fixtures/2cols6rows.csv.bz2')
         n = 0

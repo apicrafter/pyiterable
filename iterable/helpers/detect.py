@@ -15,11 +15,13 @@ from ..codecs.gzipcodec import GZIPCodec
 from ..codecs.lzmacodec import LZMACodec
 from ..codecs.lz4codec import LZ4Codec
 from ..codecs.zipcodec import ZIPCodec
+from ..codecs.brotlicodec import BrotliCodec
+from ..codecs.zstdcodec import ZSTDCodec
 
 DATATYPES = [AVROIterable, BSONIterable, CSVIterable, ORCIterable, 
              ParquetIterable, PickleIterable, JSONIterable, JSONLinesIterable, 
              XLSIterable, XLSXIterable, XMLIterable]
-CODECS = [BZIP2Codec, LZMACodec, GZIPCodec, LZ4Codec, ZIPCodec]
+CODECS = [BZIP2Codec, LZMACodec, GZIPCodec, LZ4Codec, ZIPCodec, BrotliCodec, ZSTDCodec]
 
 DATATYPE_MAP = {'avro' : AVROIterable, 
                 'bson' : BSONIterable, 
@@ -41,7 +43,10 @@ CODECS_MAP = {'bz2' : BZIP2Codec,
               'lz4' : LZ4Codec,
               'xz' : LZMACodec,
               'lzma' : LZMACodec,
-              'zip' : ZIPCodec
+              'zip' : ZIPCodec,
+              'br' : BrotliCodec,
+              'zstd' : ZSTDCodec,
+              'zst' : ZSTDCodec
               }
 
 

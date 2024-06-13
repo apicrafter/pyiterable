@@ -4,7 +4,7 @@ from iterable.datatypes import CSVIterable
 from iterable.codecs import BZIP2Codec
 from fixdata import FIXTURES
 
-class TestGZIP:
+class TestBZ2:
     def test_fileexts(self):
         assert BZIP2Codec.fileexts() == ['bz2',]
 

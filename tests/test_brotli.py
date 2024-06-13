@@ -1,28 +1,28 @@
 # -*- coding: utf-8 -*- 
 import pytest
 from iterable.datatypes import CSVIterable
-from iterable.codecs import ZIPCodec
+from iterable.codecs import BrotliCodec
 from fixdata import FIXTURES
 
-class TestZIP:
+class TestBrotli:
     def test_fileexts(self):
-        assert ZIPCodec.fileexts() == ['zip',]
+        assert BrotliCodec.fileexts() == ['br',]
 
 
     def test_openclose(self):
-        codecobj = ZIPCodec('fixtures/2cols6rows.csv.zip', mode='r')
+        codecobj = BrotliCodec('fixtures/2cols6rows.csv.br', mode='r')
         iterable = CSVIterable(codec=codecobj)        
         iterable.close()
                 
     def test_parsesimple_readone(self):
-        codecobj = ZIPCodec('fixtures/2cols6rows.csv.zip', mode='r')
+        codecobj = BrotliCodec('fixtures/2cols6rows.csv.br', mode='r')
         iterable = CSVIterable(codec=codecobj)        
         row = iterable.read()
         assert row == FIXTURES[0]
         iterable.close()
            
     def test_parsesimple_reset(self):
-        codecobj = ZIPCodec('fixtures/2cols6rows.csv.zip', mode='r')
+        codecobj = BrotliCodec('fixtures/2cols6rows.csv.br', mode='r')
         iterable = CSVIterable(codec=codecobj)        
         row = iterable.read()
         assert row == FIXTURES[0]
@@ -32,7 +32,7 @@ class TestZIP:
         iterable.close()
            
     def test_parsesimple_next(self):
-        codecobj = ZIPCodec('fixtures/2cols6rows.csv.zip', mode='r')
+        codecobj = BrotliCodec('fixtures/2cols6rows.csv.br', mode='r')
         iterable = CSVIterable(codec=codecobj)        
         row = next(iterable)
         assert row == FIXTURES[0]
@@ -42,7 +42,7 @@ class TestZIP:
         iterable.close()
 
     def test_parsesimple_count(self):
-        codecobj = ZIPCodec('fixtures/2cols6rows.csv.zip', mode='r')
+        codecobj = BrotliCodec('fixtures/2cols6rows.csv.br', mode='r')
         iterable = CSVIterable(codec=codecobj)        
         n = 0
         for row in iterable:
@@ -51,7 +51,7 @@ class TestZIP:
         iterable.close()
 
     def test_parsesimple_iterateall(self):
-        codecobj = ZIPCodec('fixtures/2cols6rows.csv.zip', mode='r')
+        codecobj = BrotliCodec('fixtures/2cols6rows.csv.br', mode='r')
         iterable = CSVIterable(codec=codecobj)        
         n = 0
         for row in iterable:
@@ -59,3 +59,17 @@ class TestZIP:
             n += 1
         iterable.close()
 
+    def test_write_read(self):
+        codecobj = BrotliCodec('testdata/2cols6rows_test.csv.br', mode='w')
+        iterable = CSVIterable(codec=codecobj, mode='w', keys=['id', 'name'])
+        for row in FIXTURES:
+            iterable.write(row)
+        iterable.close()
+        codecobj = BrotliCodec('fixtures/2cols6rows.csv.br', mode='r')
+        iterable = CSVIterable(codec=codecobj)        
+        n = 0
+        for row in iterable:
+            assert row == FIXTURES[n]
+            n += 1
+        assert n == len(FIXTURES)
+        iterable.close()

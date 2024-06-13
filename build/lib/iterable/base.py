@@ -22,11 +22,15 @@ class BaseCodec:
     def fileexts():
         """Return file extensions"""
         raise NotImplementedError
-    
+  
 
     def reset(self):
         """Reset file"""
-        self._fileobj.seek(0)
+#        if self._fileobj.seekable():
+#            self._fileobj.seek(0)
+#        else:
+        self.close()
+        self.open()            
 
     def open(self):
         raise NotImplementedError
@@ -85,7 +89,7 @@ class BaseIterable:
         return self.read()
 
     def __iter__(self):
-        self.reset()
+#        self.reset()
         return self
 
     def write(self,  record: dict):
@@ -145,8 +149,14 @@ class BaseFileIterable(BaseIterable):
                 self.fobj.seek(0)
         elif self.stype == ITERABLE_TYPE_CODEC:
             if self.fobj is not None and self.mode not in ['w', 'wb']:
-                self.fobj.seek(0)
-#            self.codec.reset()
+                self.codec.reset()
+                self.fobj = self.codec.fileobj()    
+                if self.datamode == 'text':
+                    self.fobj = self.codec.textIO(encoding=self.encoding) 
+#                if self.fobj.seekable():   
+ #                   self.fobj.seek(0)
+
+
 
     def close(self):
         """Close file as file data source"""

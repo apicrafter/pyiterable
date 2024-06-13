@@ -10,3 +10,6 @@ avro
 lxml
 pyarrow
 snappy
+brotli
+brotli_file
+zstandard
