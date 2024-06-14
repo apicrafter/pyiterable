@@ -1,4 +1,5 @@
 # This is purely the result of trial and error.
+import codecs
 
 import sys
 
@@ -41,7 +42,13 @@ install_requires = [
     'lz4',
     'chardet',
     'avro',
-    'lxml'
+    'lxml',
+'pyarrow',
+'snappy',
+'brotli',
+'brotli_file',
+'zstandard'
+
 ]
 
 # Conditional dependencies:
@@ -58,17 +65,20 @@ if 'bdist_wheel' not in sys.argv:
 # bdist_wheel
 extras_require = {
     # https://wheel.readthedocs.io/en/latest/#defining-conditional-dependencies
-    'python_version == "3.8" or python_version == "3.8"': ['argparse>=1.2.1'],
+#    'python_version == "3.8" or python_version == "3.8"': ['argparse>=1.2.1'],
 }
 
+def long_description():
+    with codecs.open('README.rst', encoding='utf8') as f:
+        return f.read()
 
 
 setup(
     name='iterabledata',
     version=iterable.__version__,
     description=iterable.__doc__.strip(),
-    long_description=open('README.md', 'r', encoding='utf8').read(),
-    long_description_content_type='text/markdown',
+    long_description=long_description(),
+    long_description_content_type='text/x-rst',
     url='https://github.com/apicrafter/pyiterable/',
     download_url='https://github.com/apicrafter/pyiterable/',
     packages=find_packages(exclude=('tests', 'tests.*')),
@@ -80,7 +90,7 @@ setup(
     extras_require=extras_require,
     install_requires=install_requires,
     tests_require=tests_require,
-    python_requires='>=3.8',
+    python_requires='>=3.10',
     cmdclass={'test': PyTest},
     zip_safe=False,
     keywords='json jsonl csv bson parquet orc xml xls xlsx dataset etl data-pipelines',

@@ -19,7 +19,7 @@ Supported file types:
 * Avro
 * Pickle
 
-Supported file compression: GZip, BZip2, LZMA (.xz), LZ4, ZIP
+Supported file compression: GZip, BZip2, LZMA (.xz), LZ4, ZIP, Brotli, ZStandard
 
 ## Why writing this lib? 
 
