@@ -54,17 +54,19 @@ CODECS_MAP = {'bz2' : BZIP2Codec,
 def detect_file_type(filename:str) -> dict:
     """Detects file type and compression codec from filename"""
     result = {'filename' : filename, 'success' : False, 'codec' : None, 'datatype' : None}
-    parts = filename.lower().split('.')
+    parts = filename.lower().rsplit('.', 2)
     if len(parts) == 2:
         if parts[-1] in DATATYPE_MAP.keys():
             result['datatype'] = DATATYPE_MAP[parts[-1]]
             result['success'] = True
     elif len(parts) > 2:
-        if parts[-2] in DATATYPE_MAP.keys():
+        if parts[-2] in DATATYPE_MAP.keys() and CODECS_MAP.keys():
             result['datatype'] = DATATYPE_MAP[parts[-2]]
             result['success'] = True
-        if parts[-1] in CODECS_MAP.keys():
             result['codec'] = CODECS_MAP[parts[-1]]
+        elif parts[-1] in DATATYPE_MAP.keys():
+            result['datatype'] = DATATYPE_MAP[parts[-1]]
+            result['success'] = True                
     return result
 
 
@@ -78,4 +80,5 @@ def open_iterable(filename:str, mode:str = 'r', codecargs:dict={}, iterableargs:
             iterable = result['datatype'](codec=codec, mode=mode, **iterableargs)
         else:
             iterable = result['datatype'](filename=filename, mode=mode, **iterableargs)
+        
     return iterable

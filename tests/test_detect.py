@@ -18,6 +18,13 @@ class TestDetectors:
         assert ';' == detect_delimiter(filename='fixtures/ru_utf8_semicolon.csv') 
         assert '\t' == detect_delimiter(filename='fixtures/ru_utf8_tab.csv') 
        
+
+    def test_filetype_csv_utf8(e):
+        result =  detect_file_type('fixtures/9_25.24.28.712_2014.csv')
+        assert result['success'] == True
+        assert result['datatype'] == CSVIterable
+        assert result['codec'] == None
+           
     def test_filetype_plain_csv(self):
         result =  detect_file_type('fixtures/ru_utf8_comma.csv')
         assert result['success'] == True
