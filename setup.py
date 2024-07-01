@@ -43,11 +43,11 @@ install_requires = [
     'chardet',
     'avro',
     'lxml',
-'pyarrow',
-'snappy',
-'brotli',
-'brotli_file',
-'zstandard'
+    'pyarrow',
+    'python-snappy',
+    'brotli',
+    'brotli_file',
+    'zstandard'
 
 ]
 

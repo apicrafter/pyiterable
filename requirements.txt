@@ -9,7 +9,7 @@ lz4
 avro
 lxml
 pyarrow
-snappy
+python-snappy
 brotli
 brotli_file
 zstandard
