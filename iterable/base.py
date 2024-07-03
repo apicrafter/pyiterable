@@ -10,12 +10,16 @@ import typing
 
 class BaseCodec:
     """Basic codec class"""
-    def __init__(self, filename: str = None, fileobj: typing.IO = None, mode: str = 'r', open_it: bool = False):
+    def __init__(self, filename: str = None, fileobj: typing.IO = None, mode: str = 'r', open_it: bool = False, options:dict = {}):
         self._fileobj = fileobj
         self.filename = filename
         self.mode = mode
         if open_it:
             self.open()
+
+        if len(options) > 0:
+            for k, v in options.items():
+                setattr(self, k, v)                    
         pass
 
     @staticmethod
@@ -105,7 +109,7 @@ class BaseFileIterable(BaseIterable):
     """Basic file iterable"""
     datamode = 'text'
 
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, binary:bool = False, encoding:str = 'utf8', noopen:bool = False, mode:str = 'r'):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, binary:bool = False, encoding:str = 'utf8', noopen:bool = False, mode:str = 'r', options:dict = {}):
         """Init basic file iterable"""
         self.filename = filename
         self.noopen = noopen
@@ -131,6 +135,9 @@ class BaseFileIterable(BaseIterable):
                 self.fobj = self.codec.open() 
                 if self.datamode == 'text':
                     self.fobj = self.codec.textIO(encoding=self.encoding) 
+        if len(options) > 0:
+            for k, v in options.items():
+                setattr(self, k, v)            
                   
 
     def open(self):

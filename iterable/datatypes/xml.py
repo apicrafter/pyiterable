@@ -3,7 +3,7 @@ import typing
 from collections import defaultdict
 import lxml.etree as etree
 
-from ..base import BaseFileIterable
+from ..base import BaseFileIterable, BaseCodec
 
 
 PREFIX_STRIP = False
@@ -39,8 +39,8 @@ def etree_to_dict(t, prefix_strip=True):
 
 class XMLIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', tagname:str = None, prefix_strip:bool = True):
-        super(XMLIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, encoding='utf8')
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', tagname:str = None, prefix_strip:bool = True, options:dict={}):
+        super(XMLIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, encoding='utf8', options=options)
         self.tagname = tagname
         self.prefix_strip = prefix_strip
         self.reset()

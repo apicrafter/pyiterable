@@ -4,7 +4,6 @@ openpyxl
 orjson
 xlrd
 pyorc
-parquet
 lz4
 avro
 lxml

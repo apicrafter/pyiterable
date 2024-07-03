@@ -5,9 +5,9 @@ from ..base import BaseCodec
 import gzip
 
 class GZIPCodec(BaseCodec):
-    def __init__(self, filename:str, compression_level:int = 5, mode:str = 'r', open_it:bool = False):
+    def __init__(self, filename:str, compression_level:int = 5, mode:str = 'r', open_it:bool = False, options:dict = {}):
         self.compression_level = compression_level
-        super(GZIPCodec, self).__init__(filename, mode=mode, open_it=open_it)
+        super(GZIPCodec, self).__init__(filename, mode=mode, open_it=open_it, options=options)
 
     def open(self) -> gzip.GzipFile:         
         self._fileobj = gzip.GzipFile(filename=self.filename, mode=self.mode, compresslevel=self.compression_level)

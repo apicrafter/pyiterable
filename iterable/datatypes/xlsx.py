@@ -2,7 +2,7 @@ from __future__ import annotations
 import typing
 from openpyxl import load_workbook
 
-from ..base import BaseFileIterable
+from ..base import BaseFileIterable, BaseCodec
 
 def read_row_keys(rownum, ncols, sheet):
     """Read single row by row num"""
@@ -17,8 +17,8 @@ def read_row_keys(rownum, ncols, sheet):
 
 class XLSXIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', keys: list[str] = None, page:int = 0, start_line:int = 0):
-        super(XLSXIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', keys: list[str] = None, page:int = 0, start_line:int = 0, options:dict={}):
+        super(XLSXIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
         self.keys = keys
         self.start_line = start_line + 1
         self.page = page

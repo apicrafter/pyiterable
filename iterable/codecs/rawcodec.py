@@ -4,8 +4,8 @@ from ..base import BaseCodec
 
 
 class RAWCodec(BaseCodec):
-    def __init__(self, filename:str, mode:str = 'r'):
-        super(RAWCodec, self).__init__(filename, mode=mode, open_it=open_it)
+    def __init__(self, filename:str, mode:str = 'r', open_it:bool = False, options:dict = {}):
+        super(RAWCodec, self).__init__(filename, mode=mode, open_it=open_it, options=options)
 
     def open(self) -> typing.IO:
         self._fileobj = open(self.filename, self.mode)

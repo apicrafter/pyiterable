@@ -2,15 +2,15 @@ from __future__ import annotations
 import typing
 from csv import DictReader, DictWriter
 
-from ..base import BaseFileIterable
+from ..base import BaseFileIterable, BaseCodec
 
 
 class CSVIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, keys: list[str] = None, delimiter:str = ',', quotechar:str='"', mode:str='r', encoding:str = 'utf8'):
-        super(CSVIterable, self).__init__(filename, stream, codec=codec, binary=False, encoding=encoding, mode=mode)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, keys: list[str] = None, delimiter:str = ',', quotechar:str='"', mode:str='r', encoding:str = 'utf8', options:dict={}):
         self.delimiter = delimiter
         self.quotechar = quotechar
         self.keys = keys
+        super(CSVIterable, self).__init__(filename, stream, codec=codec, binary=False, encoding=encoding, mode=mode, options=options)
         self.reset()
         pass
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 import typing
 import pyorc
 
-from ..base import BaseFileIterable
+from ..base import BaseFileIterable, BaseCodec
 
 def df_to_pyorc_schema(df):
     """Extracts column information from pandas dataframe and generate pyorc schema"""
@@ -33,11 +33,11 @@ def fields_to_pyorc_schema(fields):
 
 class ORCIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str = 'r', keys:list[str] = None, schema:list[str] = None, compression:int = 5):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str = 'r', keys:list[str] = None, schema:list[str] = None, compression:int = 5, options:dict={}):
         self.keys = keys
         self.schema = schema
         self.compression = compression
-        super(ORCIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True)
+        super(ORCIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, options=options)
         self.reset()
         pass
 

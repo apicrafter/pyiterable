@@ -3,7 +3,7 @@ import typing
 from json import loads, dumps
 import datetime
 
-from ..base import BaseFileIterable
+from ..base import BaseFileIterable, BaseCodec
 
 date_handler = lambda obj: (
     obj.isoformat()
@@ -13,9 +13,9 @@ date_handler = lambda obj: (
 
 
 class JSONLinesIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str = 'r', encoding:str = 'utf8'):
-        super(JSONLinesIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str = 'r', encoding:str = 'utf8', options:dict={}):
         self.pos = 0
+        super(JSONLinesIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
         pass
 
     @staticmethod

@@ -2,7 +2,7 @@ from __future__ import annotations
 import typing
 from xlrd import open_workbook
 import xlrd
-from ..base import BaseFileIterable
+from ..base import BaseFileIterable, BaseCodec
 import datetime
 
 def read_row_keys(rownum, ncols, sheet):
@@ -42,8 +42,8 @@ def read_single_row(rownum, ncols, datemode, keys, sheet):
 
 class XLSIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', keys: list[str] = None, page:int = 0, start_line:int = 0):
-        super(XLSIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, noopen=True)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', keys: list[str] = None, page:int = 0, start_line:int = 0, options:dict={}):
+        super(XLSIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, noopen=True, options=options)
         self.page = page
         self.start_line = start_line
         self.pos = start_line

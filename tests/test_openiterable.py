@@ -12,6 +12,15 @@ class TestOpenIterable:
             n += 1
         iterable.close()
 
+
+    def test_iterate_plain_delimiter_notmatch_csv(self):
+        iterable = open_iterable('fixtures/2cols6rows.csv', iterableargs={'delimiter' : ';'})
+        n = 0
+        for row in iterable:
+            assert row != FIXTURES[n]
+            n += 1
+        iterable.close()        
+
     def test_iterate_gzip_csv(self):
         iterable = open_iterable('fixtures/2cols6rows.csv.gz')
         n = 0

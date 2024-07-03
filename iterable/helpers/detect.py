@@ -76,9 +76,9 @@ def open_iterable(filename:str, mode:str = 'r', codecargs:dict={}, iterableargs:
     result = detect_file_type(filename)
     if result['success']:
         if result['codec'] is not None:
-            codec = result['codec'](filename=filename, mode=mode, **codecargs)
-            iterable = result['datatype'](codec=codec, mode=mode, **iterableargs)
+            codec = result['codec'](filename=filename, mode=mode, options=codecargs)
+            iterable = result['datatype'](codec=codec, mode=mode, options=iterableargs)
         else:
-            iterable = result['datatype'](filename=filename, mode=mode, **iterableargs)
+            iterable = result['datatype'](filename=filename, mode=mode, options=iterableargs)
         
     return iterable

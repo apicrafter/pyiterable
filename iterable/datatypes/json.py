@@ -2,13 +2,13 @@ from __future__ import annotations
 import typing
 import json
 
-from ..base import BaseFileIterable
+from ..base import BaseFileIterable, BaseCodec
 
 
 class JSONIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', tagname:str= None):
-        super(JSONIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=False)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', tagname:str= None, options:dict={}):
         self.tagname = tagname
+        super(JSONIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=False, options=options)
         self.reset()
         pass
 

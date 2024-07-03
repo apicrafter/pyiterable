@@ -8,8 +8,8 @@ from ..base import BaseFileIterable, BaseCodec
 
 
 class AVROIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r'):
-        super(AVROIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', options:dict={}):
+        super(AVROIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, options=options)
         self.reset()
         pass
 

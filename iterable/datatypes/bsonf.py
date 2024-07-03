@@ -8,8 +8,8 @@ from ..base import BaseFileIterable, BaseCodec
 
 class BSONIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r'):
-        super(BSONIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict={}):
+        super(BSONIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.reset()
         pass
 
