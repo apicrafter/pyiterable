@@ -1,16 +1,67 @@
 from __future__ import annotations
+import chardet
+import logging
 import typing
 from csv import DictReader, DictWriter
 
 from ..base import BaseFileIterable, BaseCodec
 
+DEFAULT_ENCODING = 'utf8'
+DEFAULT_DELIMITER = ','
+
+def detect_encoding(filename=None, stream=None, limit=1000000):
+    if filename is not None:
+        f = open(filename, 'rb')
+        chunk = f.read(limit)
+        f.close()
+    else:
+        chunk = stream.read(limit)
+        stream.reset()
+    detected = chardet.detect(chunk)
+    logging.debug('Detected encoding %s' % (detected['encoding']))
+    return detected
+
+def detect_delimiter(filename=None, stream = None, encoding='utf8'):
+    if filename is not None:
+        f = open(filename, 'r', encoding=encoding)
+        line = f.readline()
+        f.close()
+    else:
+        line = stream.readline()
+#        stream.seek(0,0)
+        stream.reset()
+    dict1 = {',': line.count(','), ';': line.count(';'), '\t': line.count('\t'), '|' : line.count('|')}
+    delimiter = max(dict1, key=dict1.get)
+    logging.debug('Detected delimiter %s' % (delimiter))
+    return delimiter
+
 
 class CSVIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, keys: list[str] = None, delimiter:str = ',', quotechar:str='"', mode:str='r', encoding:str = 'utf8', options:dict={}):
-        self.delimiter = delimiter
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, keys: list[str] = None, delimiter:str = None, quotechar:str='"', mode:str='r', encoding:str = None, autodetect:bool=False, options:dict={}):
+        if encoding is not None:
+            self.encoding = encoding      
+        if mode == 'r':
+            if filename is not None and encoding is None:
+                self.encoding = detect_encoding(filename=filename)['encoding']
+            elif stream is not None and encoding is None:
+                self.encoding = detect_encoding(stream=stream)['encoding']
+            else:
+                self.encoding = DEFAULT_ENCODING 
+        else:
+            self.encoding = DEFAULT_ENCODING
+
+        super(CSVIterable, self).__init__(filename, stream, codec=codec, binary=False, encoding=self.encoding, mode=mode, options=options)
+        if not delimiter:
+            if autodetect and mode =='r':
+#                print(filename, stream)
+                self.delimiter = detect_delimiter(filename, self.fobj, encoding=self.encoding)
+            else:
+                self.delimiter = DEFAULT_DELIMITER
+        else:
+            self.delimiter = delimiter
         self.quotechar = quotechar
         self.keys = keys
-        super(CSVIterable, self).__init__(filename, stream, codec=codec, binary=False, encoding=encoding, mode=mode, options=options)
+        logging.debug('Detected delimiter %s' % (self.delimiter))
         self.reset()
         pass
 
@@ -20,7 +71,7 @@ class CSVIterable(BaseFileIterable):
             fobj = self.codec.textIO(self.encoding)
         else:
             fobj = self.fobj
-
+        logging.debug('Detected delimiter %s' % (self.delimiter))     
         self.reader = None
         if self.mode == 'r':
             if self.keys is not None:

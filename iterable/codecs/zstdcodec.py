@@ -17,9 +17,9 @@ class ZSTDCodec(BaseCodec):
         self._fileobj = zstd.open(self.filename, mode=self.mode)
         return self._fileobj
 
-#    def reset(self):
-#        self.close()
-#        self._fileobj = self.open()
+    def reset(self):
+        self.close()
+        self._fileobj = self.open()
 
     def close(self):
         self._fileobj.close()
