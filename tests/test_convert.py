@@ -27,6 +27,18 @@ class TestConvert:
             bson_iterable.write(row)
         iterable.close()
         bson_iterable.close()
+
+    def test_jsonl_to_csv(self):
+        iterable = JSONLinesIterable('fixtures/2cols6rows_flat.jsonl')        
+        csv_iterable = CSVIterable('testdata/2cols6rows_csv.csv', mode='w', keys=['id', 'name'])        
+        n = 0
+        for row in iterable:
+            assert row == FIXTURES[n]
+            n += 1
+            csv_iterable.write(row)
+        iterable.close()
+        csv_iterable.close()
+
        
     def test_parquet_to_jsonl(self):
         iterable = ParquetIterable('fixtures/2cols6rows.parquet')        

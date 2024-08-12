@@ -57,7 +57,7 @@ class TestParquet:
         iterable.close()
 
     def test_write_read(self):
-        iterable = ParquetIterable('testdata/2cols6rows.parquet', mode='w', keys=['id', 'name'], compression=None)
+        iterable = ParquetIterable('testdata/2cols6rows.parquet', mode='w', keys=['id', 'name'], use_pandas=True, compression='zstd')
         iterable.write_bulk(FIXTURES)
         iterable.close()
         iterable = ParquetIterable('testdata/2cols6rows.parquet', mode='r')

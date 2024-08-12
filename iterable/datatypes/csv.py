@@ -49,6 +49,7 @@ class CSVIterable(BaseFileIterable):
                 self.encoding = DEFAULT_ENCODING 
         else:
             self.encoding = DEFAULT_ENCODING
+        self.keys = keys
 
         super(CSVIterable, self).__init__(filename, stream, codec=codec, binary=False, encoding=self.encoding, mode=mode, options=options)
         if not delimiter:
@@ -60,7 +61,6 @@ class CSVIterable(BaseFileIterable):
         else:
             self.delimiter = delimiter
         self.quotechar = quotechar
-        self.keys = keys
         logging.debug('Detected delimiter %s' % (self.delimiter))
         self.reset()
         pass
@@ -79,7 +79,7 @@ class CSVIterable(BaseFileIterable):
                                      quotechar=self.quotechar)                
             else:
                  self.reader = DictReader(fobj, delimiter=self.delimiter, quotechar=self.quotechar)
-        if self.mode in ['w', 'wr'] and self.keys:
+        if self.mode in ['w', 'wr'] and self.keys is not None:
             self.writer = DictWriter(fobj, fieldnames=self.keys, delimiter=self.delimiter, quotechar=self.quotechar)
             self.writer.writeheader()
         else:
