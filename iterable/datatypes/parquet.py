@@ -17,7 +17,7 @@ def fields_to_pyarrow_schema(keys):
 
 class ParquetIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, mode: str = 'r', codec: BaseCodec = None, keys:list[str] = None, schema:list[str] = None, compression:str  = None, adapt_schema:bool = True, use_pandas:bool = True, batch_size:int = DEFAULT_BATCH_SIZE, options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, mode: str = 'r', codec: BaseCodec = None, keys:list[str] = None, schema:list[str] = None, compression:str  = 'snappy', adapt_schema:bool = True, use_pandas:bool = True, batch_size:int = DEFAULT_BATCH_SIZE, options:dict={}):
         self.use_pandas = use_pandas
         self.__buffer = []
         self.adapt_schema = adapt_schema
