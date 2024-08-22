@@ -17,7 +17,7 @@ RESULT_ZSTD_JSONL_FILE = 'data/raw/simplewiki.jsonl.zst'
 def run():
         codecobj = BZIP2Codec(RAW_FILE, mode='r')
         iterable = XMLIterable(codec=codecobj, tagname='page')        
-        wrcodecobj = ZSTDCodec(RESULT_ZSTD_JSONL_FILE, mode='ц')
+        wrcodecobj = ZSTDCodec(RESULT_ZSTD_JSONL_FILE, mode='w')
         witerable = JSONLinesIterable(codec=wrcodecobj, mode='w')        
       
         num = rawincount(RAW_INDEX)
