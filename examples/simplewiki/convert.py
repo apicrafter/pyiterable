@@ -10,8 +10,8 @@ def rawincount(filename):
     bufgen = takewhile(lambda x: x, (f.raw.read(1024*1024) for _ in repeat(None)))
     return sum(buf.count(b'\n') for buf in bufgen)
 
-RAW_FILE = 'data/raw/simple-latest-pages-articles-multistream.xml.bz2'
-RAW_INDEX = 'data/raw/simple-latest-pages-articles-multistream-index.txt'
+RAW_FILE = 'data/raw/simplewiki-latest-pages-articles-multistream.xml.bz2'
+RAW_INDEX = 'data/raw/simplewiki-latest-pages-articles-multistream-index.txt'
 RESULT_ZSTD_JSONL_FILE = 'data/raw/simplewiki.jsonl.zst'
 
 def run():
