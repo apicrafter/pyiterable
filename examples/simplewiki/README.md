@@ -1,8 +1,9 @@
 ## Wiki dumps processing example
 
-This example show how quickly convert wiki dump to jsonl.zst file which could be queries with duckdb
+This example show how quickly convert wiki dump to jsonl.zst file which could be queried with duckdb.
 
 ## Steps to use
+0. Install 'iterable' lib ```pip install iterabledata```
 1. Download latest files https://dumps.wikimedia.org/simplewiki/latest/simplewiki-latest-pages-articles-multistream.xml.bz2 and https://dumps.wikimedia.org/simplewiki/latest/simplewiki-latest-pages-articles-multistream-index.txt.bz2 to the data/raw
 2. Go to 'data/raw' directory.
 3. Run 'bunzip2 simplewiki-latest-pages-articles-multistream-index.txt.bz2'
