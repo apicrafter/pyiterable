@@ -1,3 +1,4 @@
+import chardet
 from ..datatypes.avro import AVROIterable
 from ..datatypes.bsonf import BSONIterable
 from ..datatypes.csv import CSVIterable
@@ -22,6 +23,8 @@ DATATYPES = [AVROIterable, BSONIterable, CSVIterable, ORCIterable,
              ParquetIterable, PickleIterable, JSONIterable, JSONLinesIterable, 
              XLSIterable, XLSXIterable, XMLIterable]
 CODECS = [BZIP2Codec, LZMACodec, GZIPCodec, LZ4Codec, ZIPCodec, BrotliCodec, ZSTDCodec]
+
+TEXT_DATA_TYPES = ['xml', 'csv', 'tsv', 'jsonl', 'ndjson', 'json']
 
 DATATYPE_MAP = {'avro' : AVROIterable, 
                 'bson' : BSONIterable, 
@@ -69,6 +72,42 @@ def detect_file_type(filename:str) -> dict:
             result['success'] = True                
     return result
 
+def detect_compression(filename:str) -> dict:
+    """Detects file type and compression codec from filename"""
+    result = {'filename' : filename, 'success' : False, 'codec' : None, 'datatype' : None}
+    parts = filename.lower().rsplit('.', 2)
+    if len(parts) == 2:
+        if parts[-1] in CODECS_MAP.keys():
+            result['compression'] = CODECS_MAP[parts[-1]]
+            result['success'] = True
+    elif len(parts) > 2:
+        if parts[-1] in CODECS_MAP.keys():
+            result['compression'] = CODECS_MAP[parts[-1]]
+            result['success'] = True                
+    return result
+
+
+def detect_encoding_any(filename:str, limit:int=1000000):
+    """Detects encodung of any data file including compressed"""
+    result = detect_file_type(filename)
+    fileobj = None
+    codec = None
+    if result['success']:        
+        if result['codec'] is not None:
+            codec = result['codec'](filename, open_it=True)
+            fileobj = codec.fileobj()
+    if fileobj is None:
+        fileobj = open(filename, 'rb')
+    
+    chunk = fileobj.read(limit)
+    if codec is not None:
+        codec.close()
+    else:
+        fileobj.close()
+    detected = chardet.detect(chunk)
+    return detected
+
+        
 
 
 def open_iterable(filename:str, mode:str = 'r', codecargs:dict={}, iterableargs:dict={}):

@@ -10,7 +10,7 @@ from ..base import BaseIterable
 
 DEFAULT_DELIMITERS = [',', ';', '\t', '|']
 
-def detect_encoding(filename:str = None, stream:typing.IO=None, limit:int=1000000) -> str:
+def detect_encoding_raw(filename:str = None, stream:typing.IO=None, limit:int=1000000) -> str:
     """Detect file or file object encoding reading 1MB data by default and using chardet"""    
     if filename is not None:
         f = open(filename, 'rb')

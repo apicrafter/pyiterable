@@ -25,5 +25,10 @@ class ZSTDCodec(BaseCodec):
         self._fileobj.close()
 
     @staticmethod
+    def id():
+        return 'zst'
+
+
+    @staticmethod
     def fileexts() -> list[str]:
         return ['zstd', 'zst']

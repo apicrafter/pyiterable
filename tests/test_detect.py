@@ -2,15 +2,23 @@
 import pytest
 from iterable.datatypes import CSVIterable, BSONIterable, JSONLinesIterable, ParquetIterable, ORCIterable, AVROIterable, XLSXIterable, XLSIterable, XMLIterable, PickleIterable, JSONIterable
 from iterable.codecs import GZIPCodec, BZIP2Codec, LZMACodec, ZSTDCodec, BrotliCodec
-from iterable.helpers.utils import detect_encoding, detect_delimiter
-from iterable.helpers.detect import detect_file_type
+from iterable.helpers.utils import detect_encoding_raw, detect_delimiter
+from iterable.helpers.detect import detect_file_type, detect_encoding_any
 
 from fixdata import FIXTURES
 
 class TestDetectors:
     def test_encoding(self):
-        assert 'utf-8' == detect_encoding(filename='fixtures/ru_utf8_comma.csv')['encoding'] 
-        assert 'windows-1251' == detect_encoding(filename='fixtures/ru_cp1251_comma.csv')['encoding'] 
+        assert 'utf-8' == detect_encoding_raw(filename='fixtures/ru_utf8_comma.csv')['encoding'] 
+        assert 'windows-1251' == detect_encoding_raw(filename='fixtures/ru_cp1251_comma.csv')['encoding'] 
+
+    def test_encoding_any_raw(self):
+        assert 'utf-8' == detect_encoding_any(filename='fixtures/ru_utf8_comma.csv')['encoding'] 
+        assert 'windows-1251' == detect_encoding_any(filename='fixtures/ru_cp1251_comma.csv')['encoding'] 
+
+    def test_encoding_any_compressed(self):
+#        assert 'utf-8' == detect_encoding_any(filename='fixtures/ru_utf8_comma.csv.zst')['encoding'] 
+        assert 'windows-1251' == detect_encoding_any(filename='fixtures/ru_cp1251_comma.csv.gz')['encoding'] 
 
 
     def test_delimiters(self):

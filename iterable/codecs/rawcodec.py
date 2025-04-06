@@ -15,5 +15,9 @@ class RAWCodec(BaseCodec):
         self._fileobj.close()
 
     @staticmethod
+    def id():
+        return 'raw'
+
+    @staticmethod
     def fileexts() -> list[str]:
         return None

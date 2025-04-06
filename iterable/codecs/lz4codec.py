@@ -17,5 +17,10 @@ class LZ4Codec(BaseCodec):
         self._fileobj.close()
 
     @staticmethod
+    def id():
+        return 'lz4'
+
+
+    @staticmethod
     def fileexts() -> list[str]:
         return ['lz4',]

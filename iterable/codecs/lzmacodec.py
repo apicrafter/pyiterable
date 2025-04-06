@@ -30,6 +30,9 @@ class LZMACodec(BaseCodec):
     def close(self):
         self._fileobj.close()
 
+    @staticmethod
+    def id():
+        return 'xz'
         
     @staticmethod
     def fileexts() -> list[str]:

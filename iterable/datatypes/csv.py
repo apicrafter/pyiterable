@@ -9,7 +9,7 @@ from ..base import BaseFileIterable, BaseCodec
 DEFAULT_ENCODING = 'utf8'
 DEFAULT_DELIMITER = ','
 
-def detect_encoding(filename=None, stream=None, limit=1000000):
+def detect_encoding_raw(filename=None, stream=None, limit=1000000):
     if filename is not None:
         f = open(filename, 'rb')
         chunk = f.read(limit)
@@ -42,9 +42,9 @@ class CSVIterable(BaseFileIterable):
             self.encoding = encoding      
         if mode == 'r':
             if filename is not None and encoding is None:
-                self.encoding = detect_encoding(filename=filename)['encoding']
+                self.encoding = detect_encoding_raw(filename=filename)['encoding']
             elif stream is not None and encoding is None:
-                self.encoding = detect_encoding(stream=stream)['encoding']
+                self.encoding = detect_encoding_raw(stream=stream)['encoding']
             else:
                 self.encoding = DEFAULT_ENCODING 
         else:

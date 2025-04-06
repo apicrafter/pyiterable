@@ -17,5 +17,10 @@ class GZIPCodec(BaseCodec):
         self._fileobj.close()
 
     @staticmethod
+    def id():
+        return 'gzip'
+
+
+    @staticmethod
     def fileexts() -> list[str]:
         return ['gz',]

@@ -25,5 +25,10 @@ class ZIPCodec(BaseCodec):
         self._archiveobj.close()
 
     @staticmethod
+    def id():
+        return 'zip'
+
+
+    @staticmethod
     def fileexts() -> list[str]:
         return ['zip',]

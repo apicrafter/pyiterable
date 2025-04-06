@@ -20,5 +20,9 @@ class BrotliCodec(BaseCodec):
         self._fileobj.close()
 
     @staticmethod
+    def id():
+        return 'brotli'
+
+    @staticmethod
     def fileexts() -> list[str]:
-        return ['br',]
+        return ['br', 'brotli']

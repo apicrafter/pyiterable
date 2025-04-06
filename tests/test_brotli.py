@@ -6,7 +6,7 @@ from fixdata import FIXTURES
 
 class TestBrotli:
     def test_fileexts(self):
-        assert BrotliCodec.fileexts() == ['br',]
+        assert BrotliCodec.fileexts() == ['br', 'brotli']
 
 
     def test_openclose(self):

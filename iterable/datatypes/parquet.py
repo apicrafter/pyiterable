@@ -111,7 +111,6 @@ class ParquetIterable(BaseFileIterable):
             batch = pyarrow.RecordBatch.from_pylist(records)
             if not self.is_data_written:            
                 schema = batch.schema
-#                print('write_bulk', schema)
                 self.writer = pyarrow.parquet.ParquetWriter(self.fobj, schema, compression=self.compression, use_dictionary=False)
                 self.is_data_written = True
             self.writer.write_batch(batch)
