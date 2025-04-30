@@ -11,4 +11,6 @@ pyarrow
 python-snappy
 brotli
 brotli_file
+pyzstd
 zstandard
+pymongo
