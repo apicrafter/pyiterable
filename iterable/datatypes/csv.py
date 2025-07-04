@@ -37,18 +37,23 @@ def detect_delimiter(filename=None, stream = None, encoding='utf8'):
 
 
 class CSVIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, keys: list[str] = None, delimiter:str = None, quotechar:str='"', mode:str='r', encoding:str = None, autodetect:bool=False, options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, keys: list[str] = None, delimiter:str = None, quotechar:str='"', mode:str='r', encoding:str = None, autodetect:bool=False, options:dict={}):                        
+        logging.debug(f'Params: encoding: {encoding}, options {options}')
+        self.encoding = None
         if encoding is not None:
-            self.encoding = encoding      
+            self.encoding = encoding                
+        elif 'encoding' in options.keys() and options['encoding'] is not None:
+            self.encoding = options['encoding']
         if mode == 'r':
-            if filename is not None and encoding is None:
+            if filename is not None and self.encoding is None:
                 self.encoding = detect_encoding_raw(filename=filename)['encoding']
-            elif stream is not None and encoding is None:
+            elif stream is not None and self.encoding is None:
                 self.encoding = detect_encoding_raw(stream=stream)['encoding']
-            else:
+            elif self.encoding is None:
                 self.encoding = DEFAULT_ENCODING 
-        else:
+        elif self.encoding is None:
             self.encoding = DEFAULT_ENCODING
+        logging.debug(f'Final encoding {self.encoding}')
         self.keys = keys
 
         super(CSVIterable, self).__init__(filename, stream, codec=codec, binary=False, encoding=self.encoding, mode=mode, options=options)

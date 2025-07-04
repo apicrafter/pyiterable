@@ -22,6 +22,8 @@ class XLSXIterable(BaseFileIterable):
         self.keys = keys
         self.start_line = start_line + 1
         self.page = page
+        if 'page' in options.keys():
+            self.page = int(options['page'])
         self.pos = self.start_line
         self.extracted_keys = keys is None
         self.reset()
@@ -30,7 +32,7 @@ class XLSXIterable(BaseFileIterable):
     def reset(self):
         super(XLSXIterable, self).reset()
         self.workbook = load_workbook(self.filename)
-        self.sheet = self.workbook.active
+        self.sheet = self.workbook.get_sheet_by_name(self.workbook.sheetnames[self.page])
         self.pos = self.start_line
         self.cursor = self.sheet.iter_rows()
         if self.pos > 1:

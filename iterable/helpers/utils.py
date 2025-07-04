@@ -274,3 +274,11 @@ def get_dict_value_deep(adict:dict, key:str, prefix:list = None, as_array:bool =
                 return get_dict_value_deep(adict[0][prefix[0]], key, prefix=prefix[1:], as_array=as_array)
         return None
 
+
+def make_flat(item):
+    result = {}
+    for k, v in item.items():
+        if isinstance(v, tuple) or isinstance(v, list) or isinstance(v, dict):
+            result[k] = str(v)
+        result[k] = v
+    return result

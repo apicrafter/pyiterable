@@ -22,7 +22,7 @@ def run():
       
         num = rawincount(RAW_INDEX)
         n = 0
-        for row in tqdm(iterable, total=num):
+        for row in tqdm(iterable, total=num, desc='Converting data'):
                 n += 1
                 witerable.write(row)
         iterable.close()

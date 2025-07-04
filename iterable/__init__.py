@@ -5,3 +5,4 @@ __doc__ = "Iterable data processing Python library"
 
 
 
+from .helpers.detect import open_iterable

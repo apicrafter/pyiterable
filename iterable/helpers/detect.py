@@ -53,6 +53,21 @@ CODECS_MAP = {'bz2' : BZIP2Codec,
               }
 
 
+FLAT_TYPES = ['csv', 'tsv', 'xls', 'xlsx']
+
+def is_flat(filename:str=None, filetype:str=None):
+    """Returns True if file is flat data file"""
+    if filetype is not None:
+        if filetype in FLAT_TYPES: 
+            return True
+    elif filename is not None:
+        parts = filename.lower().rsplit('.', 2)
+        if len(parts) == 2:
+             if parts[1] in FLAT_TYPES: return True
+        elif len(parts) > 2:
+             if parts[1] in FLAT_TYPES: return True
+    return False
+
 
 def detect_file_type(filename:str) -> dict:
     """Detects file type and compression codec from filename"""
