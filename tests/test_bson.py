@@ -16,6 +16,14 @@ class TestBSON:
     def test_openclose(self):
         iterable = BSONIterable('fixtures/2cols6rows_flat.bson')        
         iterable.close()
+
+    def test_read_bulk_returns_n_records(self):
+        iterable = BSONIterable('fixtures/2cols6rows_flat.bson')
+        chunk = iterable.read_bulk(3)
+        assert len(chunk) == 3
+        from fixdata import FIXTURES
+        assert chunk == FIXTURES[:3]
+        iterable.close()
                 
     def test_parsesimple_readone(self):
         iterable = BSONIterable('fixtures/2cols6rows_flat.bson')        

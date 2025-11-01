@@ -32,7 +32,7 @@ class XLSXIterable(BaseFileIterable):
     def reset(self):
         super(XLSXIterable, self).reset()
         self.workbook = load_workbook(self.filename)
-        self.sheet = self.workbook.get_sheet_by_name(self.workbook.sheetnames[self.page])
+        self.sheet = self.workbook[self.workbook.sheetnames[self.page]]
         self.pos = self.start_line
         self.cursor = self.sheet.iter_rows()
         if self.pos > 1:
@@ -49,7 +49,15 @@ class XLSXIterable(BaseFileIterable):
             num -= 1
             o = next(self.cursor)
 
-    
+    @staticmethod
+    def has_totals():
+        """Has totals indicator"""
+        return True        
+
+    def totals(self):
+        """Returns file totals"""
+        return self.sheet.max_row
+
     @staticmethod
     def id() -> str:
         return 'xlsx'

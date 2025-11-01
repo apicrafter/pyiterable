@@ -63,6 +63,15 @@ class ParquetIterable(BaseFileIterable):
     def is_flatonly() -> bool:
         return True
 
+    @staticmethod
+    def has_totals():
+        """Has totals indicator"""
+        return True        
+
+    def totals(self):
+        """Returns file totals"""
+        return self.reader.scan_contents()        
+
     def flush(self):
         """Flush all data"""
 #        print(self.__buffer)

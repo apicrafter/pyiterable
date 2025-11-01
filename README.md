@@ -1,139 +1,461 @@
 # Iterable Data
 
-*Work in progress. Documentation in progress*
+Iterable Data is a Python library for reading and writing data files row by row in a consistent, iterator-based interface. It provides a unified API for working with various data formats (CSV, JSON, Parquet, XML, etc.) similar to `csv.DictReader` but supporting many more formats.
 
-Iterable data is a Python lib to read data files row by row and write data files.
-Iterable classes are similar to files or csv.DictReader or reading parquet files row by row. 
+This library simplifies data processing and conversion between formats while preserving complex nested data structures (unlike pandas DataFrames which require flattening).
 
-This library was written to simplify data processing and conversion between formats.
- 
-Supported file types:
-* BSON
-* JSON
-* NDJSON (JSON lines)
-* XML
-* XLS
-* XLSX
-* Parquet
-* ORC
-* Avro
-* Pickle
+## Features
 
-Supported file compression: GZip, BZip2, LZMA (.xz), LZ4, ZIP, Brotli, ZStandard
+- **Unified API**: Single interface for reading/writing multiple data formats
+- **Automatic Format Detection**: Detects file type and compression from filename
+- **Support for Compression**: Works seamlessly with compressed files
+- **Preserves Nested Data**: Handles complex nested structures as Python dictionaries
+- **DuckDB Integration**: Optional DuckDB engine for high-performance queries
+- **Pipeline Processing**: Built-in pipeline support for data transformation
+- **Encoding Detection**: Automatic encoding and delimiter detection for text files
+- **Bulk Operations**: Efficient batch reading and writing
 
-## Why writing this lib? 
+## Supported File Types
 
-Python has many high-quality data processing tools and libraries, especially pandas and other data frames lib. The only issue with most of them is flat data. Data frames don't support complex data types, and you must *flatten* data each time. 
+- **BSON** - Binary JSON format
+- **JSON** - Standard JSON files
+- **JSONL/NDJSON** - JSON Lines format (one JSON object per line)
+- **XML** - XML files with configurable tag parsing
+- **CSV/TSV** - Comma and tab-separated values
+- **XLS/XLSX** - Microsoft Excel files
+- **Parquet** - Apache Parquet columnar format
+- **ORC** - Optimized Row Columnar format
+- **Avro** - Apache Avro binary format
+- **Pickle** - Python pickle format
 
-pyiterable helps you read any data as a Python dictionary instead of flattening data.
-It makes it much easier to work with such data sources as JSON, NDJSON, or BSON files.
+## Supported Compression Codecs
 
-This code is used in several tools written by its author. It's command line tool [undatum](https://github.com/datacoon/undatum) and data processing ETL engine [datacrafter](https://github.com/apicrafter/datacrafter)
-
+- **GZip** (.gz)
+- **BZip2** (.bz2)
+- **LZMA** (.xz, .lzma)
+- **LZ4** (.lz4)
+- **ZIP** (.zip)
+- **Brotli** (.br)
+- **ZStandard** (.zst, .zstd)
 
 ## Requirements
 
-Python 3.8+
-
+Python 3.10+
 
 ## Installation
 
-```pip install iterabledata``` or use this repository
+```bash
+pip install iterabledata
+```
 
-## Documentation
+Or install from source:
 
-In progress. Please see usage and examples.
+```bash
+git clone https://github.com/apicrafter/pyiterable.git
+cd pyiterable
+pip install .
+```
 
-## Usage and examples
+## Quick Start
 
+### Basic Reading
 
-### Read compressed CSV file 
-
-Read compressed csv.xz file
-
-```{python}
-
+```python
 from iterable.helpers.detect import open_iterable
 
+# Automatically detects format and compression
+source = open_iterable('data.csv.gz')
+for row in source:
+    print(row)
+    # Process your data here
+source.close()
+```
+
+### Writing Data
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Write compressed JSONL file
+dest = open_iterable('output.jsonl.zst', mode='w')
+for item in my_data:
+    dest.write(item)
+dest.close()
+```
+
+## Usage Examples
+
+### Reading Compressed CSV Files
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Read compressed CSV file (supports .gz, .bz2, .xz, .zst, .lz4, .br)
 source = open_iterable('data.csv.xz')
 n = 0
-for row in iterable:
+for row in source:
     n += 1
-    # Add data processing code here
-    if n % 1000 == 0: print('Processing %d' % (n))
+    # Process row data
+    if n % 1000 == 0:
+        print(f'Processed {n} rows')
+source.close()
 ```
 
-### Detect encoding and file delimiter
+### Reading Different Formats
 
-Detects encoding and delimiter of the selected CSV file and use it to open as iterable
-
-```{python}
-
+```python
 from iterable.helpers.detect import open_iterable
+
+# Read JSONL file
+jsonl_file = open_iterable('data.jsonl')
+for row in jsonl_file:
+    print(row)
+jsonl_file.close()
+
+# Read Parquet file
+parquet_file = open_iterable('data.parquet')
+for row in parquet_file:
+    print(row)
+parquet_file.close()
+
+# Read XML file (specify tag name)
+xml_file = open_iterable('data.xml', iterableargs={'tagname': 'item'})
+for row in xml_file:
+    print(row)
+xml_file.close()
+
+# Read Excel file
+xlsx_file = open_iterable('data.xlsx')
+for row in xlsx_file:
+    print(row)
+xlsx_file.close()
+```
+
+### Format Detection and Encoding
+
+```python
+from iterable.helpers.detect import open_iterable, detect_file_type
 from iterable.helpers.utils import detect_encoding, detect_delimiter
 
-delimiter = detect_delimiter('data.csv')
-encoding = detect_encoding('data.csv')
+# Detect file type and compression
+result = detect_file_type('data.csv.gz')
+print(f"Type: {result['datatype']}, Codec: {result['codec']}")
 
-source = open_iterable('data.csv', iterableargs={'encoding' : encoding['encoding'], 'delimiter' : delimiter)
-n = 0
-for row in iterable:
-    n += 1
-    # Add data processing code here
-    if n % 1000 == 0: print('Processing %d' % (n))
+# Detect encoding for CSV files
+encoding_info = detect_encoding('data.csv')
+print(f"Encoding: {encoding_info['encoding']}, Confidence: {encoding_info['confidence']}")
+
+# Detect delimiter for CSV files
+delimiter = detect_delimiter('data.csv', encoding=encoding_info['encoding'])
+
+# Open with detected settings
+source = open_iterable('data.csv', iterableargs={
+    'encoding': encoding_info['encoding'],
+    'delimiter': delimiter
+})
 ```
 
+### Format Conversion
 
-### Convert Parquet file to BSON compressed with LZMA using pipeline
-
-Uses pipeline class to iterate through parquet file and convert its selected fields to JSON lines (NDJSON)
-
-```{python}
-
+```python
 from iterable.helpers.detect import open_iterable
-from iterable.pipeline import pipeline
+from iterable.convert.core import convert
 
-source = open_iterable('data/data.parquet')
-destination = open_iterable('data/data.jsonl.xz', mode='w')
+# Simple format conversion
+convert('input.jsonl.gz', 'output.parquet')
 
-def extract_fields(record, state):
+# Convert with options
+convert(
+    'input.csv.xz',
+    'output.jsonl.zst',
+    iterableargs={'delimiter': ';', 'encoding': 'utf-8'},
+    batch_size=10000
+)
+
+# Convert and flatten nested structures
+convert(
+    'input.jsonl',
+    'output.csv',
+    is_flatten=True,
+    batch_size=50000
+)
+```
+
+### Using Pipeline for Data Processing
+
+```python
+from iterable.helpers.detect import open_iterable
+from iterable.pipeline.core import pipeline
+
+source = open_iterable('input.parquet')
+destination = open_iterable('output.jsonl.xz', mode='w')
+
+def transform_record(record, state):
+    """Transform each record"""
+    # Add processing logic
     out = {}
-    record = dict(record)
-    print(record)
-    for k in ['name',]:
-        out[k] = record[k]
+    for key in ['name', 'email', 'age']:
+        if key in record:
+            out[key] = record[key]
     return out
 
-def print_process(stats, state):
-    print(stats)
+def progress_callback(stats, state):
+    """Called every trigger_on records"""
+    print(f"Processed {stats['rec_count']} records, "
+          f"Duration: {stats.get('duration', 0):.2f}s")
 
-pipeline(source, destination=destination, process_func=extract_fields, trigger_on=2, trigger_func=print_process, final_func=print_process, start_state={})
+def final_callback(stats, state):
+    """Called when processing completes"""
+    print(f"Total records: {stats['rec_count']}")
+    print(f"Total time: {stats['duration']:.2f}s")
 
+pipeline(
+    source=source,
+    destination=destination,
+    process_func=transform_record,
+    trigger_func=progress_callback,
+    trigger_on=1000,
+    final_func=final_callback,
+    start_state={}
+)
+
+source.close()
+destination.close()
 ```
 
-### Convert gzipped JSON lines (NDJSON) file to BSON compressed with LZMA 
+### Manual Format and Codec Usage
 
-Reads each row from JSON lines file using Gzip codec and writes BSON data using LZMA codec
+```python
+from iterable.datatypes.jsonl import JSONLinesIterable
+from iterable.datatypes.bsonf import BSONIterable
+from iterable.codecs.gzipcodec import GZIPCodec
+from iterable.codecs.lzmacodec import LZMACodec
 
-```{python}
+# Read gzipped JSONL
+read_codec = GZIPCodec('input.jsonl.gz', mode='r', open_it=True)
+reader = JSONLinesIterable(codec=read_codec)
 
-from iterable.datatypes import JSONLinesIterable, BSONIterable
-from iterable.codecs import GZIPCodec, LZMACodec
+# Write LZMA compressed BSON
+write_codec = LZMACodec('output.bson.xz', mode='wb', open_it=False)
+writer = BSONIterable(codec=write_codec, mode='w')
 
+for row in reader:
+    writer.write(row)
 
-codecobj = GZIPCodec('data.jsonl.gz', mode='r', open_it=True)
-iterable = JSONLinesIterable(codec=codecobj)        
-codecobj = LZMACodec('data.bson.xz', mode='wb', open_it=False)
-write_iterable = BSONIterable(codec=codecobj, mode='w')
-n = 0
-for row in iterable:
-    n += 1
-    if n % 10000 == 0: print('Processing %d' % (n))
-    write_iterable.write(row)
+reader.close()
+writer.close()
 ```
 
+### Using DuckDB Engine
 
+```python
+from iterable.helpers.detect import open_iterable
 
-## More examples and tests
+# Use DuckDB engine for CSV, JSON, JSONL files
+# Supported formats: csv, jsonl, ndjson, json
+# Supported codecs: gz, zstd, zst
+source = open_iterable(
+    'data.csv.gz',
+    engine='duckdb'
+)
 
-See [tests](tests/) for example usage and tests
+# DuckDB engine supports totals
+total = source.totals()
+print(f"Total records: {total}")
+
+for row in source:
+    print(row)
+source.close()
+```
+
+### Bulk Operations
+
+```python
+from iterable.helpers.detect import open_iterable
+
+source = open_iterable('input.jsonl')
+destination = open_iterable('output.parquet', mode='w')
+
+# Read and write in batches for better performance
+batch = []
+for row in source:
+    batch.append(row)
+    if len(batch) >= 10000:
+        destination.write_bulk(batch)
+        batch = []
+
+# Write remaining records
+if batch:
+    destination.write_bulk(batch)
+
+source.close()
+destination.close()
+```
+
+### Working with Excel Files
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Read Excel file (specify sheet or page)
+xls_file = open_iterable('data.xlsx', iterableargs={'page': 0})
+
+for row in xls_file:
+    print(row)
+xls_file.close()
+
+# Read specific sheet in XLSX
+xlsx_file = open_iterable('data.xlsx', iterableargs={'page': 'Sheet2'})
+```
+
+### XML Processing
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Parse XML with specific tag name
+xml_file = open_iterable(
+    'data.xml',
+    iterableargs={
+        'tagname': 'book',
+        'prefix_strip': True  # Strip XML namespace prefixes
+    }
+)
+
+for item in xml_file:
+    print(item)
+xml_file.close()
+```
+
+### Advanced: Converting Compressed XML to Parquet
+
+```python
+from iterable.datatypes.xml import XMLIterable
+from iterable.datatypes.parquet import ParquetIterable
+from iterable.codecs.bz2codec import BZIP2Codec
+
+# Read compressed XML
+read_codec = BZIP2Codec('data.xml.bz2', mode='r')
+reader = XMLIterable(codec=read_codec, tagname='page')
+
+# Write to Parquet with schema adaptation
+writer = ParquetIterable(
+    'output.parquet',
+    mode='w',
+    use_pandas=False,
+    adapt_schema=True,
+    batch_size=10000
+)
+
+batch = []
+for row in reader:
+    batch.append(row)
+    if len(batch) >= 10000:
+        writer.write_bulk(batch)
+        batch = []
+
+if batch:
+    writer.write_bulk(batch)
+
+reader.close()
+writer.close()
+```
+
+## API Reference
+
+### Main Functions
+
+#### `open_iterable(filename, mode='r', engine='internal', codecargs={}, iterableargs={})`
+
+Opens a file and returns an iterable object.
+
+**Parameters:**
+- `filename` (str): Path to the file
+- `mode` (str): File mode ('r' for read, 'w' for write)
+- `engine` (str): Processing engine ('internal' or 'duckdb')
+- `codecargs` (dict): Arguments for codec initialization
+- `iterableargs` (dict): Arguments for iterable initialization
+
+**Returns:** Iterable object for the detected file type
+
+#### `detect_file_type(filename)`
+
+Detects file type and compression codec from filename.
+
+**Returns:** Dictionary with `success`, `datatype`, and `codec` keys
+
+#### `convert(fromfile, tofile, iterableargs={}, scan_limit=1000, batch_size=50000, silent=True, is_flatten=False)`
+
+Converts data between formats.
+
+**Parameters:**
+- `fromfile` (str): Source file path
+- `tofile` (str): Destination file path
+- `iterableargs` (dict): Options for iterable
+- `scan_limit` (int): Number of records to scan for schema detection
+- `batch_size` (int): Batch size for bulk operations
+- `silent` (bool): Suppress progress output
+- `is_flatten` (bool): Flatten nested structures
+
+### Iterable Methods
+
+All iterable objects support:
+
+- `read()` - Read single record
+- `read_bulk(num)` - Read multiple records
+- `write(record)` - Write single record
+- `write_bulk(records)` - Write multiple records
+- `reset()` - Reset iterator to beginning
+- `close()` - Close file handles
+
+## Engines
+
+### Internal Engine (Default)
+
+The internal engine uses pure Python implementations for all formats. It supports all file types and compression codecs.
+
+### DuckDB Engine
+
+The DuckDB engine provides high-performance querying capabilities for supported formats:
+- **Formats**: CSV, JSONL, NDJSON, JSON
+- **Codecs**: GZIP, ZStandard (.zst)
+- **Features**: Fast querying, totals counting, SQL-like operations
+
+Use `engine='duckdb'` when opening files:
+
+```python
+source = open_iterable('data.csv.gz', engine='duckdb')
+```
+
+## Examples Directory
+
+See the [examples](examples/) directory for more complete examples:
+
+- `simplewiki/` - Processing Wikipedia XML dumps
+
+## More Examples and Tests
+
+See the [tests](tests/) directory for comprehensive usage examples and test cases.
+
+## Related Projects
+
+This library is used in:
+- [undatum](https://github.com/datacoon/undatum) - Command line data processing tool
+- [datacrafter](https://github.com/apicrafter/datacrafter) - Data processing ETL engine
+
+## License
+
+MIT License
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit pull requests or open issues.
+
+## Changelog
+
+### Version 1.0.5
+- DuckDB engine support
+- Enhanced format detection
+- Improved compression codec handling
+- Pipeline processing framework
+- Bulk operations support

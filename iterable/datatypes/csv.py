@@ -5,6 +5,8 @@ import typing
 from csv import DictReader, DictWriter
 
 from ..base import BaseFileIterable, BaseCodec
+from ..helpers.utils import rowincount
+
 
 DEFAULT_ENCODING = 'utf8'
 DEFAULT_DELIMITER = ','
@@ -40,6 +42,7 @@ class CSVIterable(BaseFileIterable):
     def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, keys: list[str] = None, delimiter:str = None, quotechar:str='"', mode:str='r', encoding:str = None, autodetect:bool=False, options:dict={}):                        
         logging.debug(f'Params: encoding: {encoding}, options {options}')
         self.encoding = None
+        self.fileobj = stream
         if encoding is not None:
             self.encoding = encoding                
         elif 'encoding' in options.keys() and options['encoding'] is not None:
@@ -69,6 +72,16 @@ class CSVIterable(BaseFileIterable):
         logging.debug('Detected delimiter %s' % (self.delimiter))
         self.reset()
         pass
+
+
+    @staticmethod
+    def has_totals():
+        """Has totals indicator"""
+        return True            
+    
+    def totals(self):
+        """Returns file totals"""
+        return rowincount(self.filename, self.fobj)
 
     def reset(self):
         super(CSVIterable, self).reset()

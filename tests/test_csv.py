@@ -67,3 +67,17 @@ class TestCSV:
             assert row == FIXTURES[n]
             n += 1
         iterable.close()
+
+    def test_read_bulk_advances_and_stops(self):
+        iterable = CSVIterable('fixtures/2cols6rows.csv')
+        chunk = iterable.read_bulk(4)
+        assert len(chunk) == 4
+        assert chunk == FIXTURES[:4]
+        # Next read should give the 5th row
+        row = iterable.read()
+        assert row == FIXTURES[4]
+        # Exhaust
+        _ = iterable.read()
+        with pytest.raises(StopIteration):
+            _ = iterable.read()
+        iterable.close()

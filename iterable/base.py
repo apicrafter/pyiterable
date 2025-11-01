@@ -66,6 +66,13 @@ class BaseIterable:
         """Identifier of selected destination"""
         raise NotImplementedError
 
+    @staticmethod
+    def has_totals():
+        """Has totals. Default: False"""
+        return False
+
+
+
     def read(self, skip_empty:bool = True):
         """Read single record"""
         raise NotImplementedError

@@ -25,6 +25,15 @@ class JSONIterable(BaseFileIterable):
         return 'json'
 
     @staticmethod
+    def has_totals():
+        """Has totals indicator"""
+        return True        
+
+    def totals(self):
+        """Returns file totals"""
+        return self.total
+
+    @staticmethod
     def is_flatonly() -> bool:
         return False
 

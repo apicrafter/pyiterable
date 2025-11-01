@@ -1,14 +1,31 @@
 from __future__ import annotations
 import typing
+from itertools import takewhile, repeat
 from collections import defaultdict
 from collections import OrderedDict
-import csv
 import chardet
 from statistics import mean
 
 from ..base import BaseIterable
 
 DEFAULT_DELIMITERS = [',', ';', '\t', '|']
+
+def rowincount(filename:str=None, fileobj=None):
+    """Count number of rows by filename or file object"""
+    totals = 0
+    if filename is not None:
+        f = open(filename, 'rb')
+        bufgen = takewhile(lambda x: x, (f.raw.read(1024*1024) for _ in repeat(None)))
+        totals = sum(buf.count(b'\n') for buf in bufgen)
+        f.close()        
+    elif fileobj is not None:
+        f = fileobj
+        bufgen = takewhile(lambda x: x, (f.raw.read(1024*1024) for _ in repeat(None)))
+        totals = sum(buf.count(b'\n') for buf in bufgen)                
+    else:
+        raise ValueError('Filename or fileobj should not be None')
+    return totals
+
 
 def detect_encoding_raw(filename:str = None, stream:typing.IO=None, limit:int=1000000) -> str:
     """Detect file or file object encoding reading 1MB data by default and using chardet"""    

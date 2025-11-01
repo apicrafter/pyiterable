@@ -15,6 +15,14 @@ class TestParquet:
     def test_openclose(self):
         iterable = ParquetIterable('fixtures/2cols6rows.parquet')        
         iterable.close()
+
+    def test_read_bulk_returns_n_records(self):
+        iterable = ParquetIterable('fixtures/2cols6rows.parquet')
+        chunk = iterable.read_bulk(2)
+        assert len(chunk) == 2
+        from fixdata import FIXTURES_TYPES
+        assert chunk == FIXTURES_TYPES[:2]
+        iterable.close()
                 
     def test_parsesimple_readone(self):
         iterable = ParquetIterable('fixtures/2cols6rows.parquet')        

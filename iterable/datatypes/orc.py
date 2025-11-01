@@ -65,6 +65,16 @@ class ORCIterable(BaseFileIterable):
     def is_flatonly() -> bool:
         return True
 
+
+    @staticmethod
+    def has_totals():
+        """Has totals indicator"""
+        return True        
+
+    def totals(self):
+        """Returns file totals"""
+        return len(self.reader)
+
     def close(self):
         """Close iterable"""
         if self.writer is not None: self.writer.close()

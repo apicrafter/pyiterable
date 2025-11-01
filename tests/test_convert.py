@@ -19,5 +19,5 @@ class TestConvert:
 
 
     def test_convert_jsonl_to_csv_xz(self):
-        convert(fromfile='fixtures/books.jsonl', tofile='testdata/books_converted.csv.gz')
-        assert os.path.exists('testdata/books_converted.csv.gz')
+        convert(fromfile='fixtures/2cols6rows_flat.jsonl', tofile='testdata/2cols6rows_flat_converted.csv.gz')
+        assert os.path.exists('testdata/2cols6rows_flat_converted.csv.gz')

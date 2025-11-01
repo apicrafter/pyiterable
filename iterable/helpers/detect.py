@@ -10,6 +10,7 @@ from ..datatypes.jsonl import JSONLinesIterable
 from ..datatypes.xls import XLSIterable
 from ..datatypes.xlsx import XLSXIterable
 from ..datatypes.xml import XMLIterable
+from ..engines.duckdb import DuckDBIterable
 
 from ..codecs.bz2codec import BZIP2Codec
 from ..codecs.gzipcodec import GZIPCodec
@@ -18,6 +19,7 @@ from ..codecs.lz4codec import LZ4Codec
 from ..codecs.zipcodec import ZIPCodec
 from ..codecs.brotlicodec import BrotliCodec
 from ..codecs.zstdcodec import ZSTDCodec
+
 
 DATATYPES = [AVROIterable, BSONIterable, CSVIterable, ORCIterable, 
              ParquetIterable, PickleIterable, JSONIterable, JSONLinesIterable, 
@@ -54,6 +56,11 @@ CODECS_MAP = {'bz2' : BZIP2Codec,
 
 
 FLAT_TYPES = ['csv', 'tsv', 'xls', 'xlsx']
+
+ENGINES = ['internal', 'duckdb']
+
+DUCKDB_SUPPORTED_TYPES = ['csv', 'jsonl', 'ndjson', 'json']
+DUCKDB_SUPPORTED_CODECS = ['gz', 'zstd', 'zst']
 
 def is_flat(filename:str=None, filetype:str=None):
     """Returns True if file is flat data file"""
@@ -125,13 +132,17 @@ def detect_encoding_any(filename:str, limit:int=1000000):
         
 
 
-def open_iterable(filename:str, mode:str = 'r', codecargs:dict={}, iterableargs:dict={}):
+def open_iterable(filename:str, mode:str = 'r', engine:str='internal', codecargs:dict={}, iterableargs:dict={}):
     """Opens file and returns iterable object. Codecargs and iterable args are dicts with arguments to codec and iterable class"""
     result = detect_file_type(filename)
+    iterable = None
+    if engine not in ['internal', 'duckdb']: raise ValueError(f'Engine could be only: internal or duckdb. Not {engine}')
     if result['success']:
-        if result['codec'] is not None:
+        if result['codec'] is not None and engine != 'duckdb':
             codec = result['codec'](filename=filename, mode=mode, options=codecargs)
             iterable = result['datatype'](codec=codec, mode=mode, options=iterableargs)
+        elif engine == 'duckdb':
+            iterable = DuckDBIterable(filename=filename, mode=mode, options=iterableargs)
         else:
             iterable = result['datatype'](filename=filename, mode=mode, options=iterableargs)
         

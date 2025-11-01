@@ -72,6 +72,15 @@ class XLSIterable(BaseFileIterable):
         """Flag that data is flat"""
         return True
 
+    @staticmethod
+    def has_totals():
+        """Has totals indicator"""
+        return True        
+
+    def totals(self):
+        """Returns file totals"""
+        return self.sheet.nrows
+
     def read(self) -> dict:
         """Read single XLS record"""
         if self.pos >= self.sheet.nrows:

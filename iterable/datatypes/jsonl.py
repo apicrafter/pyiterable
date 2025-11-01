@@ -4,6 +4,8 @@ from json import loads, dumps
 import datetime
 
 from ..base import BaseFileIterable, BaseCodec
+from ..helpers.utils import rowincount
+
 
 date_handler = lambda obj: (
     obj.isoformat()
@@ -25,6 +27,15 @@ class JSONLinesIterable(BaseFileIterable):
     @staticmethod
     def is_flatonly() -> bool:
         return False
+
+    @staticmethod
+    def has_totals():
+        """Has totals indicator"""
+        return True        
+
+    def totals(self):
+        """Returns file totals"""
+        return rowincount(self.filename, self.fobj)
 
 
     def read(self, skip_empty:bool = False) -> dict:

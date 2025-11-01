@@ -1,0 +1,1 @@
+from .duckdb import DuckDBIterable

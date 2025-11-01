@@ -16,6 +16,15 @@ class TestXML:
     def test_openclose(self):
         iterable = XMLIterable('fixtures/books.xml', tagname='book')        
         iterable.close()
+
+    def test_read_bulk_with_tag(self):
+        iterable = XMLIterable('fixtures/books.xml', tagname='book')
+        chunk = iterable.read_bulk(2)
+        assert len(chunk) == 2
+        years = [2005, 2005, 2003]
+        assert int(chunk[0]['year']) == years[0]
+        assert int(chunk[1]['year']) == years[1]
+        iterable.close()
                 
     def test_parsesimple_readone(self):
         iterable = XMLIterable('fixtures/books.xml', tagname='book')        
