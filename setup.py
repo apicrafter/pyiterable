@@ -44,6 +44,7 @@ install_requires = [
     'avro',
     'lxml',
     'pyarrow',
+    'pymongo',
     'python-snappy',
     'brotli',
     'brotli_file',
