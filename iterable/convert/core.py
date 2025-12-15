@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from ..helpers.detect import open_iterable, is_flat
 from ..helpers.utils import dict_generator, make_flat
-import tqdm
+from tqdm import tqdm
 import logging
 import time
 
@@ -14,7 +14,7 @@ ITERABLE_OPTIONS_KEYS = ['tagname', 'delimiter', 'encoding', 'start_line', 'page
 DEFAULT_BATCH_SIZE = 50000
 
 
-def convert(fromfile:str, tofile:str, iterableargs:dict={}, scan_limit:int=DEFAULT_HEADERS_DETECT_LIMIT, batch_size:int=DEFAULT_BATCH_SIZE, silent:bool=True, is_flatten:bool=False):
+def convert(fromfile:str, tofile:str, iterableargs:dict={}, scan_limit:int=DEFAULT_HEADERS_DETECT_LIMIT, batch_size:int=DEFAULT_BATCH_SIZE, silent:bool=True, is_flatten:bool=False, use_totals:bool=False):
     it_in = open_iterable(fromfile, mode='r', iterableargs=iterableargs)       
     keys = []
     n = 0 
@@ -47,8 +47,14 @@ def convert(fromfile:str, tofile:str, iterableargs:dict={}, scan_limit:int=DEFAU
 
     logging.debug('Converting data')
     n = 0
+    if use_totals and it_in.has_totals():
+        totals = it_in.totals()
+        logging.debug(f'Total rows: {totals}')
+        it_in.reset()
+        it = tqdm(it_in, total=totals, desc='Converting') if not silent else it_in
+    else:
+        it = tqdm(it_in, desc='Converting') if not silent else it_in
     batch = []
-    it = tqdm(it_in, desc='Converting') if not silent else it_in
     for row in it:
         n += 1 
         if is_flatten:

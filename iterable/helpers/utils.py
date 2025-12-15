@@ -15,12 +15,12 @@ def rowincount(filename:str=None, fileobj=None):
     totals = 0
     if filename is not None:
         f = open(filename, 'rb')
-        bufgen = takewhile(lambda x: x, (f.raw.read(1024*1024) for _ in repeat(None)))
+        bufgen = takewhile(lambda x: x, (f.read(1024*1024) for _ in repeat(None)))
         totals = sum(buf.count(b'\n') for buf in bufgen)
         f.close()        
     elif fileobj is not None:
         f = fileobj
-        bufgen = takewhile(lambda x: x, (f.raw.read(1024*1024) for _ in repeat(None)))
+        bufgen = takewhile(lambda x: x, (f.read(1024*1024) for _ in repeat(None)))
         totals = sum(buf.count(b'\n') for buf in bufgen)                
     else:
         raise ValueError('Filename or fileobj should not be None')

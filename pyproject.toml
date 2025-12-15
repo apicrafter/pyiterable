@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iterabledata"
+description = "Iterable data processing Python library"
+dynamic = ["version", "readme"]
+requires-python = ">=3.10"
+authors = [{name = "Ivan Begtin"}]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Software Development",
+    "Topic :: Text Processing",
+]
+keywords = ["json", "jsonl", "csv", "bson", "parquet", "orc", "xml", "xls", "xlsx", "dataset", "etl", "data-pipelines"]
+dependencies = [
+    "xlrd",
+    "pyorc",
+    "parquet",
+    "openpyxl",
+    "jsonlines",
+    "orjson",
+    "lz4",
+    "chardet",
+    "avro",
+    "lxml",
+    "pyarrow",
+    "pymongo",
+    "python-snappy",
+    "brotli",
+    "brotli_file",
+    "zstandard",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "mock",
+    "ruff",
+    "mypy",
+    "types-chardet",
+    "types-openpyxl",
+    "pandas", # Often used in tests or examples
+]
+
+[project.urls]
+Homepage = "https://github.com/apicrafter/pyiterable/"
+Repository = "https://github.com/apicrafter/pyiterable/"
+
+[tool.setuptools.dynamic]
+version = {attr = "iterable.__version__"}
+readme = {file = ["README.md"], content-type = "text/markdown"}
+
+[tool.setuptools.packages.find]
+exclude = ["tests", "tests.*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = []
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules --verbose"
+testpaths = ["tests"]

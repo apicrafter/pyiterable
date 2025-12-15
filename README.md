@@ -453,6 +453,16 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 ## Changelog
 
+### Version 1.0.7 (2025-12-15)
+- **Performance Analysis**: Added comprehensive performance optimization analysis document
+- **Development Documentation**: Enhanced project documentation with performance guides
+
+### Version 1.0.6
+- **Comprehensive Documentation**: Enhanced README.md with detailed usage examples, API reference, and comprehensive guides
+- **GitHub Actions Release Workflow**: Automatic release generation with version verification, testing, and PyPI publishing support
+- **Improved Examples**: Added examples for all major use cases including format conversion, pipeline processing, and DuckDB integration
+- **Documentation Structure**: Better organized README with clear sections for quick start, usage examples, and API reference
+
 ### Version 1.0.5
 - DuckDB engine support
 - Enhanced format detection
