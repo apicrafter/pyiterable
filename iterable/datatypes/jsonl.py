@@ -37,8 +37,8 @@ class JSONLinesIterable(BaseFileIterable):
         """Returns file totals"""
         if self.codec is not None:
             fobj = self.codec.fileobj()
-#        else:
-#            fobj = self.fobj
+        else:
+            fobj = self.fobj
         return rowincount(self.filename, fobj)
 
 

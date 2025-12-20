@@ -2,6 +2,9 @@
 from ..base import BaseIterable
 from typing import Callable
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def pipeline(source: BaseIterable, destination: BaseIterable, process_func: Callable[[dict, dict], dict], trigger_func:Callable[[dict, dict], None] = None, trigger_on:int=1000, final_func: Callable[[dict, dict], None] = None, reset_iterables: bool = True, skip_nulls: bool = True, start_state:dict={}, debug:bool = False):
@@ -21,8 +24,7 @@ class Pipeline:
         self.final_func = final_func
         self.reset_iterables = reset_iterables
         self.skip_nulls = skip_nulls
-        self.start_state={}
-        pass
+        self.start_state = start_state
 
 
     def run(self, debug:bool = False):
@@ -43,18 +45,27 @@ class Pipeline:
                         if self.destination is not None:
                             self.destination.write(result)                
                 else:
-                    self.destination.write(result)                
+                    if self.destination is not None:
+                        self.destination.write(result)                
             except Exception as e:
-                print(e)
+                logger.error(
+                    f"Error processing record #{stats['rec_count'] + 1}: {e}",
+                    exc_info=debug
+                )
                 stats['exceptions'] += 1
-                pass
+                if debug:
+                    raise
             stats['rec_count'] += 1
             if stats['rec_count'] % self.trigger_on == 0 and self.trigger_func is not None:
                 try:
                     self.trigger_func(stats, state)
                 except Exception as e:
-# TODO: Add better error handling here using logging
-                    pass
+                    logger.error(
+                        f"Error in trigger function at record #{stats['rec_count']}: {e}",
+                        exc_info=debug
+                    )
+                    if debug:
+                        raise
         stats['time_end'] = time.time()
         stats['duration'] = stats['time_end'] - stats['time_start']
         if self.final_func is not None:

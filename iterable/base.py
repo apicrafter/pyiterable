@@ -47,9 +47,20 @@ class BaseCodec:
         """Close codec. Not implemented by default"""
         raise NotImplementedError
 
+    def __enter__(self):
+        """Context manager entry"""
+        if self._fileobj is None and self.filename is not None:
+            self.open()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit"""
+        self.close()
+        return False
+
     def textIO(self, encoding:str = 'utf8'):
         """Return text wrapper over binary stream"""
-        return io.TextIOWrapper(self.fileobj(), encoding=encoding, write_through=True)
+        return io.TextIOWrapper(self.fileobj(), encoding=encoding, write_through=False)
 
 
 class BaseIterable:
@@ -180,3 +191,12 @@ class BaseFileIterable(BaseIterable):
         elif self.stype == ITERABLE_TYPE_CODEC:
             if self.codec is not None:
                 self.codec.close()
+
+    def __enter__(self):
+        """Context manager entry"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit"""
+        self.close()
+        return False

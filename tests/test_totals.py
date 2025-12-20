@@ -9,6 +9,7 @@ from iterable.datatypes import (
     XLSXIterable,
     ORCIterable,
     ParquetIterable,
+    DBFIterable,
 )
 
 
@@ -22,6 +23,7 @@ from iterable.datatypes import (
         (XLSXIterable, "fixtures/2cols6rows.xlsx", {}, True),
         (ORCIterable, "fixtures/2cols6rows.orc", {}, True),
         (ParquetIterable, "fixtures/2cols6rows.parquet", {}, True),
+        (DBFIterable, "fixtures/2cols6rows.dbf", {}, False),
     ],
 )
 def test_totals_match_record_count(iterable_cls, path, kwargs, header_may_affect_totals):

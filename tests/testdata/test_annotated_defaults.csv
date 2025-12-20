@@ -1,0 +1,6 @@
+#datatype,string,long
+#group,false,false
+#default,_result,0
+,name,count
+,Item1,10
+,Item2,

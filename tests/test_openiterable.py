@@ -86,6 +86,16 @@ class TestOpenIterable:
             n += 1
         iterable.close()
 
+    def test_iterate_plain_dbf(self):
+        iterable = open_iterable('fixtures/2cols6rows.dbf')
+        n = 0
+        for row in iterable:
+            # DBF returns numeric id as int and field names are uppercase
+            assert row['ID'] == int(FIXTURES[n]['id'])
+            assert row['NAME'] == FIXTURES[n]['name']
+            n += 1
+        iterable.close()
+
     def test_iterate_plain_parquet(self):
         iterable = open_iterable('fixtures/2cols6rows.parquet')
         n = 0

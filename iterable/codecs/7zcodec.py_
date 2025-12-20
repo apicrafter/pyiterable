@@ -14,7 +14,7 @@ class SZipCodec(BaseCodec):
             self.filemode = 'r'
         super(SZipCodec, self).__init__(filename, mode=mode, open_it=open_it)
 
-    def open(self) -> zipfile.ZipFile:        
+    def open(self):        
         self._archiveobj = py7zr.SevenZipFile(self.filename, mode=self.mode)
         fnames = self._archiveobj.getnames()
        

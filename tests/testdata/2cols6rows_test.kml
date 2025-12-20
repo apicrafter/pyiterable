@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+<ns0:Placemark xmlns:ns0="http://www.opengis.net/kml/2.2">
+  <ns0:name>John</ns0:name>
+  <ns0:Point>
+    <ns0:coordinates>0,0</ns0:coordinates>
+  </ns0:Point>
+  <ns0:ExtendedData>
+    <ns0:Data name="id">
+      <ns0:value>1</ns0:value>
+    </ns0:Data>
+  </ns0:ExtendedData>
+</ns0:Placemark>
+
+<ns0:Placemark xmlns:ns0="http://www.opengis.net/kml/2.2">
+  <ns0:name>Mary</ns0:name>
+  <ns0:Point>
+    <ns0:coordinates>1,1</ns0:coordinates>
+  </ns0:Point>
+  <ns0:ExtendedData>
+    <ns0:Data name="id">
+      <ns0:value>2</ns0:value>
+    </ns0:Data>
+  </ns0:ExtendedData>
+</ns0:Placemark>
+
+<ns0:Placemark xmlns:ns0="http://www.opengis.net/kml/2.2">
+  <ns0:name>Michael</ns0:name>
+  <ns0:Point>
+    <ns0:coordinates>2,2</ns0:coordinates>
+  </ns0:Point>
+  <ns0:ExtendedData>
+    <ns0:Data name="id">
+      <ns0:value>3</ns0:value>
+    </ns0:Data>
+  </ns0:ExtendedData>
+</ns0:Placemark>
+
+<ns0:Placemark xmlns:ns0="http://www.opengis.net/kml/2.2">
+  <ns0:name>Anna</ns0:name>
+  <ns0:Point>
+    <ns0:coordinates>3,3</ns0:coordinates>
+  </ns0:Point>
+  <ns0:ExtendedData>
+    <ns0:Data name="id">
+      <ns0:value>4</ns0:value>
+    </ns0:Data>
+  </ns0:ExtendedData>
+</ns0:Placemark>
+
+<ns0:Placemark xmlns:ns0="http://www.opengis.net/kml/2.2">
+  <ns0:name>Orban</ns0:name>
+  <ns0:Point>
+    <ns0:coordinates>4,4</ns0:coordinates>
+  </ns0:Point>
+  <ns0:ExtendedData>
+    <ns0:Data name="id">
+      <ns0:value>5</ns0:value>
+    </ns0:Data>
+  </ns0:ExtendedData>
+</ns0:Placemark>
+
+<ns0:Placemark xmlns:ns0="http://www.opengis.net/kml/2.2">
+  <ns0:name>Lucy</ns0:name>
+  <ns0:Point>
+    <ns0:coordinates>5,5</ns0:coordinates>
+  </ns0:Point>
+  <ns0:ExtendedData>
+    <ns0:Data name="id">
+      <ns0:value>6</ns0:value>
+    </ns0:Data>
+  </ns0:ExtendedData>
+</ns0:Placemark>
+
+</Document>
+</kml>

@@ -1,0 +1,2 @@
+temperature,sensor=sensor1 value=23.5 1631022245000000000
+temperature,sensor=sensor2 value=24.0 1631022246000000000

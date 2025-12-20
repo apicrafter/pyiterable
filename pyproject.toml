@@ -23,35 +23,38 @@ classifiers = [
     "Topic :: Software Development",
     "Topic :: Text Processing",
 ]
-keywords = ["json", "jsonl", "csv", "bson", "parquet", "orc", "xml", "xls", "xlsx", "dataset", "etl", "data-pipelines"]
+keywords = ["json", "jsonl", "csv", "bson", "parquet", "orc", "xml", "xls", "xlsx", "dbf", "dataset", "etl", "data-pipelines"]
 dependencies = [
-    "xlrd",
-    "pyorc",
-    "parquet",
-    "openpyxl",
-    "jsonlines",
-    "orjson",
-    "lz4",
-    "chardet",
-    "avro",
-    "lxml",
-    "pyarrow",
-    "pymongo",
-    "python-snappy",
-    "brotli",
-    "brotli_file",
-    "zstandard",
+    "xlrd>=2.0.0",
+    "pyorc>=1.6.0",
+    "parquet>=1.3.0",
+    "openpyxl>=3.0.0",
+    "jsonlines>=3.0.0",
+    "orjson>=3.8.0",
+    "lz4>=4.0.0",
+    "chardet>=5.0.0",
+    "avro>=1.11.0",
+    "lxml>=4.9.0",
+    "pyarrow>=10.0.0",
+    "pymongo>=4.0.0",
+    "python-snappy>=0.6.0",
+    "python-lzo>=1.12.0",
+    "brotli>=1.0.0",
+    "brotli_file>=1.0.0",
+    "zstandard>=0.19.0",
+    "dbfread>=2.0.0",
+    "tqdm>=4.64.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
-    "mock",
-    "ruff",
-    "mypy",
-    "types-chardet",
-    "types-openpyxl",
-    "pandas", # Often used in tests or examples
+    "pytest>=7.0.0",
+    "mock>=4.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "types-chardet>=5.0.0",
+    "types-openpyxl>=3.0.0",
+    "pandas>=1.5.0", # Often used in tests or examples
 ]
 
 [project.urls]
@@ -76,3 +79,7 @@ ignore = []
 [tool.pytest.ini_options]
 addopts = "--doctest-modules --verbose"
 testpaths = ["tests"]
+norecursedirs = ["examples", ".git", ".venv", "__pycache__", "*.egg", "build", "dist"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

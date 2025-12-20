@@ -1,0 +1,22 @@
+{
+  "@context": "http://www.w3.org/ns/csvw",
+  "url": "2cols6rows.csv",
+  "tableSchema": {
+    "columns": [
+      {
+        "name": "id",
+        "titles": "id",
+        "datatype": {
+          "base": "string"
+        }
+      },
+      {
+        "name": "name",
+        "titles": "name",
+        "datatype": {
+          "base": "string"
+        }
+      }
+    ]
+  }
+}

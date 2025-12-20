@@ -14,6 +14,7 @@ This library simplifies data processing and conversion between formats while pre
 - **Pipeline Processing**: Built-in pipeline support for data transformation
 - **Encoding Detection**: Automatic encoding and delimiter detection for text files
 - **Bulk Operations**: Efficient batch reading and writing
+- **Context Manager Support**: Use `with` statements for automatic resource cleanup
 
 ## Supported File Types
 
@@ -23,8 +24,11 @@ This library simplifies data processing and conversion between formats while pre
 - **XML** - XML files with configurable tag parsing
 - **CSV/TSV** - Comma and tab-separated values
 - **XLS/XLSX** - Microsoft Excel files
+- **DBF** - dBase/FoxPro database files
 - **Parquet** - Apache Parquet columnar format
 - **ORC** - Optimized Row Columnar format
+- **Arrow/Feather** - Apache Arrow columnar format
+- **Lance** - Modern columnar format optimized for ML and vector search
 - **Avro** - Apache Avro binary format
 - **Pickle** - Python pickle format
 
@@ -37,6 +41,8 @@ This library simplifies data processing and conversion between formats while pre
 - **ZIP** (.zip)
 - **Brotli** (.br)
 - **ZStandard** (.zst, .zstd)
+- **Snappy** (.snappy, .sz)
+- **LZO** (.lzo, .lzop)
 
 ## Requirements
 
@@ -64,10 +70,17 @@ pip install .
 from iterable.helpers.detect import open_iterable
 
 # Automatically detects format and compression
+# Using context manager (recommended)
+with open_iterable('data.csv.gz') as source:
+    for row in source:
+        print(row)
+        # Process your data here
+# File is automatically closed
+
+# Or manually (still supported)
 source = open_iterable('data.csv.gz')
 for row in source:
     print(row)
-    # Process your data here
 source.close()
 ```
 
@@ -77,6 +90,13 @@ source.close()
 from iterable.helpers.detect import open_iterable
 
 # Write compressed JSONL file
+# Using context manager (recommended)
+with open_iterable('output.jsonl.zst', mode='w') as dest:
+    for item in my_data:
+        dest.write(item)
+# File is automatically closed
+
+# Or manually (still supported)
 dest = open_iterable('output.jsonl.zst', mode='w')
 for item in my_data:
     dest.write(item)
@@ -90,7 +110,7 @@ dest.close()
 ```python
 from iterable.helpers.detect import open_iterable
 
-# Read compressed CSV file (supports .gz, .bz2, .xz, .zst, .lz4, .br)
+# Read compressed CSV file (supports .gz, .bz2, .xz, .zst, .lz4, .br, .snappy, .lzo)
 source = open_iterable('data.csv.xz')
 n = 0
 for row in source:
@@ -452,6 +472,9 @@ MIT License
 Contributions are welcome! Please feel free to submit pull requests or open issues.
 
 ## Changelog
+
+### Unreleased
+- **DBF File Support**: Added support for reading DBF (dBase/FoxPro) database files using the `dbfread` library
 
 ### Version 1.0.7 (2025-12-15)
 - **Performance Analysis**: Added comprehensive performance optimization analysis document

@@ -1,0 +1,20 @@
+CHARSET="ANSI";
+AXIS-VERSION="2013";
+CREATION-DATE="2025-01-19";
+MATRIX="ExampleMatrix";
+TITLE="Sample Dataset";
+SUBJECT-AREA="Demographics";
+DESCRIPTION="This dataset contains sample demographic data.";
+UNITS="Persons";
+STUB="Age" "Gender";
+HEADING="Year";
+VALUES("Age")="0-4" "5-9" "10-14";
+VALUES("Gender")="Male" "Female";
+VALUES("Year")="2020" "2021" "2022";
+DATA=
+100 120 130
+110 115 125
+105 110 120
+200 210 220
+210 215 225
+205 210 215;

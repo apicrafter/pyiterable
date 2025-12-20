@@ -2,10 +2,10 @@ from __future__ import annotations
 import typing
 from zipfile import ZipFile
 
-from .base import BaseSource
+from ..base import BaseIterable
 
 
-class ZIPSourceWrapper(BaseSource):
+class ZIPSourceWrapper(BaseIterable):
     def __init__(self, filename:str, binary:bool = False):
         super(ZIPSourceWrapper, self).__init__()
         self.fobj = ZipFile(filename, mode='r')

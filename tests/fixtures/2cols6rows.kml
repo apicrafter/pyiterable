@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <Placemark>
+    <name>John</name>
+    <description>ID: 1</description>
+    <Point>
+      <coordinates>0,0</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Mary</name>
+    <description>ID: 2</description>
+    <Point>
+      <coordinates>1,1</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Michael</name>
+    <description>ID: 3</description>
+    <Point>
+      <coordinates>2,2</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Anna</name>
+    <description>ID: 4</description>
+    <Point>
+      <coordinates>3,3</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Orban</name>
+    <description>ID: 5</description>
+    <Point>
+      <coordinates>4,4</coordinates>
+    </Point>
+  </Placemark>
+  <Placemark>
+    <name>Lucy</name>
+    <description>ID: 6</description>
+    <Point>
+      <coordinates>5,5</coordinates>
+    </Point>
+  </Placemark>
+</Document>
+</kml>

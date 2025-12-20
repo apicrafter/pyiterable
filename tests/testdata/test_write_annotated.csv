@@ -1,0 +1,5 @@
+#datatype,string,long,double
+#group,false,false,false
+name,count,price
+Item1,10,19.99
+Item2,20,29.99

@@ -1,0 +1,254 @@
+from __future__ import annotations
+import typing
+import json
+
+try:
+    import shapefile
+    HAS_SHAPEFILE = True
+except ImportError:
+    HAS_SHAPEFILE = False
+
+from ..base import BaseFileIterable, BaseCodec
+
+
+def shape_to_geojson(shape_record, shape_obj):
+    """Convert shapefile record to GeoJSON-like feature"""
+    feature = {
+        'type': 'Feature',
+        'properties': dict(shape_record.record),
+        'geometry': None
+    }
+    
+    # Convert shape geometry to GeoJSON
+    if shape_obj.shapeType == shapefile.POINT:
+        if len(shape_obj.points) > 0:
+            feature['geometry'] = {
+                'type': 'Point',
+                'coordinates': list(shape_obj.points[0])
+            }
+    elif shape_obj.shapeType == shapefile.POLYLINE:
+        if len(shape_obj.points) > 0:
+            feature['geometry'] = {
+                'type': 'LineString',
+                'coordinates': [list(p) for p in shape_obj.points]
+            }
+    elif shape_obj.shapeType == shapefile.POLYGON:
+        if len(shape_obj.points) > 0:
+            # Polygon can have multiple parts
+            if len(shape_obj.parts) > 1:
+                # MultiPolygon
+                parts = []
+                for i, part_start in enumerate(shape_obj.parts):
+                    part_end = shape_obj.parts[i + 1] if i + 1 < len(shape_obj.parts) else len(shape_obj.points)
+                    parts.append([list(p) for p in shape_obj.points[part_start:part_end]])
+                feature['geometry'] = {
+                    'type': 'MultiPolygon',
+                    'coordinates': [parts]
+                }
+            else:
+                feature['geometry'] = {
+                    'type': 'Polygon',
+                    'coordinates': [[list(p) for p in shape_obj.points]]
+                }
+    elif shape_obj.shapeType == shapefile.MULTIPOINT:
+        if len(shape_obj.points) > 0:
+            feature['geometry'] = {
+                'type': 'MultiPoint',
+                'coordinates': [list(p) for p in shape_obj.points]
+            }
+    
+    return feature
+
+
+class ShapefileIterable(BaseFileIterable):
+    datamode = 'binary'
+    
+    def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None,
+                 mode='r', options: dict = {}):
+        if not HAS_SHAPEFILE:
+            raise ImportError("pyshp library is required for Shapefile support. Install it with: pip install pyshp")
+        
+        # Shapefile requires .shp extension, but we accept the base filename
+        if filename and not filename.endswith('.shp'):
+            # Try to find .shp file
+            import os
+            base = filename.rsplit('.', 1)[0]
+            shp_file = base + '.shp'
+            if os.path.exists(shp_file):
+                filename = shp_file
+            else:
+                filename = shp_file  # Will be created if writing
+        
+        super(ShapefileIterable, self).__init__(filename, stream, codec=codec, mode=mode,
+                                                binary=True, encoding='utf8', options=options)
+        self.reset()
+    
+    def reset(self):
+        super(ShapefileIterable, self).reset()
+        self.features = []
+        self.pos = 0
+        
+        if self.mode == 'r':
+            try:
+                # Open shapefile
+                self.reader = shapefile.Reader(self.filename)
+                self.shapes = self.reader.shapes()
+                self.records = self.reader.records()
+                
+                # Convert all features
+                for i, (shape_obj, record) in enumerate(zip(self.shapes, self.records)):
+                    feature = shape_to_geojson(shapefile._ShapeRecord(shape_obj, record), shape_obj)
+                    self.features.append(feature)
+                
+                self.iterator = iter(self.features)
+            except Exception as e:
+                self.features = []
+                self.iterator = iter(self.features)
+        elif self.mode in ['w', 'wr']:
+            # Initialize writer
+            self.writer = None
+            self.writer_initialized = False
+    
+    @staticmethod
+    def id() -> str:
+        return 'shapefile'
+    
+    @staticmethod
+    def is_flatonly() -> bool:
+        return False
+    
+    @staticmethod
+    def has_totals():
+        """Has totals indicator"""
+        return True
+    
+    def totals(self):
+        """Returns file totals"""
+        if hasattr(self, 'features'):
+            return len(self.features)
+        return 0
+    
+    def read(self) -> dict:
+        """Read single shapefile feature"""
+        feature = next(self.iterator)
+        self.pos += 1
+        return feature
+    
+    def read_bulk(self, num: int = 10) -> list[dict]:
+        """Read bulk shapefile features"""
+        chunk = []
+        for n in range(0, num):
+            try:
+                chunk.append(self.read())
+            except StopIteration:
+                break
+        return chunk
+    
+    def write(self, record: dict):
+        """Write single shapefile feature"""
+        if not HAS_SHAPEFILE:
+            raise ImportError("pyshp library is required for Shapefile support")
+        
+        # Initialize writer on first write
+        if not hasattr(self, 'writer_initialized') or not self.writer_initialized:
+            # Determine shape type from first record
+            geometry = record.get('geometry', {})
+            geom_type = geometry.get('type') if geometry else None
+            
+            shape_type = shapefile.POINT  # default
+            if geom_type == 'LineString':
+                shape_type = shapefile.POLYLINE
+            elif geom_type == 'Polygon':
+                shape_type = shapefile.POLYGON
+            elif geom_type == 'MultiPoint':
+                shape_type = shapefile.MULTIPOINT
+            
+            # Get field names from properties
+            properties = record.get('properties', {})
+            fields = []
+            for key, value in properties.items():
+                # Determine field type
+                if isinstance(value, int):
+                    field_type = 'N'
+                    field_length = 10
+                elif isinstance(value, float):
+                    field_type = 'F'
+                    field_length = 19
+                    field_decimal = 10
+                else:
+                    field_type = 'C'
+                    field_length = 254
+                
+                field_def = [key, field_type, field_length]
+                if field_type == 'F':
+                    field_def.append(10)  # decimal places
+                fields.append(field_def)
+            
+            # Create writer
+            base_name = self.filename.rsplit('.', 1)[0]
+            self.writer = shapefile.Writer(base_name, shapeType=shape_type)
+            
+            # Store field names for later use
+            self.field_names = list(properties.keys())
+            
+            # Add field definitions
+            for field in fields:
+                self.writer.field(*field)
+            
+            self.writer_initialized = True
+        
+        # Extract geometry and properties
+        geometry = record.get('geometry', {})
+        properties = record.get('properties', {})
+        
+        # Convert geometry to shapefile format
+        geom_type = geometry.get('type')
+        coords = geometry.get('coordinates', [])
+        
+        shape_coords = []
+        if geom_type == 'Point':
+            shape_coords = coords
+        elif geom_type == 'LineString':
+            shape_coords = coords
+        elif geom_type == 'Polygon':
+            # Polygon coordinates are nested
+            if isinstance(coords[0], list) and isinstance(coords[0][0], list):
+                shape_coords = coords[0]  # Outer ring
+            else:
+                shape_coords = coords
+        elif geom_type == 'MultiPoint':
+            shape_coords = coords
+        
+        # Write record
+        if shape_coords:
+            if geom_type == 'Point':
+                self.writer.point(*shape_coords)
+            elif geom_type == 'LineString':
+                self.writer.line([shape_coords])
+            elif geom_type == 'Polygon':
+                self.writer.poly([shape_coords])
+            elif geom_type == 'MultiPoint':
+                self.writer.multipoint(shape_coords)
+        
+        # Write attributes
+        if hasattr(self, 'field_names'):
+            attr_values = [properties.get(field_name, '') for field_name in self.field_names]
+        else:
+            attr_values = list(properties.values())
+        self.writer.record(*attr_values)
+        
+        self.pos += 1
+    
+    def write_bulk(self, records: list[dict]):
+        """Write bulk shapefile features"""
+        for record in records:
+            self.write(record)
+    
+    def close(self):
+        """Close shapefile"""
+        if hasattr(self, 'writer') and self.writer is not None:
+            self.writer.close()
+        if hasattr(self, 'reader') and self.reader is not None:
+            # Shapefile reader doesn't need explicit close
+            pass
+        super(ShapefileIterable, self).close()

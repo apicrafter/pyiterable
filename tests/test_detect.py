@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*- 
 import pytest
-from iterable.datatypes import CSVIterable, BSONIterable, JSONLinesIterable, ParquetIterable, ORCIterable, AVROIterable, XLSXIterable, XLSIterable, XMLIterable, PickleIterable, JSONIterable
+from iterable.datatypes import CSVIterable, BSONIterable, JSONLinesIterable, ParquetIterable, ORCIterable, AVROIterable, XLSXIterable, XLSIterable, XMLIterable, PickleIterable, JSONIterable, DBFIterable, DuckDBIterable
 from iterable.codecs import GZIPCodec, BZIP2Codec, LZMACodec, ZSTDCodec, BrotliCodec
 from iterable.helpers.utils import detect_encoding_raw, detect_delimiter
 from iterable.helpers.detect import detect_file_type, detect_encoding_any
@@ -135,4 +135,60 @@ class TestDetectors:
         assert result['success'] == True
         assert result['datatype'] == XLSXIterable
         assert result['codec'] == None
+
+    def test_filetype_plain_dbf(self):
+        result =  detect_file_type('fixtures/2cols6rows.dbf')
+        assert result['success'] == True
+        assert result['datatype'] == DBFIterable
+        assert result['codec'] == None
+
+    def test_filetype_duckdb(self):
+        """Test DuckDB format detection"""
+        import tempfile
+        import duckdb
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+            tmp_path = tmp.name
+        
+        try:
+            # Create a minimal DuckDB database file
+            conn = duckdb.connect(tmp_path)
+            conn.execute("CREATE TABLE test (id INTEGER)")
+            if hasattr(conn, 'commit'):
+                conn.commit()
+            conn.close()
+            
+            result = detect_file_type(tmp_path)
+            assert result['success'] == True
+            assert result['datatype'] == DuckDBIterable
+            assert result['codec'] == None
+        finally:
+            import os
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+
+    def test_filetype_ddb(self):
+        """Test DuckDB format detection with .ddb extension"""
+        import tempfile
+        import duckdb
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.ddb') as tmp:
+            tmp_path = tmp.name
+        
+        try:
+            # Create a minimal DuckDB database file
+            conn = duckdb.connect(tmp_path)
+            conn.execute("CREATE TABLE test (id INTEGER)")
+            if hasattr(conn, 'commit'):
+                conn.commit()
+            conn.close()
+            
+            result = detect_file_type(tmp_path)
+            assert result['success'] == True
+            assert result['datatype'] == DuckDBIterable
+            assert result['codec'] == None
+        finally:
+            import os
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
 

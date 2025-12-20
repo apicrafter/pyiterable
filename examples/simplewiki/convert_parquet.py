@@ -3,11 +3,11 @@ import sys
 from iterable.datatypes import JSONLinesIterable, ParquetIterable
 from iterable.codecs import ZSTDCodec
 
-RAW_FILE = sys.argv[1]
-RESULT_PARQUET_FILE = sys.argv[2]
 BATCH_SIZE = 10000
 
 def run():
+        RAW_FILE = sys.argv[1]
+        RESULT_PARQUET_FILE = sys.argv[2]
         codec_obj = ZSTDCodec(RAW_FILE, mode='r')
         iterable = JSONLinesIterable(codec=codec_obj)        
         writerable = ParquetIterable(RESULT_PARQUET_FILE, mode='w', use_pandas=False, adapt_schema=True, batch_size=BATCH_SIZE)

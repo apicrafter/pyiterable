@@ -1,6 +1,7 @@
+# -*- coding: utf-8 -*-
+from pathlib import Path
 from iterable.datatypes import ParquetIterable
 
-# -*- coding: utf-8 -*- 
 FIXTURES = [
 {"id": "1", "name": "John"},
 {"id": "2", "name": "Mary"},
@@ -26,23 +27,27 @@ FIXTURES_BOOKS = [
 {"title":{"@lang":"en","#text":"Learning XML"},"author":"Erik T. Ray","year":"2003","price":"39.95","@category":"web"}
 ]
 
-iterable = ParquetIterable('../testdata/2cols6rows.parquet', mode='w', keys=['id', 'name'], use_pandas=False, compression=None)
-iterable.write_bulk(FIXTURES)
-iterable.close()
-iterable = ParquetIterable('../testdata/2cols6rows.parquet', mode='r')
-n = 0
-for row in iterable:
-    n += 1
-    print(n, row)
-iterable.close()
+if __name__ == "__main__":
+    # Get the testdata directory relative to this file
+    testdata_dir = Path(__file__).parent.parent / "testdata"
+    
+    iterable = ParquetIterable(str(testdata_dir / '2cols6rows.parquet'), mode='w', keys=['id', 'name'], use_pandas=False, compression=None)
+    iterable.write_bulk(FIXTURES)
+    iterable.close()
+    iterable = ParquetIterable(str(testdata_dir / '2cols6rows.parquet'), mode='r')
+    n = 0
+    for row in iterable:
+        n += 1
+        print(n, row)
+    iterable.close()
 
-iterable = ParquetIterable('../testdata/2cols6rows_pd.parquet', mode='w', keys=['id', 'name'], use_pandas=True, compression=None)
-iterable.write_bulk(FIXTURES)
-iterable.close()
+    iterable = ParquetIterable(str(testdata_dir / '2cols6rows_pd.parquet'), mode='w', keys=['id', 'name'], use_pandas=True, compression=None)
+    iterable.write_bulk(FIXTURES)
+    iterable.close()
 
-iterable = ParquetIterable('../testdata/2cols6rows.parquet', mode='r')
-n = 0
-for row in iterable:
-    n += 1
-    print(n, row)
-iterable.close()
+    iterable = ParquetIterable(str(testdata_dir / '2cols6rows.parquet'), mode='r')
+    n = 0
+    for row in iterable:
+        n += 1
+        print(n, row)
+    iterable.close()

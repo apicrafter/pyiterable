@@ -1,0 +1,157 @@
+from __future__ import annotations
+import typing
+try:
+    import vobject
+    HAS_VOBJECT = True
+except ImportError:
+    try:
+        import vcard
+        HAS_VCARD = True
+        HAS_VOBJECT = False
+    except ImportError:
+        HAS_VCARD = False
+        HAS_VOBJECT = False
+
+from ..base import BaseFileIterable, BaseCodec
+
+
+class VCFIterable(BaseFileIterable):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict={}):
+        if not HAS_VOBJECT and not HAS_VCARD:
+            raise ImportError("VCF support requires 'vobject' or 'vcard' package")
+        super(VCFIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
+        self.reset()
+        pass
+
+    def reset(self):
+        """Reset iterable"""
+        super(VCFIterable, self).reset()
+        self.pos = 0
+        if self.mode == 'r':
+            content = self.fobj.read()
+            
+            if HAS_VOBJECT:
+                # vobject library
+                self.entries = []
+                # Split by BEGIN:VCARD
+                parts = content.split('BEGIN:VCARD')
+                for part in parts:
+                    part = part.strip()
+                    if not part:
+                        continue
+                    try:
+                        vcard_str = 'BEGIN:VCARD\n' + part
+                        if not vcard_str.endswith('\nEND:VCARD'):
+                            vcard_str += '\nEND:VCARD'
+                        vcard_obj = vobject.readOne(vcard_str)
+                        entry = self._vcard_to_dict(vcard_obj)
+                        self.entries.append(entry)
+                    except Exception as e:
+                        # Try to parse manually
+                        entry = self._parse_vcard_manual(part)
+                        if entry:
+                            self.entries.append(entry)
+            else:
+                # vcard library
+                self.entries = []
+                parts = content.split('BEGIN:VCARD')
+                for part in parts:
+                    part = part.strip()
+                    if not part:
+                        continue
+                    try:
+                        vcard_str = 'BEGIN:VCARD\n' + part
+                        vcard_obj = vcard.read_vcard(vcard_str)
+                        entry = self._vcard_to_dict(vcard_obj)
+                        self.entries.append(entry)
+                    except:
+                        entry = self._parse_vcard_manual(part)
+                        if entry:
+                            self.entries.append(entry)
+            
+            self.iterator = iter(self.entries)
+        else:
+            self.entries = []
+
+    @staticmethod
+    def id() -> str:
+        return 'vcf'
+
+    @staticmethod
+    def is_flatonly() -> bool:
+        return False
+
+    def _vcard_to_dict(self, vcard_obj):
+        """Convert vCard object to dictionary"""
+        result = {}
+        
+        if HAS_VOBJECT:
+            for child in vcard_obj.getChildren():
+                key = child.name.lower()
+                value = str(child.value) if hasattr(child, 'value') else str(child)
+                
+                if key in result:
+                    if not isinstance(result[key], list):
+                        result[key] = [result[key]]
+                    result[key].append(value)
+                else:
+                    result[key] = value
+        else:
+            # vcard library
+            for key, value in vcard_obj.items():
+                result[key.lower()] = value
+        
+        return result
+
+    def _parse_vcard_manual(self, content):
+        """Manual parsing fallback"""
+        entry = {}
+        for line in content.split('\n'):
+            line = line.strip()
+            if not line or line.startswith('END:'):
+                continue
+            if ':' in line:
+                key, value = line.split(':', 1)
+                key = key.split(';')[0].lower()  # Remove parameters
+                if key in entry:
+                    if not isinstance(entry[key], list):
+                        entry[key] = [entry[key]]
+                    entry[key].append(value)
+                else:
+                    entry[key] = value
+        return entry if entry else None
+
+    def read(self) -> dict:
+        """Read single VCF record"""
+        row = next(self.iterator)
+        self.pos += 1
+        return row
+
+    def read_bulk(self, num:int = 10) -> list[dict]:
+        """Read bulk VCF records"""
+        chunk = []
+        for n in range(0, num):
+            try:
+                chunk.append(self.read())
+            except StopIteration:
+                break
+        return chunk
+
+    def write(self, record:dict):
+        """Write single VCF record"""
+        self.fobj.write("BEGIN:VCARD\n")
+        self.fobj.write("VERSION:3.0\n")
+        
+        for key, value in record.items():
+            if isinstance(value, list):
+                for v in value:
+                    self.fobj.write(f"{key.upper()}:{v}\n")
+            else:
+                self.fobj.write(f"{key.upper()}:{value}\n")
+        
+        self.fobj.write("END:VCARD\n\n")
+
+    def write_bulk(self, records:list[dict]):
+        """Write bulk VCF records"""
+        for record in records:
+            self.write(record)

@@ -1,0 +1,435 @@
+# -*- coding: utf-8 -*-
+"""
+Tests for DuckDB datatype format support.
+This tests the DuckDBIterable from iterable.datatypes.duckdb
+"""
+import pytest
+import os
+import tempfile
+import duckdb
+from iterable.datatypes.duckdb import DuckDBIterable
+
+
+def test_duckdb_id():
+    """Test DuckDB ID"""
+    assert DuckDBIterable.id() == 'duckdb'
+
+
+def test_duckdb_flatonly():
+    """Test DuckDB is flat only"""
+    assert DuckDBIterable.is_flatonly() == True
+
+
+def test_duckdb_has_totals():
+    """Test DuckDB has totals"""
+    assert DuckDBIterable.has_totals() == True
+
+
+def test_duckdb_read_write():
+    """Test DuckDB read and write"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Create a test database with data
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE test_table (name VARCHAR, age INTEGER, city VARCHAR)")
+        conn.execute("INSERT INTO test_table VALUES ('Alice', 30, 'New York')")
+        conn.execute("INSERT INTO test_table VALUES ('Bob', 25, 'London')")
+        conn.execute("INSERT INTO test_table VALUES ('Charlie', 35, 'Tokyo')")
+        if hasattr(conn, 'commit'):
+            conn.commit()
+        conn.close()
+        
+        # Read data
+        reader = DuckDBIterable(tmp_path, mode='r', table='test_table')
+        results = []
+        for record in reader:
+            results.append(record)
+        reader.close()
+        
+        assert len(results) == 3
+        assert results[0]['name'] == 'Alice'
+        assert results[0]['age'] == 30
+        assert results[0]['city'] == 'New York'
+        
+        # Test totals
+        reader2 = DuckDBIterable(tmp_path, mode='r', table='test_table')
+        total = reader2.totals()
+        reader2.close()
+        assert total == 3
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_write():
+    """Test DuckDB write"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Write data
+        writer = DuckDBIterable(tmp_path, mode='w', table='test_table')
+        writer.write({'name': 'Alice', 'age': 30, 'city': 'New York'})
+        writer.write({'name': 'Bob', 'age': 25, 'city': 'London'})
+        writer.close()
+        
+        # Read back
+        reader = DuckDBIterable(tmp_path, mode='r', table='test_table')
+        results = list(reader)
+        reader.close()
+        
+        assert len(results) == 2
+        assert results[0]['name'] == 'Alice'
+        assert results[0]['age'] == 30
+        assert results[1]['name'] == 'Bob'
+        assert results[1]['age'] == 25
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_write_bulk():
+    """Test DuckDB bulk write"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        test_data = [
+            {'name': 'Alice', 'age': 30, 'city': 'New York'},
+            {'name': 'Bob', 'age': 25, 'city': 'London'},
+            {'name': 'Charlie', 'age': 35, 'city': 'Tokyo'}
+        ]
+        
+        # Write bulk
+        writer = DuckDBIterable(tmp_path, mode='w', table='test_table')
+        writer.write_bulk(test_data)
+        writer.close()
+        
+        # Read back
+        reader = DuckDBIterable(tmp_path, mode='r', table='test_table')
+        results = list(reader)
+        reader.close()
+        
+        assert len(results) == 3
+        assert results[0]['name'] == 'Alice'
+        assert results[1]['name'] == 'Bob'
+        assert results[2]['name'] == 'Charlie'
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_query():
+    """Test DuckDB with custom query"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Create test data
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE test_table (name VARCHAR, age INTEGER)")
+        conn.execute("INSERT INTO test_table VALUES ('Alice', 30)")
+        conn.execute("INSERT INTO test_table VALUES ('Bob', 25)")
+        if hasattr(conn, 'commit'):
+            conn.commit()
+        conn.close()
+        
+        # Read with query
+        reader = DuckDBIterable(tmp_path, mode='r', query='SELECT name FROM test_table WHERE age > 26')
+        results = list(reader)
+        reader.close()
+        
+        assert len(results) == 1
+        assert results[0]['name'] == 'Alice'
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_auto_table_detection():
+    """Test DuckDB automatically detects first table"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Create test data
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE test_table (name VARCHAR, age INTEGER)")
+        conn.execute("INSERT INTO test_table VALUES ('Alice', 30)")
+        conn.execute("INSERT INTO test_table VALUES ('Bob', 25)")
+        if hasattr(conn, 'commit'):
+            conn.commit()
+        conn.close()
+        
+        # Read without specifying table (should auto-detect first table)
+        reader = DuckDBIterable(tmp_path, mode='r')
+        results = list(reader)
+        reader.close()
+        
+        assert len(results) == 2
+        assert results[0]['name'] == 'Alice'
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_read_bulk():
+    """Test DuckDB read_bulk method"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Create test data
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE test_table (name VARCHAR, age INTEGER)")
+        for i in range(10):
+            conn.execute(f"INSERT INTO test_table VALUES ('Person{i}', {20 + i})")
+        if hasattr(conn, 'commit'):
+            conn.commit()
+        conn.close()
+        
+        # Read bulk
+        reader = DuckDBIterable(tmp_path, mode='r', table='test_table')
+        chunk = reader.read_bulk(5)
+        reader.close()
+        
+        assert len(chunk) == 5
+        assert chunk[0]['name'] == 'Person0'
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_reset():
+    """Test DuckDB reset functionality"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Create test data
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE test_table (name VARCHAR)")
+        conn.execute("INSERT INTO test_table VALUES ('Alice')")
+        conn.execute("INSERT INTO test_table VALUES ('Bob')")
+        if hasattr(conn, 'commit'):
+            conn.commit()
+        conn.close()
+        
+        # Read and reset
+        reader = DuckDBIterable(tmp_path, mode='r', table='test_table')
+        first = reader.read()
+        reader.reset()
+        first_after_reset = reader.read()
+        
+        assert first == first_after_reset
+        reader.close()
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_no_table_error():
+    """Test DuckDB raises error when no tables exist"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Create empty database
+        conn = duckdb.connect(tmp_path)
+        conn.close()
+        
+        # Try to read without tables
+        reader = DuckDBIterable(tmp_path, mode='r')
+        with pytest.raises(ValueError, match="No tables found"):
+            _ = reader.read()
+        reader.close()
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_write_no_table_error():
+    """Test DuckDB raises error when writing without table name"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        writer = DuckDBIterable(tmp_path, mode='w')
+        with pytest.raises(ValueError, match="Table name required"):
+            writer.write({'name': 'Alice'})
+        writer.close()
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_write_mode_error():
+    """Test DuckDB raises error when writing in read mode"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Create table first
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE test_table (name VARCHAR)")
+        if hasattr(conn, 'commit'):
+            conn.commit()
+        conn.close()
+        
+        reader = DuckDBIterable(tmp_path, mode='r', table='test_table')
+        with pytest.raises(ValueError, match="Write mode not enabled"):
+            reader.write({'name': 'Alice'})
+        reader.close()
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_stream_error():
+    """Test DuckDB raises error when stream is provided"""
+    with pytest.raises(ValueError, match="DuckDB requires a filename"):
+        DuckDBIterable(stream=open(os.devnull, 'r'))
+
+
+def test_duckdb_filename_required():
+    """Test DuckDB raises error when filename is None"""
+    with pytest.raises(ValueError, match="DuckDB requires a filename"):
+        DuckDBIterable(filename=None)
+
+
+def test_duckdb_totals_with_query():
+    """Test DuckDB totals with custom query"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Create test data
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE test_table (name VARCHAR, age INTEGER)")
+        conn.execute("INSERT INTO test_table VALUES ('Alice', 30)")
+        conn.execute("INSERT INTO test_table VALUES ('Bob', 25)")
+        conn.execute("INSERT INTO test_table VALUES ('Charlie', 35)")
+        if hasattr(conn, 'commit'):
+            conn.commit()
+        conn.close()
+        
+        # Test totals with query
+        reader = DuckDBIterable(tmp_path, mode='r', query='SELECT * FROM test_table WHERE age > 26')
+        total = reader.totals()
+        reader.close()
+        
+        assert total == 2  # Alice and Charlie
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_iteration():
+    """Test DuckDB iteration protocol"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Create test data
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE test_table (name VARCHAR)")
+        conn.execute("INSERT INTO test_table VALUES ('Alice')")
+        conn.execute("INSERT INTO test_table VALUES ('Bob')")
+        if hasattr(conn, 'commit'):
+            conn.commit()
+        conn.close()
+        
+        # Test iteration
+        reader = DuckDBIterable(tmp_path, mode='r', table='test_table')
+        results = [row for row in reader]
+        reader.close()
+        
+        assert len(results) == 2
+        assert results[0]['name'] == 'Alice'
+        assert results[1]['name'] == 'Bob'
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_stop_iteration():
+    """Test DuckDB raises StopIteration when exhausted"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Create test data with one row
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE test_table (name VARCHAR)")
+        conn.execute("INSERT INTO test_table VALUES ('Alice')")
+        if hasattr(conn, 'commit'):
+            conn.commit()
+        conn.close()
+        
+        reader = DuckDBIterable(tmp_path, mode='r', table='test_table')
+        _ = reader.read()  # Read the one row
+        with pytest.raises(StopIteration):
+            _ = reader.read()  # Should raise StopIteration
+        reader.close()
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_open_iterable():
+    """Test DuckDB format detection with open_iterable"""
+    from iterable.helpers.detect import open_iterable
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Create test data
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE test_table (name VARCHAR, age INTEGER)")
+        conn.execute("INSERT INTO test_table VALUES ('Alice', 30)")
+        if hasattr(conn, 'commit'):
+            conn.commit()
+        conn.close()
+        
+        # Test format detection
+        reader = open_iterable(tmp_path, iterableargs={'table': 'test_table'})
+        results = list(reader)
+        reader.close()
+        
+        assert len(results) == 1
+        assert results[0]['name'] == 'Alice'
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_ddb_extension():
+    """Test DuckDB format detection with .ddb extension"""
+    from iterable.helpers.detect import open_iterable
+    
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.ddb') as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Create test data
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE test_table (name VARCHAR)")
+        conn.execute("INSERT INTO test_table VALUES ('Alice')")
+        if hasattr(conn, 'commit'):
+            conn.commit()
+        conn.close()
+        
+        # Test format detection with .ddb extension
+        reader = open_iterable(tmp_path, iterableargs={'table': 'test_table'})
+        results = list(reader)
+        reader.close()
+        
+        assert len(results) == 1
+        assert results[0]['name'] == 'Alice'
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
