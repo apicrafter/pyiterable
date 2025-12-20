@@ -66,7 +66,18 @@ docs/
 
 ## Deployment
 
-The documentation is automatically deployed to GitHub Pages when changes are pushed to the `main` branch. The deployment is handled by the GitHub Actions workflow in `.github/workflows/deploy-docs.yml`.
+The documentation is automatically deployed to GitHub Pages at [iterabledata.github.io](https://iterabledata.github.io) when changes are pushed to the `main` branch. The deployment is handled by the GitHub Actions workflow in `.github/workflows/deploy-docs.yml`.
+
+### GitHub Pages Setup
+
+To enable GitHub Pages deployment:
+
+1. Go to your repository settings on GitHub
+2. Navigate to **Pages** in the left sidebar
+3. Under **Source**, select **GitHub Actions** as the source
+4. The workflow will automatically build and deploy the docs when you push to `main`
+
+**Note**: For the site to be available at `iterabledata.github.io`, the repository should be named `iterabledata.github.io` under the `iterabledata` organization. If your repository structure is different, you may need to adjust the `organizationName` and `projectName` in `docusaurus.config.js`.
 
 ## Documentation Structure
 

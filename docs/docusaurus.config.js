@@ -17,8 +17,8 @@ const config = {
   baseUrl: '/',
 
   // GitHub pages deployment config.
-  organizationName: 'apicrafter',
-  projectName: 'pyiterable',
+  organizationName: 'iterabledata',
+  projectName: 'iterabledata.github.io',
   deploymentBranch: 'gh-pages',
   trailingSlash: false,
 

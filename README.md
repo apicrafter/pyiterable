@@ -18,19 +18,113 @@ This library simplifies data processing and conversion between formats while pre
 
 ## Supported File Types
 
-- **BSON** - Binary JSON format
+### Core Formats
 - **JSON** - Standard JSON files
 - **JSONL/NDJSON** - JSON Lines format (one JSON object per line)
-- **XML** - XML files with configurable tag parsing
+- **JSON-LD** - JSON for Linking Data (RDF format)
 - **CSV/TSV** - Comma and tab-separated values
-- **XLS/XLSX** - Microsoft Excel files
-- **DBF** - dBase/FoxPro database files
+- **Annotated CSV** - CSV with type annotations and metadata
+- **CSVW** - CSV on the Web (with metadata)
+- **PSV/SSV** - Pipe and semicolon-separated values
+- **LTSV** - Labeled Tab-Separated Values
+- **FWF** - Fixed Width Format
+- **XML** - XML files with configurable tag parsing
+- **ZIP XML** - XML files within ZIP archives
+
+### Binary Formats
+- **BSON** - Binary JSON format
+- **MessagePack** - Efficient binary serialization
+- **CBOR** - Concise Binary Object Representation
+- **UBJSON** - Universal Binary JSON
+- **SMILE** - Binary JSON variant
+- **Bencode** - BitTorrent encoding format
+- **Avro** - Apache Avro binary format
+- **Pickle** - Python pickle format
+
+### Columnar & Analytics Formats
 - **Parquet** - Apache Parquet columnar format
 - **ORC** - Optimized Row Columnar format
 - **Arrow/Feather** - Apache Arrow columnar format
 - **Lance** - Modern columnar format optimized for ML and vector search
-- **Avro** - Apache Avro binary format
-- **Pickle** - Python pickle format
+- **Delta Lake** - Delta Lake format
+- **Iceberg** - Apache Iceberg format
+- **Hudi** - Apache Hudi format
+
+### Database Formats
+- **SQLite** - SQLite database files
+- **DBF** - dBase/FoxPro database files
+- **MySQL Dump** - MySQL dump files
+- **PostgreSQL Copy** - PostgreSQL COPY format
+- **DuckDB** - DuckDB database files
+
+### Statistical Formats
+- **SAS** - SAS data files
+- **Stata** - Stata data files
+- **SPSS** - SPSS data files
+- **R Data** - R RDS and RData files
+- **PX** - PC-Axis format
+
+### Geospatial Formats
+- **GeoJSON** - Geographic JSON format
+- **GeoPackage** - OGC GeoPackage format
+- **GML** - Geography Markup Language
+- **KML** - Keyhole Markup Language
+- **Shapefile** - ESRI Shapefile format
+
+### RDF & Semantic Formats
+- **JSON-LD** - JSON for Linking Data
+- **RDF/XML** - RDF in XML format
+- **Turtle** - Terse RDF Triple Language
+- **N-Triples** - Line-based RDF format
+- **N-Quads** - N-Triples with context
+
+### Log & Event Formats
+- **Apache Log** - Apache access/error logs
+- **CEF** - Common Event Format
+- **GELF** - Graylog Extended Log Format
+- **WARC** - Web ARChive format
+- **CDX** - Web archive index format
+- **ILP** - InfluxDB Line Protocol
+
+### Email Formats
+- **EML** - Email message format
+- **MBOX** - Mailbox format
+- **MHTML** - MIME HTML format
+
+### Configuration Formats
+- **INI** - INI configuration files
+- **TOML** - Tom's Obvious Minimal Language
+- **YAML** - YAML Ain't Markup Language
+- **HOCON** - Human-Optimized Config Object Notation
+- **EDN** - Extensible Data Notation
+
+### Office Formats
+- **XLS/XLSX** - Microsoft Excel files
+- **ODS** - OpenDocument Spreadsheet
+
+### Streaming & Big Data Formats
+- **Kafka** - Apache Kafka format
+- **Pulsar** - Apache Pulsar format
+- **Flink** - Apache Flink format
+- **Beam** - Apache Beam format
+- **RecordIO** - RecordIO format
+- **SequenceFile** - Hadoop SequenceFile
+- **TFRecord** - TensorFlow Record format
+
+### Protocol & Serialization Formats
+- **Protocol Buffers** - Google Protocol Buffers
+- **Cap'n Proto** - Cap'n Proto serialization
+- **FlatBuffers** - FlatBuffers serialization
+- **FlexBuffers** - FlexBuffers format
+- **Thrift** - Apache Thrift format
+- **ASN.1** - ASN.1 encoding format
+- **Ion** - Amazon Ion format
+
+### Other Formats
+- **VCF** - Variant Call Format (genomics)
+- **iCal** - iCalendar format
+- **LDIF** - LDAP Data Interchange Format
+- **TXT** - Plain text files
 
 ## Supported Compression Codecs
 
@@ -43,6 +137,8 @@ This library simplifies data processing and conversion between formats while pre
 - **ZStandard** (.zst, .zstd)
 - **Snappy** (.snappy, .sz)
 - **LZO** (.lzo, .lzop)
+- **SZIP** (.sz)
+- **7z** (.7z)
 
 ## Requirements
 
@@ -473,22 +569,22 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 ## Changelog
 
-### Unreleased
-- **DBF File Support**: Added support for reading DBF (dBase/FoxPro) database files using the `dbfread` library
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-### Version 1.0.7 (2025-12-15)
-- **Performance Analysis**: Added comprehensive performance optimization analysis document
-- **Development Documentation**: Enhanced project documentation with performance guides
+### Version 1.0.7 (2024-12-20)
+- **Major Format Expansion**: Added support for 50+ new data formats across multiple categories
+- **Enhanced Compression**: Added LZO, Snappy, and SZIP codec support
+- **CI/CD**: Added GitHub Actions workflows for automated testing and deployment
+- **Documentation**: Complete documentation site with Docusaurus
+- **Testing**: Comprehensive test suite for all formats
 
 ### Version 1.0.6
-- **Comprehensive Documentation**: Enhanced README.md with detailed usage examples, API reference, and comprehensive guides
-- **GitHub Actions Release Workflow**: Automatic release generation with version verification, testing, and PyPI publishing support
-- **Improved Examples**: Added examples for all major use cases including format conversion, pipeline processing, and DuckDB integration
-- **Documentation Structure**: Better organized README with clear sections for quick start, usage examples, and API reference
+- Comprehensive documentation enhancements
+- GitHub Actions release workflow
+- Improved examples and use cases
 
 ### Version 1.0.5
 - DuckDB engine support
 - Enhanced format detection
-- Improved compression codec handling
 - Pipeline processing framework
 - Bulk operations support
