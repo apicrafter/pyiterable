@@ -1,6 +1,6 @@
 from __future__ import annotations
+
 import typing
-import json
 
 try:
     import fiona
@@ -8,18 +8,20 @@ try:
 except ImportError:
     HAS_FIONA = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class GeoPackageIterable(BaseFileIterable):
     datamode = 'binary'
     
     def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None,
-                 mode='r', layer: str = None, options: dict = {}):
+                 mode='r', layer: str = None, options: dict = None):
+        if options is None:
+            options = {}
         if not HAS_FIONA:
             raise ImportError("fiona library is required for GeoPackage support. Install it with: pip install fiona")
         
-        super(GeoPackageIterable, self).__init__(filename, stream, codec=codec, mode=mode,
+        super().__init__(filename, stream, codec=codec, mode=mode,
                                                  binary=True, encoding='utf8', options=options)
         self.layer = layer
         if 'layer' in options:
@@ -27,7 +29,7 @@ class GeoPackageIterable(BaseFileIterable):
         self.reset()
     
     def reset(self):
-        super(GeoPackageIterable, self).reset()
+        super().reset()
         self.features = []
         self.pos = 0
         self.collection = None
@@ -52,7 +54,7 @@ class GeoPackageIterable(BaseFileIterable):
                     self.features.append(geojson_feature)
                 
                 self.iterator = iter(self.features)
-            except Exception as e:
+            except Exception:
                 self.features = []
                 self.iterator = iter(self.features)
         elif self.mode in ['w', 'wr']:
@@ -88,7 +90,7 @@ class GeoPackageIterable(BaseFileIterable):
     def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk GeoPackage features"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:
@@ -161,4 +163,4 @@ class GeoPackageIterable(BaseFileIterable):
             self.writer.close()
         if hasattr(self, 'collection') and self.collection is not None:
             self.collection.close()
-        super(GeoPackageIterable, self).close()
+        super().close()

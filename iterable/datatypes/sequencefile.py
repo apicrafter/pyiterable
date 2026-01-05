@@ -1,8 +1,10 @@
 from __future__ import annotations
-import typing
-import struct
+
 import json
-from ..base import BaseFileIterable, BaseCodec
+import struct
+import typing
+
+from ..base import BaseCodec, BaseFileIterable
 
 
 class SequenceFileIterable(BaseFileIterable):
@@ -13,7 +15,7 @@ class SequenceFileIterable(BaseFileIterable):
     datamode = 'binary'
     
     def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', 
-                 key_name:str = 'key', value_name:str = 'value', options:dict={}):
+                 key_name:str = 'key', value_name:str = 'value', options:dict=None):
         """
         Initialize SequenceFile iterable.
         
@@ -21,7 +23,9 @@ class SequenceFileIterable(BaseFileIterable):
             key_name: Key name for the record key when reading (default: 'key')
             value_name: Key name for the record value when reading (default: 'value')
         """
-        super(SequenceFileIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.key_name = key_name
         self.value_name = value_name
         if 'key_name' in options:
@@ -36,7 +40,7 @@ class SequenceFileIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(SequenceFileIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             # Read header if reading
@@ -65,10 +69,10 @@ class SequenceFileIterable(BaseFileIterable):
             self.fobj.read(value_class_len)  # Skip value class name
             
             # Read compression flag
-            compression = self.fobj.read(1)
+            self.fobj.read(1)
             
             # Read block compression flag
-            block_compression = self.fobj.read(1)
+            self.fobj.read(1)
             
             # Read metadata
             metadata_len_bytes = self.fobj.read(4)
@@ -90,7 +94,7 @@ class SequenceFileIterable(BaseFileIterable):
                 self.fobj.read(value_len)
             
             # Read sync marker
-            sync = self.fobj.read(16)
+            self.fobj.read(16)
         except Exception:
             # If header reading fails, assume we're at data start
             pass
@@ -174,7 +178,7 @@ class SequenceFileIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk SequenceFile records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

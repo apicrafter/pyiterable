@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import cbor2
     HAS_CBOR2 = True
@@ -12,21 +14,23 @@ except ImportError:
         HAS_CBOR = False
         HAS_CBOR2 = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class CBORIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_CBOR2 and not HAS_CBOR:
             raise ImportError("CBOR support requires 'cbor2' or 'cbor' package")
-        super(CBORIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(CBORIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             # For reading, CBOR files typically contain a single object or array
@@ -48,7 +52,7 @@ class CBORIterable(BaseFileIterable):
                         else:
                             # Single object, wrap in list
                             self.iterator = iter([self.data])
-                except Exception as e:
+                except Exception:
                     # If reading fails, create empty iterator
                     self.iterator = iter([])
             else:
@@ -88,7 +92,7 @@ class CBORIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk CBOR records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

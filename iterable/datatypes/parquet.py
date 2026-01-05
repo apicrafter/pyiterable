@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 import typing
+
 import pyarrow
 import pyarrow.parquet
-import pandas as pd
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 DEFAULT_BATCH_SIZE = 1024
 
@@ -17,7 +18,9 @@ def fields_to_pyarrow_schema(keys):
 
 class ParquetIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, mode: str = 'r', codec: BaseCodec = None, keys:list[str] = None, schema:list[str] = None, compression:str  = 'snappy', adapt_schema:bool = True, use_pandas:bool = True, batch_size:int = DEFAULT_BATCH_SIZE, options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, mode: str = 'r', codec: BaseCodec = None, keys:list[str] = None, schema:list[str] = None, compression:str  = 'snappy', adapt_schema:bool = True, use_pandas:bool = True, batch_size:int = DEFAULT_BATCH_SIZE, options:dict=None):
+        if options is None:
+            options = {}
         self.use_pandas = use_pandas
         self.__buffer = []
         self.adapt_schema = adapt_schema
@@ -25,14 +28,14 @@ class ParquetIterable(BaseFileIterable):
         self.schema = schema
         self.compression = compression
         self.batch_size = batch_size          
-        super(ParquetIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, options=options)
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, options=options)
         self.reset()
         self.is_data_written = False
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(ParquetIterable, self).reset()
+        super().reset()
         self.pos = 0
         self.reader = None
         if self.mode == 'r':
@@ -41,16 +44,18 @@ class ParquetIterable(BaseFileIterable):
  #           self.tbl = self.reader.to_table()
         self.writer = None
         if self.mode == 'w':
-            if self.adapt_schema:
-                self.writer = None
-            elif self.use_pandas:
-                self.writer = None
-            else:
+            # Reset write state for streaming writes
+            self.__buffer = []
+            self.is_data_written = False
+            if not self.adapt_schema:
                 if self.schema is not None:
-                   struct_schema = self.schema
+                    struct_schema = self.schema
                 else:
-                   struct_schema = fields_to_pyarrow_schema(self.keys)                        
-                self.writer = pyarrow.parquet.ParquetWriter(self.fobj, struct_schema, compression=self.compression, use_dictionary=False)          
+                    struct_schema = fields_to_pyarrow_schema(self.keys)
+                self.writer = pyarrow.parquet.ParquetWriter(
+                    self.fobj, struct_schema, compression=self.compression, use_dictionary=False
+                )
+                self.is_data_written = True
 
 #            self.writer = pyorc.Writer(self.fobj, "struct<%s>" % (','.join(struct_schema)), struct_repr = pyorc.StructRepr.DICT, compression=self.compression, compression_strategy=1)  
 
@@ -70,23 +75,34 @@ class ParquetIterable(BaseFileIterable):
 
     def totals(self):
         """Returns file totals"""
-        return self.reader.scan_contents()        
+        if self.reader is None:
+            return 0
+        try:
+            meta = self.reader.metadata
+            return meta.num_rows if meta is not None else 0
+        except Exception:
+            return self.reader.scan_contents()        
 
     def flush(self):
         """Flush all data"""
-#        print(self.__buffer)
-        batch = pyarrow.RecordBatch.from_pylist(self.__buffer)
-#        print('flush', batch.schema)
-        writer = pyarrow.parquet.ParquetWriter(self.fobj, batch.schema, compression=self.compression, use_dictionary=False)
-        writer.write_batch(batch)
+        if not self.__buffer:
+            return
+        table = pyarrow.Table.from_pylist(self.__buffer)
+        if self.writer is None:
+            self.writer = pyarrow.parquet.ParquetWriter(
+                self.fobj, table.schema, compression=self.compression, use_dictionary=False
+            )
+        self.writer.write_table(table)
+        self.__buffer = []
         
 
     def close(self):
         """Close iterable"""          
-        if self.use_pandas and self.mode == 'w':       
+        if self.mode == 'w':
             self.flush()
-        if self.writer is not None: self.writer.close()
-        super(ParquetIterable, self).close()
+        if self.writer is not None:
+            self.writer.close()
+        super().close()
 
     def __iterator(self):
         for batch in self.reader.iter_batches(batch_size=self.batch_size):
@@ -103,7 +119,7 @@ class ParquetIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk Parquet records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             chunk.append(self.read())
         return chunk
 
@@ -113,14 +129,16 @@ class ParquetIterable(BaseFileIterable):
 
     def write_bulk(self, records: list[dict]):
         """Write bulk records"""
-        if self.use_pandas:
-            self.__buffer.extend(records)
-        else:
-#            print(records)
-            batch = pyarrow.RecordBatch.from_pylist(records)
-            if not self.is_data_written:            
-                schema = batch.schema
-                self.writer = pyarrow.parquet.ParquetWriter(self.fobj, schema, compression=self.compression, use_dictionary=False)
-                self.is_data_written = True
-            self.writer.write_batch(batch)
+        if not records:
+            return
+
+        # If we already have a writer, write immediately (bounded memory).
+        if self.writer is not None:
+            self.writer.write_table(pyarrow.Table.from_pylist(records))
+            return
+
+        # Schema-adaptive streaming: buffer up to batch_size, then flush (writer created on first flush).
+        self.__buffer.extend(records)
+        if len(self.__buffer) >= self.batch_size:
+            self.flush()
 

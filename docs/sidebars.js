@@ -46,6 +46,7 @@ const sidebars = {
         'api/pipeline',
         'api/engines',
         'api/base-iterable',
+        'api/capabilities',
       ],
     },
     {

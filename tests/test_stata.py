@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
+
+import pytest
+
 from iterable.datatypes import StataIterable
-from fixdata import FIXTURES
 
 # Note: Stata files require actual .dta files
 # This test will be skipped if pyreadstat is not available
@@ -22,7 +22,7 @@ class TestStata:
     def test_flatonly(self):
         try:
             flag = StataIterable.is_flatonly()
-            assert flag == True
+            assert flag
         except ImportError:
             pytest.skip("Stata support requires pyreadstat package")
 
@@ -36,7 +36,7 @@ class TestStata:
     def test_has_totals(self):
         try:
             iterable = StataIterable(FIXTURE_FILE)
-            assert StataIterable.has_totals() == True
+            assert StataIterable.has_totals()
             total = iterable.totals()
             assert total > 0
             iterable.close()

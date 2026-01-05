@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Pytest configuration for iterable tests.
 Ensures tests can find fixtures regardless of where pytest is run from.

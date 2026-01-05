@@ -1,6 +1,8 @@
 from __future__ import annotations
-import typing
+
 import io
+import typing
+
 from ..base import BaseCodec
 
 try:
@@ -10,13 +12,15 @@ except ImportError:
 
 
 class SnappyCodec(BaseCodec):
-    def __init__(self, filename: str, compression_level: int = None, mode: str = 'r', open_it: bool = False, options: dict = {}):
+    def __init__(self, filename: str, compression_level: int = None, mode: str = 'r', open_it: bool = False, options: dict = None):
         """
         Snappy compression codec.
         Note: Snappy doesn't support compression levels (fixed algorithm).
         """
         # Snappy doesn't support compression levels, ignore the parameter
-        super(SnappyCodec, self).__init__(filename, mode=mode, open_it=open_it, options=options)
+        if options is None:
+            options = {}
+        super().__init__(filename, mode=mode, open_it=open_it, options=options)
 
     def open(self) -> typing.IO:
         if snappy is None:
@@ -34,6 +38,10 @@ class SnappyCodec(BaseCodec):
                     try:
                         decompressor = snappy.StreamDecompressor()
                         decompressed_data = decompressor.decompress(compressed_data)
+                        # Some python-snappy versions return b'' here without raising;
+                        # fall back to the non-streaming API in that case.
+                        if not decompressed_data:
+                            decompressed_data = snappy.decompress(compressed_data)
                     except (AttributeError, TypeError):
                         # Fall back to simple decompress if StreamDecompressor not available
                         decompressed_data = snappy.decompress(compressed_data)

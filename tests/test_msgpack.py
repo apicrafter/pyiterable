@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
-from iterable.datatypes import MessagePackIterable
+
 from fixdata import FIXTURES
+
+from iterable.datatypes import MessagePackIterable
 
 # Create fixture file if it doesn't exist
 FIXTURE_FILE = 'fixtures/2cols6rows_flat.msgpack'
@@ -26,7 +26,7 @@ class TestMessagePack:
 
     def test_flatonly(self):
         flag = MessagePackIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         iterable = MessagePackIterable(FIXTURE_FILE)        
@@ -66,7 +66,7 @@ class TestMessagePack:
     def test_parsesimple_count(self):
         iterable = MessagePackIterable(FIXTURE_FILE)        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()

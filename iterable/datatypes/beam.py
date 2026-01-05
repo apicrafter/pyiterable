@@ -1,8 +1,10 @@
 from __future__ import annotations
-import typing
-import struct
+
 import json
-from ..base import BaseFileIterable, BaseCodec
+import struct
+import typing
+
+from ..base import BaseCodec, BaseFileIterable
 
 
 class BeamIterable(BaseFileIterable):
@@ -14,7 +16,7 @@ class BeamIterable(BaseFileIterable):
     datamode = 'binary'
     
     def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', 
-                 key_name:str = 'key', value_name:str = 'value', include_metadata:bool = True, options:dict={}):
+                 key_name:str = 'key', value_name:str = 'value', include_metadata:bool = True, options:dict=None):
         """
         Initialize Beam iterable.
         
@@ -23,7 +25,9 @@ class BeamIterable(BaseFileIterable):
             value_name: Key name for the record value when reading (default: 'value')
             include_metadata: Include window, timestamp in output (default: True)
         """
-        super(BeamIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.key_name = key_name
         self.value_name = value_name
         self.include_metadata = include_metadata
@@ -39,7 +43,7 @@ class BeamIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(BeamIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             # File is already opened by parent class
@@ -149,7 +153,7 @@ class BeamIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk Beam records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

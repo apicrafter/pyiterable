@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
 from iterable.datatypes import TxtIterable
 
 
@@ -11,11 +10,11 @@ class TestTXT:
 
     def test_flatonly(self):
         flag = TxtIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_has_totals(self):
         flag = TxtIterable.has_totals()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         test_file = 'testdata/test_txt.txt'
@@ -127,7 +126,7 @@ class TestTXT:
         
         # Verify file was created and contains the line
         assert os.path.exists(test_file)
-        with open(test_file, 'r') as f:
+        with open(test_file) as f:
             content = f.read()
             assert 'test line' in content
         
@@ -144,7 +143,7 @@ class TestTXT:
         iterable.close()
         
         assert os.path.exists(test_file)
-        with open(test_file, 'r') as f:
+        with open(test_file) as f:
             lines = f.readlines()
             assert len(lines) == 3
         

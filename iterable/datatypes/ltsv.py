@@ -1,9 +1,10 @@
 from __future__ import annotations
-import typing
-import logging
-from ..base import BaseFileIterable, BaseCodec
-from ..helpers.utils import rowincount
 
+import logging
+import typing
+
+from ..base import BaseCodec, BaseFileIterable
+from ..helpers.utils import rowincount
 
 DEFAULT_ENCODING = 'utf8'
 
@@ -12,7 +13,7 @@ class LTSVIterable(BaseFileIterable):
     """LTSV (Labeled Tab-Separated Values) format iterable"""
     
     def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None, 
-                 mode: str = 'r', encoding: str = None, options: dict = {}):
+                 mode: str = 'r', encoding: str = None, options: dict = None):
         """Initialize LTSV iterable
         
         Args:
@@ -23,6 +24,8 @@ class LTSVIterable(BaseFileIterable):
             encoding: File encoding (default: utf8)
             options: Additional options
         """
+        if options is None:
+            options = {}
         logging.debug(f'LTSV params: encoding: {encoding}, options {options}')
         
         # Determine encoding
@@ -35,7 +38,7 @@ class LTSVIterable(BaseFileIterable):
         
         logging.debug(f'LTSV final encoding: {self.encoding}')
         
-        super(LTSVIterable, self).__init__(
+        super().__init__(
             filename, stream, codec=codec, binary=False, 
             encoding=self.encoding, mode=mode, options=options
         )
@@ -107,7 +110,7 @@ class LTSVIterable(BaseFileIterable):
     
     def reset(self):
         """Reset iterator to beginning"""
-        super(LTSVIterable, self).reset()
+        super().reset()
         self.pos = 0
     
     def _parse_line(self, line: str) -> dict:
@@ -195,7 +198,7 @@ class LTSVIterable(BaseFileIterable):
             List of dictionaries
         """
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

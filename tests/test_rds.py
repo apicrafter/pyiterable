@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
+
+import pytest
+
 from iterable.datatypes import RDSIterable
-from fixdata import FIXTURES
 
 # Note: RDS files require actual .rds files
 # This test will be skipped if pyreadr is not available
@@ -22,7 +22,7 @@ class TestRDS:
     def test_flatonly(self):
         try:
             flag = RDSIterable.is_flatonly()
-            assert flag == True
+            assert flag
         except ImportError:
             pytest.skip("RDS support requires pyreadr package")
 
@@ -36,7 +36,7 @@ class TestRDS:
     def test_has_totals(self):
         try:
             iterable = RDSIterable(FIXTURE_FILE)
-            assert RDSIterable.has_totals() == True
+            assert RDSIterable.has_totals()
             total = iterable.totals()
             assert total > 0
             iterable.close()

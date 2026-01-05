@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*- 
-import pytest
+from fixdata import FIXTURES, FIXTURES_TYPES
+
 from iterable.datatypes import ParquetIterable
-from fixdata import FIXTURES_TYPES, FIXTURES
+
 
 class TestParquet:
     def test_id(self):
@@ -10,7 +10,7 @@ class TestParquet:
 
     def test_flatonly(self):
         flag = ParquetIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         iterable = ParquetIterable('fixtures/2cols6rows.parquet')        
@@ -51,7 +51,7 @@ class TestParquet:
     def test_parsesimple_count(self):
         iterable = ParquetIterable('fixtures/2cols6rows.parquet')        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES_TYPES)
         iterable.close()

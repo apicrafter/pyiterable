@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*- 
 FIXTURES = [
 {"id": "1", "name": "John"},
 {"id": "2", "name": "Mary"},

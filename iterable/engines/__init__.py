@@ -1,1 +1,1 @@
-from .duckdb import DuckDBIterable
+from .duckdb import DuckDBEngineIterable, DuckDBIterable

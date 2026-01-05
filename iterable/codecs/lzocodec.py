@@ -1,6 +1,8 @@
 from __future__ import annotations
-import typing
+
 import io
+import typing
+
 from ..base import BaseCodec
 
 try:
@@ -10,13 +12,15 @@ except ImportError:
 
 
 class LZOCodec(BaseCodec):
-    def __init__(self, filename: str, compression_level: int = 1, mode: str = 'r', open_it: bool = False, options: dict = {}):
+    def __init__(self, filename: str, compression_level: int = 1, mode: str = 'r', open_it: bool = False, options: dict = None):
         """
         LZO compression codec.
         compression_level: 1 (fastest) to 9 (best compression), default is 1
         """
+        if options is None:
+            options = {}
         self.compression_level = compression_level
-        super(LZOCodec, self).__init__(filename, mode=mode, open_it=open_it, options=options)
+        super().__init__(filename, mode=mode, open_it=open_it, options=options)
 
     def open(self) -> typing.IO:
         if lzo is None:

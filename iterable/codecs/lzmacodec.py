@@ -1,8 +1,8 @@
 from __future__ import annotations
-import typing
-from ..base import BaseCodec
 
 import lzma
+
+from ..base import BaseCodec
 
 LZMA_FILTERS = [
     {"id": lzma.FILTER_DELTA, "dist": 5},
@@ -10,9 +10,11 @@ LZMA_FILTERS = [
 ]
 
 class LZMACodec(BaseCodec):
-    def __init__(self, filename:str, compression_level:int = 5, mode:str = 'r', open_it:bool = False, options:dict = {}):
+    def __init__(self, filename:str, compression_level:int = 5, mode:str = 'r', open_it:bool = False, options:dict = None):
+        if options is None:
+            options = {}
         self.compression_level = compression_level
-        super(LZMACodec, self).__init__(filename, mode=mode, open_it=open_it, options=options)
+        super().__init__(filename, mode=mode, open_it=open_it, options=options)
 
     def open(self) -> lzma.LZMAFile:
         filters = LZMA_FILTERS
@@ -25,7 +27,7 @@ class LZMACodec(BaseCodec):
         if self.mode in ['w', 'wb']:
             pass
         else:
-            super(LZMACodec, self).reset()
+            super().reset()
 
     def close(self):
         self._fileobj.close()

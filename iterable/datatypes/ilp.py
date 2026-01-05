@@ -1,9 +1,8 @@
 from __future__ import annotations
-import typing
-import re
-from datetime import datetime
 
-from ..base import BaseFileIterable, BaseCodec
+import typing
+
+from ..base import BaseCodec, BaseFileIterable
 from ..helpers.utils import rowincount
 
 
@@ -32,7 +31,6 @@ def parse_line_protocol(line: str) -> dict:
     in_quotes = False
     escape_next = False
     current_part = 'measurement'  # measurement, fields, timestamp
-    last_space_pos = -1
     
     while i < len(line):
         char = line[i]
@@ -78,7 +76,7 @@ def parse_line_protocol(line: str) -> dict:
             elif current_part == 'fields':
                 # Check if remaining looks like timestamp (all digits or long)
                 remaining = line[i+1:].strip()
-                if remaining and (remaining.isdigit() or (not '=' in remaining and len(remaining) > 10)):
+                if remaining and (remaining.isdigit() or ('=' not in remaining and len(remaining) > 10)):
                     # This is timestamp
                     timestamp_part = remaining
                     break
@@ -308,9 +306,11 @@ class ILPIterable(BaseFileIterable):
     """InfluxDB Line Protocol iterable"""
     
     def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None, 
-                 mode: str = 'r', encoding: str = 'utf8', options: dict = {}):
+                 mode: str = 'r', encoding: str = 'utf8', options: dict = None):
+        if options is None:
+            options = {}
         self.pos = 0
-        super(ILPIterable, self).__init__(filename, stream, codec=codec, binary=False, 
+        super().__init__(filename, stream, codec=codec, binary=False, 
                                           mode=mode, encoding=encoding, options=options)
         self.reset()
     
@@ -337,7 +337,7 @@ class ILPIterable(BaseFileIterable):
     
     def reset(self):
         """Reset iterable"""
-        super(ILPIterable, self).reset()
+        super().reset()
         self.pos = 0
     
     def read(self, skip_empty: bool = True) -> dict:
@@ -349,7 +349,7 @@ class ILPIterable(BaseFileIterable):
             self.pos += 1
             try:
                 return parse_line_protocol(line)
-            except (ValueError, IndexError) as e:
+            except (ValueError, IndexError):
                 if not skip_empty:
                     raise
                 # Skip malformed lines if skip_empty is True
@@ -358,7 +358,7 @@ class ILPIterable(BaseFileIterable):
     def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk ILP records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

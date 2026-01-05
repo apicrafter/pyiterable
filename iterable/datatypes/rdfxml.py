@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 import typing
 from collections import defaultdict
-import lxml.etree as etree
-from urllib.parse import unquote
 
-from ..base import BaseFileIterable, BaseCodec
+import lxml.etree as etree
+
+from ..base import BaseCodec, BaseFileIterable
 
 
 def etree_to_dict(t, prefix_strip=True):
@@ -59,7 +60,7 @@ def parse_rdf_description(elem, prefix_strip=True):
     # Parse properties (predicates and objects)
     triples = []
     for child in elem:
-        predicate = child.tag.rsplit('}', 1)[-1] if '}' in child.tag else child.tag
+        child.tag.rsplit('}', 1)[-1] if '}' in child.tag else child.tag
         predicate_uri = child.tag if not prefix_strip else child.tag.rsplit('}', 1)[-1]
         
         # Get object
@@ -117,7 +118,7 @@ class RDFXMLIterable(BaseFileIterable):
     datamode = 'binary'
     
     def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', 
-                 tagname:str = None, prefix_strip:bool = True, parse_as_triples:bool = True, options:dict={}):
+                 tagname:str = None, prefix_strip:bool = True, parse_as_triples:bool = True, options:dict=None):
         """
         Initialize RDF/XML iterable.
         
@@ -126,7 +127,9 @@ class RDFXMLIterable(BaseFileIterable):
             prefix_strip: Strip XML namespace prefixes (default: True)
             parse_as_triples: Parse as RDF triples instead of XML structure (default: True)
         """
-        super(RDFXMLIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, encoding='utf8', options=options)
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, encoding='utf8', options=options)
         self.tagname = tagname
         self.prefix_strip = prefix_strip
         self.parse_as_triples = parse_as_triples
@@ -146,7 +149,7 @@ class RDFXMLIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(RDFXMLIterable, self).reset()
+        super().reset()
         self.reader = etree.iterparse(self.fobj, recover=True)
         self.pos = 0
 
@@ -191,7 +194,7 @@ class RDFXMLIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk RDF/XML records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

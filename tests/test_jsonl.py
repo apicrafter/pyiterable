@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*- 
-import pytest
+from fixdata import FIXTURES
+
 from iterable.datatypes import JSONLinesIterable
 
-from fixdata import FIXTURES
 TESTING_DIR = 'testdata'
 
 class TestJSONLines:
@@ -12,7 +11,7 @@ class TestJSONLines:
 
     def test_flatonly(self):
         flag = JSONLinesIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         iterable = JSONLinesIterable('fixtures/2cols6rows_flat.jsonl')        
@@ -45,7 +44,7 @@ class TestJSONLines:
     def test_parsesimple_count(self):
         iterable = JSONLinesIterable('fixtures/2cols6rows_flat.jsonl')        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()

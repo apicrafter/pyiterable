@@ -1,14 +1,14 @@
 from __future__ import annotations
-import typing
+
 import lxml.etree as etree
 
-from .zipped import ZIPSourceWrapper
 from .xml import etree_to_dict
+from .zipped import ZIPSourceWrapper
 
 
 class ZIPXMLSource(ZIPSourceWrapper):
     def __init__(self, filename:str = None, tagname:str = None, prefix_strip:bool = True):
-        super(ZIPXMLSource, self).__init__(filename)
+        super().__init__(filename)
         self.tagname = tagname
         self.prefix_strip = prefix_strip
         self.reader = etree.iterparse(self.current_file, recover=True)
@@ -21,7 +21,7 @@ class ZIPXMLSource(ZIPSourceWrapper):
         return False
 
     def iterfile(self) -> dict:
-        res = super(ZIPXMLSource, self).iterfile()
+        res = super().iterfile()
         if res:
             self.reader = etree.iterparse(self.current_file, recover=True)
         return res

@@ -5,7 +5,6 @@ Run this after installing python-snappy and python-lzo.
 """
 
 import os
-import csv
 
 fixtures_dir = os.path.join(os.path.dirname(__file__), 'fixtures')
 source_file = os.path.join(fixtures_dir, '2cols6rows.csv')

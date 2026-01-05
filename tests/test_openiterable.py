@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*- 
-import pytest
-from iterable.helpers.detect import open_iterable
 from fixdata import FIXTURES, FIXTURES_TYPES
+
+from iterable.helpers.detect import open_iterable
+
 
 class TestOpenIterable:
     def test_iterate_plain_csv(self):

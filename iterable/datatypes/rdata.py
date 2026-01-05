@@ -1,26 +1,30 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import pyreadr
     HAS_PYREADR = True
 except ImportError:
     HAS_PYREADR = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class RDataIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_PYREADR:
             raise ImportError("RData file support requires 'pyreadr' package")
-        super(RDataIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(RDataIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             # pyreadr requires file path, not file object
@@ -79,7 +83,7 @@ class RDataIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk RData records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

@@ -1,26 +1,30 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import pyreadstat
     HAS_PYREADSTAT = True
 except ImportError:
     HAS_PYREADSTAT = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class StataIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_PYREADSTAT:
             raise ImportError("Stata file support requires 'pyreadstat' package")
-        super(StataIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(StataIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             # pyreadstat requires file path, not file object
@@ -65,7 +69,7 @@ class StataIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk Stata records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

@@ -1,6 +1,8 @@
-import pytest
 import os
 import tempfile
+
+import pytest
+
 from iterable.datatypes.ubjson import UBJSONIterable
 
 try:
@@ -49,4 +51,4 @@ def test_ubjson_id():
 @pytest.mark.skipif(not HAS_UBJSON, reason="UBJSON library not available")
 def test_ubjson_flatonly():
     """Test UBJSON is not flat only"""
-    assert UBJSONIterable.is_flatonly() == False
+    assert not UBJSONIterable.is_flatonly()

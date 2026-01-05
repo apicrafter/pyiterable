@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
-from iterable.datatypes import GeoPackageIterable
+
+import pytest
 from fixdata import FIXTURES
+
+from iterable.datatypes import GeoPackageIterable
 
 # Create fixture file if it doesn't exist
 FIXTURE_FILE = 'fixtures/2cols6rows.gpkg'
@@ -43,7 +44,7 @@ class TestGeoPackage:
 
     def test_flatonly(self):
         flag = GeoPackageIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         try:
@@ -55,7 +56,7 @@ class TestGeoPackage:
     def test_has_totals(self):
         try:
             iterable = GeoPackageIterable(FIXTURE_FILE)
-            assert GeoPackageIterable.has_totals() == True
+            assert GeoPackageIterable.has_totals()
             total = iterable.totals()
             assert total == len(FIXTURES)
             iterable.close()

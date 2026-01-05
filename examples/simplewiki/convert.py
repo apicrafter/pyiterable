@@ -1,9 +1,10 @@
-import os
-from iterable.datatypes import XMLIterable, JSONLinesIterable
-from iterable.codecs import BZIP2Codec, ZSTDCodec
+from itertools import repeat, takewhile
+
 from tqdm import tqdm
 
-from itertools import (takewhile, repeat)
+from iterable.codecs import BZIP2Codec, ZSTDCodec
+from iterable.datatypes import JSONLinesIterable, XMLIterable
+
 
 def rawincount(filename):
     f = open(filename, 'rb')

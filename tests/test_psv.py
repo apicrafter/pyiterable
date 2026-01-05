@@ -1,6 +1,6 @@
-import pytest
 import os
 import tempfile
+
 from iterable.datatypes.psv import PSVIterable, SSVIterable
 
 
@@ -42,7 +42,7 @@ def test_psv_read_write():
         writer.close()
         
         # Verify written data
-        with open(tmp2_path, 'r', encoding='utf-8') as f:
+        with open(tmp2_path, encoding='utf-8') as f:
             lines = f.readlines()
             assert 'name|age|city' in lines[0]
             assert 'Alice|30|New York' in lines[1]
@@ -90,7 +90,7 @@ def test_ssv_read_write():
         writer.close()
         
         # Verify written data
-        with open(tmp2_path, 'r', encoding='utf-8') as f:
+        with open(tmp2_path, encoding='utf-8') as f:
             lines = f.readlines()
             assert 'name;age;city' in lines[0]
             assert 'Alice;30;New York' in lines[1]
@@ -114,9 +114,9 @@ def test_ssv_id():
 
 def test_psv_flatonly():
     """Test PSV is flat only"""
-    assert PSVIterable.is_flatonly() == True
+    assert PSVIterable.is_flatonly()
 
 
 def test_ssv_flatonly():
     """Test SSV is flat only"""
-    assert SSVIterable.is_flatonly() == True
+    assert SSVIterable.is_flatonly()

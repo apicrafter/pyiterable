@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*- 
-import pytest
-import os
 import json
-from iterable.datatypes import CSVWIterable
+import os
+
 from fixdata import FIXTURES
+
+from iterable.datatypes import CSVWIterable
 
 # Create fixture file if it doesn't exist
 FIXTURE_FILE = 'fixtures/2cols6rows.csv'
@@ -51,7 +51,7 @@ class TestCSVW:
 
     def test_flatonly(self):
         flag = CSVWIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         iterable = CSVWIterable(FIXTURE_FILE, metadata_file=METADATA_FILE)        
@@ -59,7 +59,7 @@ class TestCSVW:
 
     def test_has_totals(self):
         iterable = CSVWIterable(FIXTURE_FILE, metadata_file=METADATA_FILE)
-        assert CSVWIterable.has_totals() == True
+        assert CSVWIterable.has_totals()
         total = iterable.totals()
         assert total == len(FIXTURES) + 1  # +1 for header
         iterable.close()

@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
+
+import pytest
+
 from iterable.datatypes import SPSSIterable
-from fixdata import FIXTURES
 
 # Note: SPSS files require actual .sav files
 # This test will be skipped if pyreadstat is not available
@@ -22,7 +22,7 @@ class TestSPSS:
     def test_flatonly(self):
         try:
             flag = SPSSIterable.is_flatonly()
-            assert flag == True
+            assert flag
         except ImportError:
             pytest.skip("SPSS support requires pyreadstat package")
 
@@ -36,7 +36,7 @@ class TestSPSS:
     def test_has_totals(self):
         try:
             iterable = SPSSIterable(FIXTURE_FILE)
-            assert SPSSIterable.has_totals() == True
+            assert SPSSIterable.has_totals()
             total = iterable.totals()
             assert total > 0
             iterable.close()

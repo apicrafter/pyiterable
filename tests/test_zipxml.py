@@ -1,21 +1,20 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
 import zipfile
+
 from iterable.datatypes import ZIPXMLSource
 
 
 class TestZIPXML:
     def test_id(self):
-        source = ZIPXMLSource('testdata/test_zipxml.zip', tagname='item')
+        source = ZIPXMLSource('../testdata/test_zipxml.zip', tagname='item')
         datatype_id = source.id()
         assert datatype_id == 'zip-xml'
         source.close()
 
     def test_is_flat(self):
-        source = ZIPXMLSource('testdata/test_zipxml.zip', tagname='item')
+        source = ZIPXMLSource('../testdata/test_zipxml.zip', tagname='item')
         flag = source.is_flat()
-        assert flag == False
+        assert not flag
         source.close()
 
     def test_openclose(self):
@@ -74,3 +73,20 @@ class TestZIPXML:
         if os.path.exists(test_file):
             os.unlink(test_file)
 
+
+    def test_real_data(self):
+        """Test with provided real-world ZIP file"""
+        test_file = '../testdata/test_zipxml.zip'
+        
+        # Ensure the test file exists
+        assert os.path.exists(test_file), f"Test file {test_file} not found"
+        
+        source = ZIPXMLSource(test_file, tagname='Документ')
+        count = 0
+        for record in source:
+            assert isinstance(record, dict)
+            assert '@ИдДок' in record
+            count += 1
+            
+        assert count > 0
+        source.close()

@@ -1,13 +1,15 @@
 from __future__ import annotations
-import typing
-from json import loads, dumps
-import datetime
 
-from ..base import BaseFileIterable, BaseCodec
+import datetime
+import typing
+from json import dumps, loads
+
+from ..base import BaseCodec, BaseFileIterable
 from ..helpers.utils import rowincount
 
 
-date_handler = lambda obj: (
+def date_handler(obj):
+    return (
     obj.isoformat()
     if isinstance(obj, (datetime.datetime, datetime.date))
     else None
@@ -15,9 +17,11 @@ date_handler = lambda obj: (
 
 
 class JSONLinesIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str = 'r', encoding:str = 'utf8', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str = 'r', encoding:str = 'utf8', options:dict=None):
+        if options is None:
+            options = {}
         self.pos = 0
-        super(JSONLinesIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
         pass
 
     @staticmethod
@@ -55,7 +59,7 @@ class JSONLinesIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk JSON lines records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             chunk.append(loads(self.fobj.readline()))
         return chunk
 
@@ -65,5 +69,8 @@ class JSONLinesIterable(BaseFileIterable):
 
     def write_bulk(self, records: list[dict]):
         """Write bulk JSON lines records"""
-        for record in records:
-            self.fobj.write(dumps(record, ensure_ascii=False, default=date_handler) + '\n')
+        if not records:
+            return
+        # Minimize per-record I/O by writing a single concatenated batch.
+        batch = "\n".join(dumps(r, ensure_ascii=False, default=date_handler) for r in records)
+        self.fobj.write(batch + "\n")

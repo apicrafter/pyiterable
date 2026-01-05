@@ -1,6 +1,7 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
+import pytest
+
 from iterable.datatypes import ASN1Iterable
 
 try:
@@ -19,7 +20,7 @@ class TestASN1:
 
     def test_flatonly(self):
         flag = ASN1Iterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         """Test basic open/close"""

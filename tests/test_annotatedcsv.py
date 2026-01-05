@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-import pytest
 from iterable.datatypes import AnnotatedCSVIterable
 
 
@@ -10,7 +8,7 @@ class TestAnnotatedCSV:
     
     def test_flatonly(self):
         flag = AnnotatedCSVIterable.is_flatonly()
-        assert flag == True
+        assert flag
     
     def test_read_simple_annotated_csv(self):
         """Test reading a simple annotated CSV file"""
@@ -54,7 +52,7 @@ class TestAnnotatedCSV:
         assert isinstance(records[0]['price'], float)
         assert records[0]['price'] == 19.99
         assert isinstance(records[0]['active'], bool)
-        assert records[0]['active'] == True
+        assert records[0]['active']
     
     def test_read_with_defaults(self):
         """Test reading annotated CSV with default values"""

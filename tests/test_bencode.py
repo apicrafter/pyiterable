@@ -1,6 +1,7 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
+import pytest
+
 from iterable.datatypes import BencodeIterable
 
 try:
@@ -24,7 +25,7 @@ class TestBencode:
 
     def test_flatonly(self):
         flag = BencodeIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_import_error(self):
         """Test that ImportError is raised when bencode libraries are not available"""

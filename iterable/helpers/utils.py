@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 import typing
-from itertools import takewhile, repeat
-from collections import defaultdict
 from collections import OrderedDict
-import chardet
+from itertools import repeat, takewhile
 from statistics import mean
+
+import chardet
 
 from ..base import BaseIterable
 
@@ -42,15 +43,23 @@ def detect_delimiter(filename:str = None, stream:typing.IO=None, encoding:str ='
     lines = []
     char_map = {}
     if filename:
-        f = open(filename, 'r', encoding=encoding)
-        for n in range(0, limit):
+        f = open(filename, encoding=encoding)
+        for _n in range(0, limit):
             line = f.readline().strip()
             if len(line) > 0:
                 lines.append(line)
         f.close()
     else:
-        for n in range(0, limit):
-            lines.append(stream.readline())
+        for _n in range(0, limit):
+            line = stream.readline()
+            if not line:
+                break
+            line = line.strip()
+            if len(line) > 0:
+                lines.append(line)
+
+    if not lines:
+        return ','
 
     for char in DEFAULT_DELIMITERS:
         char_map[char] = []
@@ -64,7 +73,11 @@ def detect_delimiter(filename:str = None, stream:typing.IO=None, encoding:str ='
         if min(char_map[char]) != 0 and mean(char_map[char]) / max(char_map[char]) > threshold:
             candidates[char] = max(char_map[char])
             
-    delimiter = max(candidates, key=candidates.get)
+    if candidates:
+        delimiter = max(candidates, key=candidates.get)
+    else:
+        # Fallback: pick delimiter that appears most across sampled lines.
+        delimiter = max(DEFAULT_DELIMITERS, key=lambda c: sum(line.count(c) for line in lines))
     return delimiter
 
 def get_dict_value(d:dict, keys: list[str]):
@@ -156,11 +169,11 @@ def guess_datatype(s:str, qd:Object) -> dict:
 #    s = unicode(s)
     if s is None:
        return {'base' : 'empty'}
-    if type(s) == type(1):
+    if type(s) == int:
         return {'base' : 'int'}
-    if type(s) == type(1.0):
+    if type(s) == float:
         return {'base' : 'float'}
-    elif type(s) != type(''):
+    elif type(s) != str:
 #        print((type(s)))
         return {'base' : 'typed'}
 #    s = s.decode('utf8', 'ignore')
@@ -171,7 +184,7 @@ def guess_datatype(s:str, qd:Object) -> dict:
             attrs = {'base' : 'int', 'subtype' : guess_int_size(int(s))}
     else:
         try:
-            i = float(s)
+            float(s)
             attrs = {'base' : 'float'}
             return attrs
         except ValueError:
@@ -209,7 +222,7 @@ def get_dict_keys(iterable:list[dict], limit:int=1000) -> list[str]:
     n = 0
     keys = []
     for item in iterable:
-        if limit and n > limit:
+        if limit and n >= limit:
             break
         n += 1
         dk = dict_generator(item)
@@ -224,7 +237,7 @@ def get_iterable_keys(iterable:BaseIterable, limit:int=1000) -> list[str]:
     n = 0
     keys = []
     for item in iterable:
-        if limit and n > limit:
+        if limit and n >= limit:
             break
         n += 1
         dk = dict_generator(item)
@@ -236,7 +249,7 @@ def get_iterable_keys(iterable:BaseIterable, limit:int=1000) -> list[str]:
 
 def is_flat_object(item:object) -> bool:
     """Measures if object is flat"""
-    for k, v in item.items():
+    for _k, v in item.items():
         if isinstance(v, tuple) or isinstance(v, list):
             return False
         elif isinstance(v, dict):
@@ -245,13 +258,13 @@ def is_flat_object(item:object) -> bool:
 
 # -*- coding: utf-8 -*-
 
-def get_dict_value(adict:dict, key:str, prefix:list=None):
+def get_dict_value_path(adict:dict, key:str, prefix:list=None):
     if prefix is None:
         prefix = key.split('.')
     if len(prefix) == 1:
         return adict[prefix[0]]
     else:
-        return get_dict_value(adict[prefix[0]], key, prefix=prefix[1:])
+        return get_dict_value_path(adict[prefix[0]], key, prefix=prefix[1:])
 
 def get_dict_value_deep(adict:dict, key:str, prefix:list = None, as_array:bool = False, splitter:str = '.'):
     """Used to get value from hierarhic dicts in python with params with dots as splitter"""
@@ -259,7 +272,7 @@ def get_dict_value_deep(adict:dict, key:str, prefix:list = None, as_array:bool =
         prefix = key.split(splitter)
     if len(prefix) == 1:
         if type(adict) == type({}):
-            if not prefix[0] in adict.keys():
+            if prefix[0] not in adict.keys():
                 return None
             if as_array:
                 return [adict[prefix[0]], ]
@@ -295,7 +308,8 @@ def get_dict_value_deep(adict:dict, key:str, prefix:list = None, as_array:bool =
 def make_flat(item):
     result = {}
     for k, v in item.items():
-        if isinstance(v, tuple) or isinstance(v, list) or isinstance(v, dict):
+        if isinstance(v, (tuple, list, dict)):
             result[k] = str(v)
-        result[k] = v
+        else:
+            result[k] = v
     return result

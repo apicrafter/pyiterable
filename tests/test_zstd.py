@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*- 
-import pytest
-from iterable.datatypes import CSVIterable
-from iterable.codecs import ZSTDCodec
 from fixdata import FIXTURES
+
+from iterable.codecs import ZSTDCodec
+from iterable.datatypes import CSVIterable
+
 
 class TestZSTD:
     def test_fileexts(self):
@@ -45,7 +45,7 @@ class TestZSTD:
         codecobj = ZSTDCodec('fixtures/2cols6rows.csv.zst', mode='rb')
         iterable = CSVIterable(codec=codecobj)        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()

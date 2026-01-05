@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
-from iterable.datatypes import FixedWidthIterable
+
+import pytest
 from fixdata import FIXTURES
+
+from iterable.datatypes import FixedWidthIterable
 
 # Create fixture file if it doesn't exist
 FIXTURE_FILE = 'fixtures/2cols6rows.fwf'
@@ -24,7 +25,7 @@ class TestFixedWidth:
 
     def test_flatonly(self):
         flag = FixedWidthIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         iterable = FixedWidthIterable(FIXTURE_FILE, widths=[3, 10], names=['id', 'name'])        
@@ -67,7 +68,7 @@ class TestFixedWidth:
     def test_parsesimple_count(self):
         iterable = FixedWidthIterable(FIXTURE_FILE, widths=[3, 10], names=['id', 'name'])        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()
@@ -96,7 +97,7 @@ class TestFixedWidth:
 
     def test_has_totals(self):
         iterable = FixedWidthIterable(FIXTURE_FILE, widths=[3, 10], names=['id', 'name'])
-        assert FixedWidthIterable.has_totals() == True
+        assert FixedWidthIterable.has_totals()
         total = iterable.totals()
         assert total == len(FIXTURES)
         iterable.close()

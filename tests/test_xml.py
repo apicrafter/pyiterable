@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*- 
-import pytest
+from fixdata import FIXTURES_BOOKS
+
 from iterable.datatypes import XMLIterable
 
-from fixdata import FIXTURES_BOOKS
 
 class TestXML:
     def test_id(self):
@@ -11,7 +10,7 @@ class TestXML:
 
     def test_flatonly(self):
         flag = XMLIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         iterable = XMLIterable('fixtures/books.xml', tagname='book')        
@@ -53,7 +52,7 @@ class TestXML:
     def test_parsesimple_count(self):
         iterable = XMLIterable('fixtures/books.xml', tagname='book')        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES_BOOKS)
         iterable.close()

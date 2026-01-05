@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
-from iterable.datatypes import IonIterable
+
+import pytest
 from fixdata import FIXTURES
+
+from iterable.datatypes import IonIterable
 
 # Create fixture file if it doesn't exist
 FIXTURE_FILE = 'fixtures/2cols6rows_flat.ion'
@@ -30,7 +31,7 @@ class TestIon:
     def test_flatonly(self):
         try:
             flag = IonIterable.is_flatonly()
-            assert flag == False
+            assert not flag
         except ImportError:
             pytest.skip("Ion support requires ion-python package")
 

@@ -1,7 +1,8 @@
 from __future__ import annotations
-import typing
+
 import os
-from pathlib import Path
+import typing
+
 try:
     import pyiceberg
     from pyiceberg.catalog import load_catalog
@@ -10,15 +11,17 @@ try:
 except ImportError:
     HAS_PYICEBERG = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class IcebergIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', catalog_name:str = None, table_name:str = None, options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', catalog_name:str = None, table_name:str = None, options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_PYICEBERG:
             raise ImportError("Apache Iceberg support requires 'pyiceberg' package")
-        super(IcebergIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
         self.catalog_name = catalog_name
         self.table_name = table_name
         if 'catalog_name' in options:
@@ -37,7 +40,7 @@ class IcebergIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(IcebergIterable, self).reset()
+        super().reset()
         self.pos = 0
         
         # Load catalog and table
@@ -92,7 +95,7 @@ class IcebergIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk Iceberg records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

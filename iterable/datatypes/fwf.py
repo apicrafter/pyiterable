@@ -1,15 +1,17 @@
 from __future__ import annotations
-import typing
-import chardet
 
-from ..base import BaseFileIterable, BaseCodec
+import typing
+
+from ..base import BaseCodec, BaseFileIterable
 from ..helpers.utils import rowincount
 
 DEFAULT_ENCODING = 'utf8'
 
 
 class FixedWidthIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, widths:list[int] = None, names:list[str] = None, encoding:str = None, mode:str='r', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, widths:list[int] = None, names:list[str] = None, encoding:str = None, mode:str='r', options:dict=None):
+        if options is None:
+            options = {}
         self.widths = widths
         self.names = names
         self.encoding = encoding or DEFAULT_ENCODING
@@ -21,13 +23,13 @@ class FixedWidthIterable(BaseFileIterable):
         if 'encoding' in options:
             self.encoding = options['encoding']
             
-        super(FixedWidthIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=self.encoding, options=options)
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=self.encoding, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(FixedWidthIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             if self.widths is None or self.names is None:
@@ -63,7 +65,7 @@ class FixedWidthIterable(BaseFileIterable):
         self.pos += 1
         record = {}
         start = 0
-        for i, (name, width) in enumerate(zip(self.names, self.widths)):
+        for _i, (name, width) in enumerate(zip(self.names, self.widths, strict=False)):
             end = start + width
             value = line[start:end].strip()
             record[name] = value
@@ -73,7 +75,7 @@ class FixedWidthIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk fixed-width records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:
@@ -86,7 +88,7 @@ class FixedWidthIterable(BaseFileIterable):
             raise ValueError("Fixed-width files require 'widths' and 'names' parameters")
         
         line_parts = []
-        for name, width in zip(self.names, self.widths):
+        for name, width in zip(self.names, self.widths, strict=False):
             value = str(record.get(name, ''))
             # Pad or truncate to fit width
             formatted = value[:width].ljust(width)

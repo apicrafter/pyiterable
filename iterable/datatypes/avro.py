@@ -1,21 +1,24 @@
 from __future__ import annotations
-import typing
-import avro.schema
-from avro.datafile import DataFileReader, DataFileWriter
-from avro.io import DatumReader, DatumWriter
 
-from ..base import BaseFileIterable, BaseCodec
+import typing
+
+from avro.datafile import DataFileReader
+from avro.io import DatumReader
+
+from ..base import BaseCodec, BaseFileIterable
 
 
 class AVROIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', options:dict={}):
-        super(AVROIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, options=options)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', options:dict=None):
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(AVROIterable, self).reset()
+        super().reset()
         self.pos = 0
         self.cursor = DataFileReader(self.fobj, DatumReader())
 
@@ -39,7 +42,7 @@ class AVROIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             chunk.append(self.read())
         return chunk
 

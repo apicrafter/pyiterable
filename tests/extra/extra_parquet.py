@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 from pathlib import Path
+
 from iterable.datatypes import ParquetIterable
 
 FIXTURES = [

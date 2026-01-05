@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
-from iterable.datatypes import HDF5Iterable
+
+import pytest
 from fixdata import FIXTURES_TYPES
+
+from iterable.datatypes import HDF5Iterable
 
 # Create fixture file if it doesn't exist
 FIXTURE_FILE = 'fixtures/2cols6rows.h5'
@@ -32,7 +33,7 @@ class TestHDF5:
     def test_flatonly(self):
         try:
             flag = HDF5Iterable.is_flatonly()
-            assert flag == True
+            assert flag
         except ImportError:
             pytest.skip("HDF5 support requires h5py package")
 
@@ -48,7 +49,7 @@ class TestHDF5:
         try:
             if os.path.exists(FIXTURE_FILE):
                 iterable = HDF5Iterable(FIXTURE_FILE, dataset_path='/data')
-                assert HDF5Iterable.has_totals() == True
+                assert HDF5Iterable.has_totals()
                 total = iterable.totals()
                 assert total > 0
                 iterable.close()

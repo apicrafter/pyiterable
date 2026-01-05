@@ -1,4 +1,5 @@
 import pytest
+
 from iterable.datatypes.thrift import ThriftIterable
 
 try:
@@ -17,7 +18,7 @@ def test_thrift_id():
 @pytest.mark.skipif(not HAS_THRIFT, reason="Thrift library not available")
 def test_thrift_flatonly():
     """Test Thrift is not flat only"""
-    assert ThriftIterable.is_flatonly() == False
+    assert not ThriftIterable.is_flatonly()
 
 
 @pytest.mark.skipif(not HAS_THRIFT, reason="Thrift library not available")

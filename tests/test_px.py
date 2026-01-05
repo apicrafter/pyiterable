@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
+
+import pytest
+
 from iterable.datatypes import PXIterable
-from fixdata import FIXTURES
 
 FIXTURE_FILE = 'fixtures/2cols6rows.px'
 
@@ -14,7 +14,7 @@ class TestPX:
 
     def test_flatonly(self):
         flag = PXIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         iterable = PXIterable(FIXTURE_FILE)        
@@ -22,7 +22,7 @@ class TestPX:
 
     def test_has_totals(self):
         iterable = PXIterable(FIXTURE_FILE)
-        assert PXIterable.has_totals() == True
+        assert PXIterable.has_totals()
         total = iterable.totals()
         assert total == 18  # 3 ages * 2 genders * 3 years
         iterable.close()

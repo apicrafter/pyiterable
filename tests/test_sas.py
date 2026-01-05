@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
+
+import pytest
+
 from iterable.datatypes import SASIterable
-from fixdata import FIXTURES
 
 # Note: SAS files require actual .sas7bdat files
 # This test will be skipped if pyreadstat/sas7bdat is not available
@@ -22,7 +22,7 @@ class TestSAS:
     def test_flatonly(self):
         try:
             flag = SASIterable.is_flatonly()
-            assert flag == True
+            assert flag
         except ImportError:
             pytest.skip("SAS support requires pyreadstat or sas7bdat package")
 
@@ -36,7 +36,7 @@ class TestSAS:
     def test_has_totals(self):
         try:
             iterable = SASIterable(FIXTURE_FILE)
-            assert SASIterable.has_totals() == True
+            assert SASIterable.has_totals()
             total = iterable.totals()
             assert total > 0
             iterable.close()

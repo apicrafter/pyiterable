@@ -1,6 +1,7 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
+
+import pytest
+
 from iterable.datatypes import DeltaIterable
 
 # Note: Delta Lake requires a delta table directory
@@ -21,7 +22,7 @@ class TestDelta:
     def test_flatonly(self):
         try:
             flag = DeltaIterable.is_flatonly()
-            assert flag == True
+            assert flag
         except ImportError:
             pytest.skip("Delta Lake support requires deltalake package")
 
@@ -35,7 +36,7 @@ class TestDelta:
     def test_has_totals(self):
         try:
             iterable = DeltaIterable(FIXTURE_DIR)
-            assert DeltaIterable.has_totals() == True
+            assert DeltaIterable.has_totals()
             total = iterable.totals()
             assert total >= 0
             iterable.close()

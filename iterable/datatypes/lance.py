@@ -1,6 +1,8 @@
 from __future__ import annotations
-import typing
+
 import os
+import typing
+
 try:
     import lance
     import pyarrow
@@ -8,14 +10,16 @@ try:
 except ImportError:
     HAS_LANCE = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 DEFAULT_BATCH_SIZE = 1024
 
 
 class LanceIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, mode: str = 'r', codec: BaseCodec = None, batch_size:int = DEFAULT_BATCH_SIZE, write_mode:str = 'create', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, mode: str = 'r', codec: BaseCodec = None, batch_size:int = DEFAULT_BATCH_SIZE, write_mode:str = 'create', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_LANCE:
             raise ImportError("Lance format support requires 'lance' package. Install with: pip install lance")
         self.batch_size = batch_size
@@ -32,13 +36,13 @@ class LanceIterable(BaseFileIterable):
         else:
             self.dataset_path = None
         # Lance datasets are directories, not files, so we don't want BaseFileIterable to open them as files
-        super(LanceIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(LanceIterable, self).reset()
+        super().reset()
         self.pos = 0
         self.dataset = None
         self.iterator = None
@@ -93,7 +97,7 @@ class LanceIterable(BaseFileIterable):
         """Close iterable"""
         if self.mode == 'w' and len(self.__buffer) > 0:
             self.flush()
-        super(LanceIterable, self).close()
+        super().close()
 
     def __iterator(self, scanner):
         """Iterator for reading records"""
@@ -112,7 +116,7 @@ class LanceIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk Lance records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

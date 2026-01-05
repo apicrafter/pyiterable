@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
+
 from iterable.convert import convert
-from fixdata import FIXTURES
+
 
 class TestConvert:
     def test_convert_csv_to_jsonl(self):
@@ -89,7 +88,7 @@ class TestConvert:
         assert os.path.exists('testdata/test_convert_output_args.csv')
         # Verify the file was created and has content
         if os.path.exists('testdata/test_convert_output_args.csv'):
-            with open('testdata/test_convert_output_args.csv', 'r') as f:
+            with open('testdata/test_convert_output_args.csv') as f:
                 content = f.read()
                 # Check that pipe delimiter is used (not comma)
                 assert '|' in content or len(content) > 0

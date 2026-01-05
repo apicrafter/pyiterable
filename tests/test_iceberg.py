@@ -1,4 +1,5 @@
 import pytest
+
 from iterable.datatypes.iceberg import IcebergIterable
 
 try:
@@ -17,7 +18,7 @@ def test_iceberg_id():
 @pytest.mark.skipif(not HAS_PYICEBERG, reason="PyIceberg library not available")
 def test_iceberg_flatonly():
     """Test Iceberg is flat only"""
-    assert IcebergIterable.is_flatonly() == True
+    assert IcebergIterable.is_flatonly()
 
 
 @pytest.mark.skipif(not HAS_PYICEBERG, reason="PyIceberg library not available")

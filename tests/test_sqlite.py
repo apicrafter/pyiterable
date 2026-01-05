@@ -1,7 +1,7 @@
-import pytest
 import os
-import tempfile
 import sqlite3
+import tempfile
+
 from iterable.datatypes.sqlite import SQLiteIterable
 
 
@@ -126,4 +126,4 @@ def test_sqlite_id():
 
 def test_sqlite_flatonly():
     """Test SQLite is flat only"""
-    assert SQLiteIterable.is_flatonly() == True
+    assert SQLiteIterable.is_flatonly()

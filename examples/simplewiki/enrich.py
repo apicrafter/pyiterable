@@ -1,10 +1,10 @@
-from itertools import (takewhile, repeat)
-from iterable.datatypes import JSONLinesIterable
-from iterable.codecs import ZSTDCodec
-import json
-from tqdm import tqdm
-import csv
+from itertools import repeat, takewhile
+
 import wikitextparser as wtp
+from tqdm import tqdm
+
+from iterable.codecs import ZSTDCodec
+from iterable.datatypes import JSONLinesIterable
 
 CATEGORY_TEXT = 'Category'
 
@@ -32,7 +32,6 @@ def run():
     for data in tqdm(in_iterable, total=total):        
         if data['revision']['text'] is not None and '#text' in data['revision']['text'].keys():            
             p = wtp.parse(data['revision']['text']['#text'])
-            tn = 0 
             categories = []
             for w in p.wikilinks:
                 if w.title.find(CATEGORY_TEXT + ':') > -1:

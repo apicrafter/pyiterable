@@ -153,7 +153,7 @@ pip install iterabledata
 Or install from source:
 
 ```bash
-git clone https://github.com/apicrafter/pyiterable.git
+git clone https://github.com/datenoio/iterabledata.git
 cd pyiterable
 pip install .
 ```

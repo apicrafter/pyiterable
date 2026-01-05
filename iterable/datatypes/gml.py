@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 import typing
 from collections import defaultdict
+
 import lxml.etree as etree
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 def etree_to_dict(t, prefix_strip=True):
@@ -195,15 +197,17 @@ class GMLIterable(BaseFileIterable):
     datamode = 'binary'
     
     def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None,
-                 mode='r', prefix_strip: bool = True, feature_member: str = None, options: dict = {}):
-        super(GMLIterable, self).__init__(filename, stream, codec=codec, mode=mode,
+                 mode='r', prefix_strip: bool = True, feature_member: str = None, options: dict = None):
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, mode=mode,
                                           binary=True, encoding='utf8', options=options)
         self.prefix_strip = prefix_strip
         self.feature_member = feature_member or 'featureMember'
         self.reset()
     
     def reset(self):
-        super(GMLIterable, self).reset()
+        super().reset()
         self.features = []
         self.pos = 0
         
@@ -243,7 +247,7 @@ class GMLIterable(BaseFileIterable):
                         self.features.append(feature)
                 
                 self.iterator = iter(self.features)
-            except Exception as e:
+            except Exception:
                 self.features = []
                 self.iterator = iter(self.features)
     
@@ -275,7 +279,7 @@ class GMLIterable(BaseFileIterable):
     def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk GML features"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:
@@ -348,4 +352,4 @@ class GMLIterable(BaseFileIterable):
         if self.mode in ['w', 'wr'] and hasattr(self, 'root_written'):
             footer = '</gml:FeatureCollection>\n'
             self.fobj.write(footer.encode('utf-8') if self.binary else footer)
-        super(GMLIterable, self).close()
+        super().close()

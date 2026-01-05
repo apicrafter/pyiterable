@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
 from iterable.datatypes import MBOXIterable
 
 
@@ -11,7 +10,7 @@ class TestMBOX:
 
     def test_flatonly(self):
         flag = MBOXIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         """Test basic open/close"""

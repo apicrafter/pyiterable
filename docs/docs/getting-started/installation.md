@@ -25,7 +25,7 @@ pip install iterabledata
 To install the latest development version from source:
 
 ```bash
-git clone https://github.com/apicrafter/pyiterable.git
+git clone https://github.com/datenoio/iterabledata.git
 cd pyiterable
 pip install .
 ```

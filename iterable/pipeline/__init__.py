@@ -1,1 +1,1 @@
-from .core import pipeline, Pipeline
+from .core import Pipeline, pipeline

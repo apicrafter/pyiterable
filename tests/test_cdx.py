@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
 from iterable.datatypes import CDXIterable
 
 
@@ -11,11 +10,11 @@ class TestCDX:
 
     def test_flatonly(self):
         flag = CDXIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_has_totals(self):
         flag = CDXIterable.has_totals()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         """Test basic open/close"""

@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
-from iterable.datatypes import ShapefileIterable
+
+import pytest
 from fixdata import FIXTURES
+
+from iterable.datatypes import ShapefileIterable
 
 # Create fixture file if it doesn't exist
 FIXTURE_FILE = 'fixtures/2cols6rows.shp'
@@ -33,7 +34,7 @@ class TestShapefile:
 
     def test_flatonly(self):
         flag = ShapefileIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         try:
@@ -45,7 +46,7 @@ class TestShapefile:
     def test_has_totals(self):
         try:
             iterable = ShapefileIterable(FIXTURE_FILE)
-            assert ShapefileIterable.has_totals() == True
+            assert ShapefileIterable.has_totals()
             total = iterable.totals()
             assert total == len(FIXTURES)
             iterable.close()

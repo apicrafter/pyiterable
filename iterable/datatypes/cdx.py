@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import typing
-from ..base import BaseFileIterable, BaseCodec
+
+from ..base import BaseCodec, BaseFileIterable
 from ..helpers.utils import rowincount
 
 
@@ -22,8 +24,10 @@ class CDXIterable(BaseFileIterable):
     datamode = 'text'
     
     def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None, 
-                 mode: str = 'r', encoding: str = 'utf8', options: dict = {}):
-        super(CDXIterable, self).__init__(filename, stream, codec=codec, binary=False, 
+                 mode: str = 'r', encoding: str = 'utf8', options: dict = None):
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, binary=False, 
                                           mode=mode, encoding=encoding, options=options)
         # Standard CDX field names (CDX-11 format)
         self.keys = ['url', 'timestamp', 'original_url', 'mime_type', 'status_code', 
@@ -35,7 +39,7 @@ class CDXIterable(BaseFileIterable):
     
     def reset(self):
         """Reset iterable"""
-        super(CDXIterable, self).reset()
+        super().reset()
         self.pos = 0
     
     @staticmethod
@@ -95,14 +99,14 @@ class CDXIterable(BaseFileIterable):
             if len(parts) > len(self.keys):
                 parts = parts[:len(self.keys)]
             
-            result = dict(zip(self.keys, parts))
+            result = dict(zip(self.keys, parts, strict=False))
             self.pos += 1
             return result
     
     def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk CDX records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

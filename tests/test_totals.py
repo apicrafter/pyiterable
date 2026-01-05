@@ -1,15 +1,14 @@
-# -*- coding: utf-8 -*-
 import pytest
 
 from iterable.datatypes import (
     CSVIterable,
+    DBFIterable,
     JSONIterable,
     JSONLinesIterable,
-    XLSIterable,
-    XLSXIterable,
     ORCIterable,
     ParquetIterable,
-    DBFIterable,
+    XLSIterable,
+    XLSXIterable,
 )
 
 
@@ -31,7 +30,7 @@ def test_totals_match_record_count(iterable_cls, path, kwargs, header_may_affect
 
     # Some classes may not expose has_totals; default is False on base
     has_totals = False
-    if hasattr(iterable_cls, "has_totals") and callable(getattr(iterable_cls, "has_totals")):
+    if hasattr(iterable_cls, "has_totals") and callable(iterable_cls.has_totals):
         has_totals = iterable_cls.has_totals()
 
     assert has_totals is True

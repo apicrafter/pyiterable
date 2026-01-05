@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
+from fixdata import FIXTURES
+
 from iterable.codecs import RAWCodec
 from iterable.datatypes import CSVIterable
-from fixdata import FIXTURES
 
 
 class TestRAW:
@@ -46,7 +46,7 @@ class TestRAW:
         
         # Verify file was written
         assert os.path.exists(test_file)
-        with open(test_file, 'r') as f:
+        with open(test_file) as f:
             assert f.read() == 'test content'
         
         if os.path.exists(test_file):

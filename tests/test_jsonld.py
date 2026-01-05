@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*- 
-import pytest
+from fixdata import FIXTURES
+
 from iterable.datatypes import JSONLDIterable
 
-from fixdata import FIXTURES
 TESTING_DIR = 'testdata'
 
 class TestJSONLD:
@@ -12,7 +11,7 @@ class TestJSONLD:
 
     def test_flatonly(self):
         flag = JSONLDIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         iterable = JSONLDIterable('fixtures/2cols6rows_flat.jsonld')        
@@ -47,7 +46,7 @@ class TestJSONLD:
     def test_parsesimple_count(self):
         iterable = JSONLDIterable('fixtures/2cols6rows_flat.jsonld')        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()

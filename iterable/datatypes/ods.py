@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 import typing
+
 try:
     from odf.opendocument import load
-    from odf.table import Table, TableRow, TableCell
+    from odf.table import Table, TableCell, TableRow
     from odf.text import P
     HAS_ODF = True
 except ImportError:
@@ -14,15 +16,17 @@ except ImportError:
         HAS_PYEXCEL_ODS = False
         HAS_ODF = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class ODSIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', keys: list[str] = None, page:int = 0, start_line:int = 0, options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', keys: list[str] = None, page:int = 0, start_line:int = 0, options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_ODF and not HAS_PYEXCEL_ODS:
             raise ImportError("ODS file support requires 'odfpy' or 'pyexcel-ods3' package")
-        super(ODSIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
         self.keys = keys
         self.start_line = start_line + 1
         self.page = page
@@ -35,7 +39,7 @@ class ODSIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(ODSIterable, self).reset()
+        super().reset()
         self.pos = self.start_line
         
         if HAS_ODF:
@@ -114,7 +118,7 @@ class ODSIterable(BaseFileIterable):
             # Pad values if needed
             while len(values) < len(self.keys):
                 values.append("")
-            result = dict(zip(self.keys, values))
+            result = dict(zip(self.keys, values, strict=False))
             self.row_index += 1
             self.pos += 1
             return result
@@ -126,7 +130,7 @@ class ODSIterable(BaseFileIterable):
             values = [str(cell) for cell in row]
             while len(values) < len(self.keys):
                 values.append("")
-            result = dict(zip(self.keys, values))
+            result = dict(zip(self.keys, values, strict=False))
             self.row_index += 1
             self.pos += 1
             return result
@@ -134,7 +138,7 @@ class ODSIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk ODS records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

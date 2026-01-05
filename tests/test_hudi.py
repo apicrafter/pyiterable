@@ -1,4 +1,5 @@
 import pytest
+
 from iterable.datatypes.hudi import HudiIterable
 
 try:
@@ -23,7 +24,7 @@ def test_hudi_id():
 @pytest.mark.skipif(not HAS_PYHUDI and not HAS_HUDI, reason="Hudi library not available")
 def test_hudi_flatonly():
     """Test Hudi is flat only"""
-    assert HudiIterable.is_flatonly() == True
+    assert HudiIterable.is_flatonly()
 
 
 @pytest.mark.skipif(not HAS_PYHUDI and not HAS_HUDI, reason="Hudi library not available")

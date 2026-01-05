@@ -1,6 +1,8 @@
-import pytest
 import os
 import tempfile
+
+import pytest
+
 from iterable.datatypes.cbor import CBORIterable
 
 try:

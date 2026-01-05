@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
 from iterable.datatypes import CEFIterable
 
 
@@ -11,11 +10,11 @@ class TestCEF:
 
     def test_flatonly(self):
         flag = CEFIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_has_totals(self):
         flag = CEFIterable.has_totals()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         """Test basic open/close"""

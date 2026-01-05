@@ -1,6 +1,7 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
+import pytest
+
 from iterable.datatypes import SMILEIterable
 
 try:
@@ -18,7 +19,7 @@ class TestSMILE:
 
     def test_flatonly(self):
         flag = SMILEIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         """Test basic open/close"""

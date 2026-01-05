@@ -1,5 +1,5 @@
 from __future__ import annotations
-import typing
+
 from ..base import BaseCodec
 
 try:
@@ -17,7 +17,7 @@ class SZipCodec(BaseCodec):
             self.filemode = 'rb'        
         else:
             self.filemode = 'r'
-        super(SZipCodec, self).__init__(filename, mode=mode, open_it=open_it)
+        super().__init__(filename, mode=mode, open_it=open_it)
 
     def open(self):        
         self._archiveobj = py7zr.SevenZipFile(self.filename, mode=self.mode)

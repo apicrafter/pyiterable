@@ -1,13 +1,15 @@
 from __future__ import annotations
-import typing
-from json import loads, dumps
-import datetime
 
-from ..base import BaseFileIterable, BaseCodec
+import datetime
+import typing
+from json import dumps, loads
+
+from ..base import BaseCodec, BaseFileIterable
 from ..helpers.utils import rowincount
 
 
-date_handler = lambda obj: (
+def date_handler(obj):
+    return (
     obj.isoformat()
     if isinstance(obj, (datetime.datetime, datetime.date))
     else None
@@ -20,11 +22,13 @@ class JSONLDIterable(BaseFileIterable):
     JSON-LD is a method of encoding Linked Data using JSON.
     """
     def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, 
-                 mode:str = 'r', encoding:str = 'utf8', options:dict={}):
+                 mode:str = 'r', encoding:str = 'utf8', options:dict=None):
+        if options is None:
+            options = {}
         self.pos = 0
         self.context = None
         self.data = None
-        super(JSONLDIterable, self).__init__(filename, stream, codec=codec, binary=False, 
+        super().__init__(filename, stream, codec=codec, binary=False, 
                                              mode=mode, encoding=encoding, options=options)
         if mode == 'r':
             self.reset()
@@ -32,7 +36,7 @@ class JSONLDIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable and reload data"""
-        super(JSONLDIterable, self).reset()
+        super().reset()
         self.pos = 0
         self.line_mode = False
         
@@ -52,7 +56,7 @@ class JSONLDIterable(BaseFileIterable):
         if first_line_stripped.startswith('{'):
             try:
                 # Try to parse first line as JSON
-                test_obj = loads(first_line_stripped)
+                loads(first_line_stripped)
                 # Check if there's a second line (indicates line-by-line format)
                 second_line = self.fobj.readline()
                 self.fobj.seek(current_pos)
@@ -170,7 +174,7 @@ class JSONLDIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk JSON-LD records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

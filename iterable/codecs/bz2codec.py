@@ -1,13 +1,16 @@
 from __future__ import annotations
-import typing
-from ..base import BaseCodec
 
 import bz2
 
+from ..base import BaseCodec
+
+
 class BZIP2Codec(BaseCodec):
-    def __init__(self, filename:str, compression_level:int = 5, mode:str = 'r', open_it:bool = False, options:dict = {}):
+    def __init__(self, filename:str, compression_level:int = 5, mode:str = 'r', open_it:bool = False, options:dict = None):
+        if options is None:
+            options = {}
         self.compression_level = compression_level
-        super(BZIP2Codec, self).__init__(filename, mode=mode, open_it=open_it, options=options)
+        super().__init__(filename, mode=mode, open_it=open_it, options=options)
 
     def open(self) -> bz2.BZ2File:
         self._fileobj = bz2.open(self.filename, self.mode, compresslevel=self.compression_level)

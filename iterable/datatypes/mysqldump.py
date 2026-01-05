@@ -1,13 +1,16 @@
 from __future__ import annotations
-import typing
-import re
 
-from ..base import BaseFileIterable, BaseCodec
+import re
+import typing
+
+from ..base import BaseCodec, BaseFileIterable
 
 
 class MySQLDumpIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', table_name:str = None, options:dict={}):
-        super(MySQLDumpIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', table_name:str = None, options:dict=None):
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
         self.table_name = table_name
         if 'table_name' in options:
             self.table_name = options['table_name']
@@ -16,13 +19,12 @@ class MySQLDumpIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(MySQLDumpIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             self.entries = []
             current_table = None
             in_insert = False
-            insert_values = []
             
             for line in self.fobj:
                 line = line.strip()
@@ -76,6 +78,10 @@ class MySQLDumpIterable(BaseFileIterable):
         """Parse VALUES clause from INSERT statement"""
         # Remove VALUES keyword if present
         values_str = re.sub(r'^\s*VALUES\s+', '', values_str, flags=re.IGNORECASE)
+        # Remove trailing semicolon (common at end of INSERT statements)
+        values_str = values_str.strip()
+        if values_str.endswith(';'):
+            values_str = values_str[:-1]
         
         # Split by ),( to get individual rows
         rows = []
@@ -102,6 +108,7 @@ class MySQLDumpIterable(BaseFileIterable):
                     paren_depth += 1
                     if paren_depth == 1:
                         current_value = ''
+                        i += 1
                         continue
                     current_value += char
                 elif char == ')':
@@ -165,7 +172,7 @@ class MySQLDumpIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk MySQL dump records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:
@@ -187,7 +194,7 @@ class MySQLDumpIterable(BaseFileIterable):
         
         # Build VALUES clause
         values = []
-        for key, value in record.items():
+        for _key, value in record.items():
             if value is None:
                 values.append('NULL')
             elif isinstance(value, str):

@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*- 
-import pytest
+from fixdata import FIXTURES_TYPES
+
 from iterable.datatypes import XLSIterable
 
-from fixdata import FIXTURES_TYPES
 
 class TestXLS:
     def test_id(self):
@@ -11,7 +10,7 @@ class TestXLS:
 
     def test_flatonly(self):
         flag = XLSIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         iterable = XLSIterable('fixtures/2cols6rows.xls')        
@@ -51,7 +50,7 @@ class TestXLS:
     def test_parsesimple_count(self):
         iterable = XLSIterable('fixtures/2cols6rows.xls')        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES_TYPES)
         iterable.close()

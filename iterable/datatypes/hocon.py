@@ -1,25 +1,29 @@
 from __future__ import annotations
+
 import typing
+
 try:
     from pyhocon import ConfigFactory
     HAS_PYHOCON = True
 except ImportError:
     HAS_PYHOCON = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class HOCONIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_PYHOCON:
             raise ImportError("HOCON support requires 'pyhocon' package")
-        super(HOCONIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(HOCONIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             content = self.fobj.read()
@@ -77,7 +81,7 @@ class HOCONIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk HOCON records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:
@@ -95,7 +99,7 @@ class HOCONIterable(BaseFileIterable):
                 continue  # Skip metadata keys
             config.put(key, value)
         
-        hocon_str = config.as_plain_ordered_dict()
+        config.as_plain_ordered_dict()
         # Simple HOCON output (pyhocon doesn't have easy write, so we'll do basic)
         lines = []
         for key, value in record.items():

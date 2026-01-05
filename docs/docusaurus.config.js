@@ -46,7 +46,7 @@ const config = {
           sidebarPath: require.resolve('./sidebars.js'),
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl: 'https://github.com/apicrafter/pyiterable/tree/main/',
+          editUrl: 'https://github.com/datenoio/iterabledata/tree/main/',
           routeBasePath: '/',
         },
         blog: false,
@@ -76,7 +76,7 @@ const config = {
             label: 'Documentation',
           },
           {
-            href: 'https://github.com/apicrafter/pyiterable',
+            href: 'https://github.com/datenoio/iterabledata',
             label: 'GitHub',
             position: 'right',
           },
@@ -107,7 +107,7 @@ const config = {
             items: [
               {
                 label: 'GitHub',
-                href: 'https://github.com/apicrafter/pyiterable',
+                href: 'https://github.com/datenoio/iterabledata',
               },
             ],
           },

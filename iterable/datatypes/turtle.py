@@ -1,21 +1,25 @@
 from __future__ import annotations
+
 import typing
+
 try:
-    from rdflib import Graph, URIRef, Literal, BNode
+    from rdflib import BNode, Graph, Literal, URIRef
     from rdflib.namespace import RDF
     HAS_RDFLIB = True
 except ImportError:
     HAS_RDFLIB = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class TurtleIterable(BaseFileIterable):
     datamode = 'text'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', subject:str = None, predicate:str = None, options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', subject:str = None, predicate:str = None, options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_RDFLIB:
             raise ImportError("RDF/Turtle support requires 'rdflib' package")
-        super(TurtleIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, options=options)
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, options=options)
         self.subject = subject
         self.predicate = predicate
         if 'subject' in options:
@@ -28,7 +32,7 @@ class TurtleIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(TurtleIterable, self).reset()
+        super().reset()
         self.pos = 0
         
         if self.mode == 'r':
@@ -83,7 +87,7 @@ class TurtleIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk Turtle/RDF records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:
@@ -122,4 +126,4 @@ class TurtleIterable(BaseFileIterable):
                 self.fobj.write(self.graph.serialize(format='turtle'))
             elif self.filename is not None:
                 self.graph.serialize(destination=self.filename, format='turtle')
-        super(TurtleIterable, self).close()
+        super().close()

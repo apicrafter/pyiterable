@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
+import pytest
 
 try:
     from iterable.codecs import SZipCodec

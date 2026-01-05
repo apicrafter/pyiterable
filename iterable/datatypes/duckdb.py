@@ -1,32 +1,39 @@
 from __future__ import annotations
+
 import typing
+
 import duckdb
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
-class DuckDBIterable(BaseFileIterable):
+class DuckDBDatabaseIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', table:str = None, query:str = None, options:dict={}):
-        super(DuckDBIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', table:str = None, query:str = None, options:dict=None):
+        if options is None:
+            options = {}
+        # Validate before BaseFileIterable initializes, to avoid BaseFileIterable failing
+        # when no source is provided.
+        if stream is not None:
+            raise ValueError("DuckDB requires a filename, not a stream")
+        if filename is None:
+            raise ValueError("DuckDB requires a filename")
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
         self.table = table
         self.query = query
         if 'table' in options:
             self.table = options['table']
         if 'query' in options:
             self.query = options['query']
-        if stream is not None:
-            raise ValueError("DuckDB requires a filename, not a stream")
-        if filename is None:
-            raise ValueError("DuckDB requires a filename")
         self.connection = None
         self.cursor = None
+        self._no_tables = False
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(DuckDBIterable, self).reset()
+        super().reset()
         if self.connection is not None:
             self.connection.close()
         
@@ -41,9 +48,11 @@ class DuckDBIterable(BaseFileIterable):
             # Read mode
             if self.query:
                 # Use custom query
+                self._no_tables = False
                 self.cursor = self.connection.execute(self.query)
             elif self.table:
                 # Query specific table
+                self._no_tables = False
                 self.cursor = self.connection.execute(f"SELECT * FROM {self.table}")
             else:
                 # Get first table - DuckDB supports SHOW TABLES
@@ -55,7 +64,13 @@ class DuckDBIterable(BaseFileIterable):
                         "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main' ORDER BY table_name LIMIT 1"
                     ).fetchall()
                 if not tables:
-                    raise ValueError("No tables found in DuckDB database")
+                    # Defer raising until read(), so callers can construct the iterable.
+                    self._no_tables = True
+                    self.cursor = None
+                    self.keys = None
+                    self.pos = 0
+                    return
+                self._no_tables = False
                 self.table = tables[0][0]
                 self.cursor = self.connection.execute(f"SELECT * FROM {self.table}")
             
@@ -92,18 +107,20 @@ class DuckDBIterable(BaseFileIterable):
 
     def read(self) -> dict:
         """Read single DuckDB record"""
+        if self._no_tables:
+            raise ValueError("No tables found in DuckDB database")
         row = self.cursor.fetchone()
         if row is None:
             raise StopIteration
         # Convert row tuple to dict
-        result = dict(zip(self.keys, row))
+        result = dict(zip(self.keys, row, strict=False))
         self.pos += 1
         return result
 
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk DuckDB records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:
@@ -124,8 +141,17 @@ class DuckDBIterable(BaseFileIterable):
         if not hasattr(self, 'keys') or self.keys is None:
             self.keys = list(record.keys())
             # Create table if it doesn't exist
-            # DuckDB can infer types, but we'll use VARCHAR for flexibility
-            columns_def = ', '.join([f"{key} VARCHAR" for key in self.keys])
+            def _duckdb_type_from_value(v):
+                # bool is a subclass of int, so check it first
+                if isinstance(v, bool):
+                    return "BOOLEAN"
+                if isinstance(v, int):
+                    return "BIGINT"
+                if isinstance(v, float):
+                    return "DOUBLE"
+                return "VARCHAR"
+
+            columns_def = ', '.join([f"{key} {_duckdb_type_from_value(record.get(key))}" for key in self.keys])
             create_query = f"CREATE TABLE IF NOT EXISTS {self.table} ({columns_def})"
             self.connection.execute(create_query)
             # DuckDB auto-commits, but commit() may exist for compatibility
@@ -161,7 +187,18 @@ class DuckDBIterable(BaseFileIterable):
         if not hasattr(self, 'keys') or self.keys is None:
             self.keys = list(records[0].keys())
             # Create table if it doesn't exist
-            columns_def = ', '.join([f"{key} VARCHAR" for key in self.keys])
+            def _duckdb_type_from_value(v):
+                # bool is a subclass of int, so check it first
+                if isinstance(v, bool):
+                    return "BOOLEAN"
+                if isinstance(v, int):
+                    return "BIGINT"
+                if isinstance(v, float):
+                    return "DOUBLE"
+                return "VARCHAR"
+
+            first = records[0]
+            columns_def = ', '.join([f"{key} {_duckdb_type_from_value(first.get(key))}" for key in self.keys])
             create_query = f"CREATE TABLE IF NOT EXISTS {self.table} ({columns_def})"
             self.connection.execute(create_query)
             # DuckDB auto-commits, but commit() may exist for compatibility
@@ -187,5 +224,8 @@ class DuckDBIterable(BaseFileIterable):
         if self.connection is not None:
             self.connection.close()
             self.connection = None
-        super(DuckDBIterable, self).close()
+        super().close()
 
+
+# Backwards-compatible alias (datatype)
+DuckDBIterable = DuckDBDatabaseIterable

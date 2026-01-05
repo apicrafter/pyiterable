@@ -1,22 +1,20 @@
-# -*- coding: utf-8 -*-
+
 import pytest
-import os
-import io
-from iterable.helpers.utils import (
-    rowincount,
-    detect_encoding_raw,
-    detect_delimiter,
-    get_dict_value,
-    strip_dict_fields,
-    dict_generator,
-    guess_int_size,
-    get_dict_keys,
-    get_iterable_keys,
-    get_dict_value_deep,
-    make_flat
-)
+
 from iterable.datatypes import CSVIterable
-from fixdata import FIXTURES
+from iterable.helpers.utils import (
+    detect_delimiter,
+    detect_encoding_raw,
+    dict_generator,
+    get_dict_keys,
+    get_dict_value,
+    get_dict_value_deep,
+    get_iterable_keys,
+    guess_int_size,
+    make_flat,
+    rowincount,
+    strip_dict_fields,
+)
 
 
 class TestUtils:
@@ -66,7 +64,7 @@ class TestUtils:
 
     def test_detect_delimiter_with_stream(self):
         """Test detect_delimiter with stream"""
-        with open('fixtures/ru_utf8_comma.csv', 'r', encoding='utf-8') as f:
+        with open('fixtures/ru_utf8_comma.csv', encoding='utf-8') as f:
             delimiter = detect_delimiter(stream=f, encoding='utf-8')
             assert delimiter == ','
 

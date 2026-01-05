@@ -1,21 +1,25 @@
 from __future__ import annotations
-import typing
+
 import os
+import typing
+
 try:
     import capnp
     HAS_CAPNP = True
 except ImportError:
     HAS_CAPNP = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class CapnpIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', schema_file:str = None, schema_name:str = None, options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', schema_file:str = None, schema_name:str = None, options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_CAPNP:
             raise ImportError("Cap'n Proto support requires 'pycapnp' package")
-        super(CapnpIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.schema_file = schema_file
         self.schema_name = schema_name
         if 'schema_file' in options:
@@ -32,7 +36,7 @@ class CapnpIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(CapnpIterable, self).reset()
+        super().reset()
         self.pos = 0
         
         # Load schema
@@ -98,7 +102,7 @@ class CapnpIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk Cap'n Proto records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

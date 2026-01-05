@@ -1,6 +1,8 @@
-import pytest
 import os
 import tempfile
+
+import pytest
+
 from iterable.datatypes.turtle import TurtleIterable
 
 try:
@@ -43,7 +45,7 @@ ex:bob ex:name "Bob" ;
         writer.close()
         
         # Verify written data
-        with open(tmp2_path, 'r', encoding='utf-8') as f:
+        with open(tmp2_path, encoding='utf-8') as f:
             content = f.read()
             assert 'charlie' in content.lower()
         
@@ -63,4 +65,4 @@ def test_turtle_id():
 @pytest.mark.skipif(not HAS_RDFLIB, reason="RDFLib library not available")
 def test_turtle_flatonly():
     """Test Turtle is not flat only"""
-    assert TurtleIterable.is_flatonly() == False
+    assert not TurtleIterable.is_flatonly()

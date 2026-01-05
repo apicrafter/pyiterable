@@ -1,6 +1,7 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
+import pytest
+
 from iterable.datatypes import LDIFIterable
 
 try:
@@ -24,7 +25,7 @@ class TestLDIF:
 
     def test_flatonly(self):
         flag = LDIFIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         """Test basic open/close"""

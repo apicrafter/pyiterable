@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
-from ..helpers.detect import open_iterable, is_flat
-from ..helpers.utils import dict_generator, make_flat
-from tqdm import tqdm
 import logging
-from typing import Dict, Any, Optional
+from typing import Any
 
+from tqdm import tqdm
+
+from ..helpers.detect import is_flat, open_iterable
+from ..helpers.utils import dict_generator, make_flat
 
 DEFAULT_BATCH_SIZE = 50000
 DEFAULT_HEADERS_DETECT_LIMIT = 1000
@@ -13,8 +13,8 @@ DEFAULT_HEADERS_DETECT_LIMIT = 1000
 def convert(
     fromfile: str,
     tofile: str,
-    iterableargs: Dict[str, Any] = None,
-    toiterableargs: Dict[str, Any] = None,
+    iterableargs: dict[str, Any] = None,
+    toiterableargs: dict[str, Any] = None,
     scan_limit: int = DEFAULT_HEADERS_DETECT_LIMIT,
     batch_size: int = DEFAULT_BATCH_SIZE,
     silent: bool = True,

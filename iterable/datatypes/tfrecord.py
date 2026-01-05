@@ -1,8 +1,10 @@
 from __future__ import annotations
-import typing
-import struct
+
 import json
-from ..base import BaseFileIterable, BaseCodec
+import struct
+import typing
+
+from ..base import BaseCodec, BaseFileIterable
 
 
 class TFRecordIterable(BaseFileIterable):
@@ -13,14 +15,16 @@ class TFRecordIterable(BaseFileIterable):
     datamode = 'binary'
     
     def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', 
-                 value_key:str = 'value', options:dict={}):
+                 value_key:str = 'value', options:dict=None):
         """
         Initialize TFRecord iterable.
         
         Args:
             value_key: Key name for the record value when reading (default: 'value')
         """
-        super(TFRecordIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.value_key = value_key
         if 'value_key' in options:
             self.value_key = options['value_key']
@@ -29,7 +33,7 @@ class TFRecordIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(TFRecordIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             # File is already opened by parent class
@@ -105,7 +109,7 @@ class TFRecordIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk TFRecord records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
-from iterable.datatypes import YAMLIterable
+
 from fixdata import FIXTURES
+
+from iterable.datatypes import YAMLIterable
 
 # Create fixture file if it doesn't exist
 FIXTURE_FILE = 'fixtures/2cols6rows_flat.yaml'
@@ -26,7 +26,7 @@ class TestYAML:
 
     def test_flatonly(self):
         flag = YAMLIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         iterable = YAMLIterable(FIXTURE_FILE)        
@@ -66,7 +66,7 @@ class TestYAML:
     def test_parsesimple_count(self):
         iterable = YAMLIterable(FIXTURE_FILE)        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()

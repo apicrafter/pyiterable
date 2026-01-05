@@ -1,15 +1,19 @@
 from __future__ import annotations
-import typing
-from xlrd import open_workbook
-import xlrd
-from ..base import BaseFileIterable, BaseCodec
+
 import datetime
+import typing
+
+import xlrd
+from xlrd import open_workbook
+
+from ..base import BaseCodec, BaseFileIterable
+
 
 def read_row_keys(rownum, ncols, sheet):
     """Read single row by row num"""
     tmp = list()
     for i in range(0, ncols):
-        ct = sheet.cell_type(rownum, i)
+        sheet.cell_type(rownum, i)
         cell_value = sheet.cell_value(rownum, i)
         get_col = str(cell_value)
         tmp.append(get_col)    
@@ -35,15 +39,17 @@ def read_single_row(rownum, ncols, datemode, keys, sheet):
         else:
             get_col = str(cell_value)
         tmp.append(get_col)
-    row = dict(zip(keys, tmp))
+    row = dict(zip(keys, tmp, strict=False))
     return row
 
 
 
 class XLSIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', keys: list[str] = None, page:int = 0, start_line:int = 0, options:dict={}):
-        super(XLSIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, noopen=True, options=options)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', keys: list[str] = None, page:int = 0, start_line:int = 0, options:dict=None):
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, noopen=True, options=options)
         self.page = page
         self.start_line = start_line
         self.pos = start_line
@@ -54,7 +60,7 @@ class XLSIterable(BaseFileIterable):
 
     def reset(self):
         """Reopen file and open sheet"""
-        super(XLSIterable, self).reset()
+        super().reset()
         self.pos = self.start_line
         self.workbook = open_workbook(self.filename)
         self.sheet = self.workbook.sheet_by_index(self.page)
@@ -94,7 +100,7 @@ class XLSIterable(BaseFileIterable):
         chunk = []
         ncols = self.sheet.ncols
         datemode = self.workbook.datemode
-        for n in range(0, num):
+        for _n in range(0, num):
             if self.pos >= self.sheet.nrows:
                 raise StopIteration
             row = read_single_row(self.pos, ncols, datemode, self.keys, self.sheet)

@@ -1,15 +1,17 @@
 from __future__ import annotations
-import typing
-import sqlite3
-from pathlib import Path
 
-from ..base import BaseFileIterable, BaseCodec
+import sqlite3
+import typing
+
+from ..base import BaseCodec, BaseFileIterable
 
 
 class SQLiteIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', table:str = None, query:str = None, options:dict={}):
-        super(SQLiteIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', table:str = None, query:str = None, options:dict=None):
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
         self.table = table
         self.query = query
         if 'table' in options:
@@ -27,7 +29,7 @@ class SQLiteIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(SQLiteIterable, self).reset()
+        super().reset()
         if self.connection is not None:
             self.connection.close()
         
@@ -95,14 +97,14 @@ class SQLiteIterable(BaseFileIterable):
         if row is None:
             raise StopIteration
         # Convert Row to dict
-        result = dict(zip(self.keys, row))
+        result = dict(zip(self.keys, row, strict=False))
         self.pos += 1
         return result
 
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk SQLite records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:
@@ -177,4 +179,4 @@ class SQLiteIterable(BaseFileIterable):
         if self.connection is not None:
             self.connection.close()
             self.connection = None
-        super(SQLiteIterable, self).close()
+        super().close()

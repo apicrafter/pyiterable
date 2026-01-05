@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*- 
-import pytest
-from iterable.datatypes import ORCIterable
 from fixdata import FIXTURES
+
+from iterable.datatypes import ORCIterable
+
 
 class TestORC:
     def test_id(self):
@@ -10,7 +10,7 @@ class TestORC:
 
     def test_flatonly(self):
         flag = ORCIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         iterable = ORCIterable('fixtures/2cols6rows.orc')        
@@ -43,7 +43,7 @@ class TestORC:
     def test_parsesimple_count(self):
         iterable = ORCIterable('fixtures/2cols6rows.orc')        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()

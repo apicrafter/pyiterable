@@ -1,12 +1,13 @@
 from __future__ import annotations
-import chardet
+
 import logging
 import typing
 from csv import DictReader, DictWriter
 
-from ..base import BaseFileIterable, BaseCodec
-from ..helpers.utils import rowincount
+import chardet
 
+from ..base import BaseCodec, BaseFileIterable
+from ..helpers.utils import rowincount
 
 DEFAULT_ENCODING = 'utf8'
 DEFAULT_DELIMITER = ','
@@ -20,12 +21,12 @@ def detect_encoding_raw(filename=None, stream=None, limit=1000000):
         chunk = stream.read(limit)
         stream.reset()
     detected = chardet.detect(chunk)
-    logging.debug('Detected encoding %s' % (detected['encoding']))
+    logging.debug('Detected encoding {}'.format(detected['encoding']))
     return detected
 
 def detect_delimiter(filename=None, stream = None, encoding='utf8'):
     if filename is not None:
-        f = open(filename, 'r', encoding=encoding)
+        f = open(filename, encoding=encoding)
         line = f.readline()
         f.close()
     else:
@@ -34,12 +35,14 @@ def detect_delimiter(filename=None, stream = None, encoding='utf8'):
         stream.reset()
     dict1 = {',': line.count(','), ';': line.count(';'), '\t': line.count('\t'), '|' : line.count('|')}
     delimiter = max(dict1, key=dict1.get)
-    logging.debug('Detected delimiter %s' % (delimiter))
+    logging.debug(f'Detected delimiter {delimiter}')
     return delimiter
 
 
 class CSVIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, keys: list[str] = None, delimiter:str = None, quotechar:str='"', mode:str='r', encoding:str = None, autodetect:bool=False, options:dict={}):                        
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, keys: list[str] = None, delimiter:str = None, quotechar:str='"', mode:str='r', encoding:str = None, autodetect:bool=False, options:dict=None):                        
+        if options is None:
+            options = {}
         logging.debug(f'Params: encoding: {encoding}, options {options}')
         self.encoding = None
         self.fileobj = stream
@@ -59,7 +62,7 @@ class CSVIterable(BaseFileIterable):
         logging.debug(f'Final encoding {self.encoding}')
         self.keys = keys
 
-        super(CSVIterable, self).__init__(filename, stream, codec=codec, binary=False, encoding=self.encoding, mode=mode, options=options)
+        super().__init__(filename, stream, codec=codec, binary=False, encoding=self.encoding, mode=mode, options=options)
         if not delimiter:
             if autodetect and mode =='r':
 #                print(filename, stream)
@@ -69,7 +72,7 @@ class CSVIterable(BaseFileIterable):
         else:
             self.delimiter = delimiter
         self.quotechar = quotechar
-        logging.debug('Detected delimiter %s' % (self.delimiter))
+        logging.debug(f'Detected delimiter {self.delimiter}')
         self.reset()
         pass
 
@@ -84,12 +87,12 @@ class CSVIterable(BaseFileIterable):
         return rowincount(self.filename, self.fobj)
 
     def reset(self):
-        super(CSVIterable, self).reset()
+        super().reset()
         if self.fobj is None and self.codec is not None:
             fobj = self.codec.textIO(self.encoding)
         else:
             fobj = self.fobj
-        logging.debug('Detected delimiter %s' % (self.delimiter))     
+        logging.debug(f'Detected delimiter {self.delimiter}')     
         self.reader = None
         if self.mode == 'r':
             if self.keys is not None:
@@ -125,9 +128,12 @@ class CSVIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk CSV records"""
         chunk = []
-        for n in range(0, num):
-            chunk.append(next(self.reader))
-            self.pos += 1
+        for _n in range(0, num):
+            try:
+                chunk.append(next(self.reader))
+                self.pos += 1
+            except StopIteration:
+                break
         return chunk
 
     def write(self, record:dict):

@@ -1,20 +1,24 @@
 # from bson import BSON
 from __future__ import annotations
+
 import typing
+
 import bson
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class BSONIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict={}):
-        super(BSONIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.reset()
         pass
 
     def reset(self):
-        super(BSONIterable, self).reset()
+        super().reset()
         self.reader = bson.decode_file_iter(self.fobj)
 
     @staticmethod
@@ -33,8 +37,11 @@ class BSONIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk bson record"""
         chunk = []
-        for n in range(0, num):
-            chunk.append(next(self.reader))
+        for _n in range(0, num):
+            try:
+                chunk.append(next(self.reader))
+            except StopIteration:
+                break
         return chunk
 
     def write(self, record:dict):

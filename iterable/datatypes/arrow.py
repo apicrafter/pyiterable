@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import pyarrow
     import pyarrow.feather
@@ -7,26 +9,28 @@ try:
 except ImportError:
     HAS_PYARROW = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 DEFAULT_BATCH_SIZE = 1024
 
 
 class ArrowIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, mode: str = 'r', codec: BaseCodec = None, batch_size:int = DEFAULT_BATCH_SIZE, options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, mode: str = 'r', codec: BaseCodec = None, batch_size:int = DEFAULT_BATCH_SIZE, options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_PYARROW:
             raise ImportError("Arrow/Feather support requires 'pyarrow' package")
         self.batch_size = batch_size
         self.__buffer = []
         self.is_data_written = False
-        super(ArrowIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, options=options)
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(ArrowIterable, self).reset()
+        super().reset()
         self.pos = 0
         self.reader = None
         if self.mode == 'r':
@@ -69,7 +73,7 @@ class ArrowIterable(BaseFileIterable):
         """Close iterable"""
         if self.mode == 'w' and len(self.__buffer) > 0:
             self.flush()
-        super(ArrowIterable, self).close()
+        super().close()
 
     def __iterator(self):
         """Iterator for reading records"""
@@ -85,7 +89,7 @@ class ArrowIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk Arrow records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             chunk.append(self.read())
         return chunk
 

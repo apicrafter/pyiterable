@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import vobject
     HAS_VOBJECT = True
@@ -12,20 +14,22 @@ except ImportError:
         HAS_VCARD = False
         HAS_VOBJECT = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class VCFIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_VOBJECT and not HAS_VCARD:
             raise ImportError("VCF support requires 'vobject' or 'vcard' package")
-        super(VCFIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(VCFIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             content = self.fobj.read()
@@ -46,7 +50,7 @@ class VCFIterable(BaseFileIterable):
                         vcard_obj = vobject.readOne(vcard_str)
                         entry = self._vcard_to_dict(vcard_obj)
                         self.entries.append(entry)
-                    except Exception as e:
+                    except Exception:
                         # Try to parse manually
                         entry = self._parse_vcard_manual(part)
                         if entry:
@@ -130,7 +134,7 @@ class VCFIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk VCF records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

@@ -1,7 +1,6 @@
 import sys
-from iterable.convert.core import convert
-from tqdm import tqdm
 
+from iterable.convert.core import convert
 
 
 def run():

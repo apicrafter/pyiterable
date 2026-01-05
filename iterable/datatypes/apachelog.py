@@ -1,13 +1,17 @@
 from __future__ import annotations
-import typing
+
 import re
-from ..base import BaseFileIterable, BaseCodec
+import typing
+
+from ..base import BaseCodec, BaseFileIterable
 
 
 class ApacheLogIterable(BaseFileIterable):
     datamode = 'text'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', log_format:str = 'common', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', log_format:str = 'common', options:dict=None):
         # Check log format before opening file
+        if options is None:
+            options = {}
         self.log_format = log_format
         if 'log_format' in options:
             self.log_format = options['log_format']
@@ -28,7 +32,7 @@ class ApacheLogIterable(BaseFileIterable):
         if self.log_format not in self.patterns:
             raise ValueError(f"Unknown log format: {self.log_format}. Supported: {', '.join(self.patterns.keys())}")
         
-        super(ApacheLogIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, options=options)
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, options=options)
         
         self.pattern = re.compile(self.patterns[self.log_format])
         self.keys = self.field_names[self.log_format]
@@ -37,7 +41,7 @@ class ApacheLogIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(ApacheLogIterable, self).reset()
+        super().reset()
         self.pos = 0
         # File is already opened by parent class
 
@@ -74,7 +78,7 @@ class ApacheLogIterable(BaseFileIterable):
             match = self.pattern.match(line)
             if match:
                 values = match.groups()
-                result = dict(zip(self.keys, values))
+                result = dict(zip(self.keys, values, strict=False))
                 self.pos += 1
                 return result
             else:
@@ -87,7 +91,7 @@ class ApacheLogIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk Apache log records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

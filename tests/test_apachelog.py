@@ -1,6 +1,8 @@
-import pytest
 import os
 import tempfile
+
+import pytest
+
 from iterable.datatypes.apachelog import ApacheLogIterable
 
 
@@ -74,7 +76,7 @@ def test_apachelog_write():
         writer.close()
         
         # Verify written data
-        with open(tmp_path, 'r', encoding='utf-8') as f:
+        with open(tmp_path, encoding='utf-8') as f:
             content = f.read()
             assert '127.0.0.1' in content
             assert 'GET' in content
@@ -91,7 +93,7 @@ def test_apachelog_id():
 
 def test_apachelog_flatonly():
     """Test Apache Log is flat only"""
-    assert ApacheLogIterable.is_flatonly() == True
+    assert ApacheLogIterable.is_flatonly()
 
 
 def test_apachelog_unknown_format():

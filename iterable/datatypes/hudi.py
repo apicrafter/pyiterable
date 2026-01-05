@@ -1,7 +1,7 @@
 from __future__ import annotations
+
 import typing
-import os
-from pathlib import Path
+
 try:
     from pyhudi import HudiCatalog
     HAS_PYHUDI = True
@@ -14,15 +14,17 @@ except ImportError:
         HAS_HUDI = False
         HAS_PYHUDI = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class HudiIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', table_path:str = None, options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', table_path:str = None, options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_PYHUDI and not HAS_HUDI:
             raise ImportError("Apache Hudi support requires 'pyhudi' or 'hudi' package")
-        super(HudiIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
         self.table_path = table_path
         if 'table_path' in options:
             self.table_path = options['table_path']
@@ -39,7 +41,7 @@ class HudiIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(HudiIterable, self).reset()
+        super().reset()
         self.pos = 0
         
         if self.mode == 'r':
@@ -93,7 +95,7 @@ class HudiIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk Hudi records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

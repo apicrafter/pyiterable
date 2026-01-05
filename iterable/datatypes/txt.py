@@ -1,19 +1,23 @@
 from __future__ import annotations
+
 import typing
-from ..base import BaseFileIterable, BaseCodec
+
+from ..base import BaseCodec, BaseFileIterable
 from ..helpers.utils import rowincount
 
 
 class TxtIterable(BaseFileIterable):
     def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None, 
                  mode: str = 'r', encoding: str = 'utf8', parser: typing.Callable[[str], dict] = None, 
-                 options: dict = {}):
+                 options: dict = None):
+        if options is None:
+            options = {}
         self.pos = 0
         self.parser = parser
         # Check if parser is provided in options
         if self.parser is None and 'parser' in options:
             self.parser = options['parser']
-        super(TxtIterable, self).__init__(filename, stream, codec=codec, binary=False, 
+        super().__init__(filename, stream, codec=codec, binary=False, 
                                           mode=mode, encoding=encoding, options=options)
         pass
 
@@ -64,7 +68,7 @@ class TxtIterable(BaseFileIterable):
     def read_bulk(self, num: int = 10):
         """Read bulk lines from text file"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

@@ -1,5 +1,5 @@
 from __future__ import annotations
-import typing
+
 from zipfile import ZipFile
 
 from ..base import BaseIterable
@@ -7,7 +7,7 @@ from ..base import BaseIterable
 
 class ZIPSourceWrapper(BaseIterable):
     def __init__(self, filename:str, binary:bool = False):
-        super(ZIPSourceWrapper, self).__init__()
+        super().__init__()
         self.fobj = ZipFile(filename, mode='r')
         self.filenames = self.fobj.namelist()
         self.filenum = 0
@@ -40,7 +40,7 @@ class ZIPSourceWrapper(BaseIterable):
         try:
             row = self.read_single()
             return row
-        except StopIteration as e:
+        except StopIteration:
             if self.iterfile():
                 row = self.read_single()
                 return row

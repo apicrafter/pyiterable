@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*- 
-import pytest
-from iterable.datatypes import AVROIterable
 from fixdata import FIXTURES
+
+from iterable.datatypes import AVROIterable
+
 
 class TestAVRO:
     def test_id(self):
@@ -10,7 +10,7 @@ class TestAVRO:
 
     def test_flatonly(self):
         flag = AVROIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         iterable = AVROIterable('fixtures/2cols6rows.avro')        
@@ -43,7 +43,7 @@ class TestAVRO:
     def test_parsesimple_count(self):
         iterable = AVROIterable('fixtures/2cols6rows.avro')        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()

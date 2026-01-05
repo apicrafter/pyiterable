@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import ldif3
     HAS_LDIF3 = True
@@ -12,20 +14,22 @@ except ImportError:
         HAS_LDIF = False
         HAS_LDIF3 = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class LDIFIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_LDIF3 and not HAS_LDIF:
             raise ImportError("LDIF support requires 'ldif3' or 'ldif' package")
-        super(LDIFIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(LDIFIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             self.entries = []
@@ -98,7 +102,7 @@ class LDIFIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk LDIF records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

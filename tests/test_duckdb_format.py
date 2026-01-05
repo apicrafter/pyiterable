@@ -1,13 +1,27 @@
-# -*- coding: utf-8 -*-
 """
 Tests for DuckDB datatype format support.
 This tests the DuckDBIterable from iterable.datatypes.duckdb
 """
-import pytest
 import os
 import tempfile
+
 import duckdb
+import pytest
+
 from iterable.datatypes.duckdb import DuckDBIterable
+
+
+def _new_duckdb_path(suffix: str = ".duckdb") -> str:
+    """
+    Return a filesystem path that does not exist yet.
+
+    Newer DuckDB versions error if the file exists but is not a valid database,
+    so we must not pre-create an empty file.
+    """
+    fd, path = tempfile.mkstemp(suffix=suffix)
+    os.close(fd)
+    os.unlink(path)
+    return path
 
 
 def test_duckdb_id():
@@ -17,18 +31,17 @@ def test_duckdb_id():
 
 def test_duckdb_flatonly():
     """Test DuckDB is flat only"""
-    assert DuckDBIterable.is_flatonly() == True
+    assert DuckDBIterable.is_flatonly()
 
 
 def test_duckdb_has_totals():
     """Test DuckDB has totals"""
-    assert DuckDBIterable.has_totals() == True
+    assert DuckDBIterable.has_totals()
 
 
 def test_duckdb_read_write():
     """Test DuckDB read and write"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         # Create a test database with data
@@ -65,8 +78,7 @@ def test_duckdb_read_write():
 
 def test_duckdb_write():
     """Test DuckDB write"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         # Write data
@@ -92,8 +104,7 @@ def test_duckdb_write():
 
 def test_duckdb_write_bulk():
     """Test DuckDB bulk write"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         test_data = [
@@ -123,8 +134,7 @@ def test_duckdb_write_bulk():
 
 def test_duckdb_query():
     """Test DuckDB with custom query"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         # Create test data
@@ -150,8 +160,7 @@ def test_duckdb_query():
 
 def test_duckdb_auto_table_detection():
     """Test DuckDB automatically detects first table"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         # Create test data
@@ -177,8 +186,7 @@ def test_duckdb_auto_table_detection():
 
 def test_duckdb_read_bulk():
     """Test DuckDB read_bulk method"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         # Create test data
@@ -204,8 +212,7 @@ def test_duckdb_read_bulk():
 
 def test_duckdb_reset():
     """Test DuckDB reset functionality"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         # Create test data
@@ -232,8 +239,7 @@ def test_duckdb_reset():
 
 def test_duckdb_no_table_error():
     """Test DuckDB raises error when no tables exist"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         # Create empty database
@@ -252,8 +258,7 @@ def test_duckdb_no_table_error():
 
 def test_duckdb_write_no_table_error():
     """Test DuckDB raises error when writing without table name"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         writer = DuckDBIterable(tmp_path, mode='w')
@@ -267,8 +272,7 @@ def test_duckdb_write_no_table_error():
 
 def test_duckdb_write_mode_error():
     """Test DuckDB raises error when writing in read mode"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         # Create table first
@@ -290,7 +294,7 @@ def test_duckdb_write_mode_error():
 def test_duckdb_stream_error():
     """Test DuckDB raises error when stream is provided"""
     with pytest.raises(ValueError, match="DuckDB requires a filename"):
-        DuckDBIterable(stream=open(os.devnull, 'r'))
+        DuckDBIterable(stream=open(os.devnull))
 
 
 def test_duckdb_filename_required():
@@ -301,8 +305,7 @@ def test_duckdb_filename_required():
 
 def test_duckdb_totals_with_query():
     """Test DuckDB totals with custom query"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         # Create test data
@@ -328,8 +331,7 @@ def test_duckdb_totals_with_query():
 
 def test_duckdb_iteration():
     """Test DuckDB iteration protocol"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         # Create test data
@@ -356,8 +358,7 @@ def test_duckdb_iteration():
 
 def test_duckdb_stop_iteration():
     """Test DuckDB raises StopIteration when exhausted"""
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         # Create test data with one row
@@ -382,8 +383,7 @@ def test_duckdb_open_iterable():
     """Test DuckDB format detection with open_iterable"""
     from iterable.helpers.detect import open_iterable
     
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.duckdb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".duckdb")
     
     try:
         # Create test data
@@ -410,8 +410,7 @@ def test_duckdb_ddb_extension():
     """Test DuckDB format detection with .ddb extension"""
     from iterable.helpers.detect import open_iterable
     
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.ddb') as tmp:
-        tmp_path = tmp.name
+    tmp_path = _new_duckdb_path(".ddb")
     
     try:
         # Create test data

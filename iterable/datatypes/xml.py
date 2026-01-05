@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 import typing
 from collections import defaultdict
+
 import lxml.etree as etree
 
-from ..base import BaseFileIterable, BaseCodec
-
+from ..base import BaseCodec, BaseFileIterable
 
 PREFIX_STRIP = False
 PREFIX = ""
@@ -39,15 +40,17 @@ def etree_to_dict(t, prefix_strip=True):
 
 class XMLIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', tagname:str = None, prefix_strip:bool = True, options:dict={}):
-        super(XMLIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, encoding='utf8', options=options)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', tagname:str = None, prefix_strip:bool = True, options:dict=None):
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, encoding='utf8', options=options)
         self.tagname = tagname
         self.prefix_strip = prefix_strip
         self.reset()
         pass
 
     def reset(self):
-        super(XMLIterable, self).reset()
+        super().reset()
         self.reader = etree.iterparse(self.fobj, recover=True)        
         self.pos = 0
 
@@ -71,12 +74,18 @@ class XMLIterable(BaseFileIterable):
                     row = etree_to_dict(elem, self.prefix_strip)
                 else:
                     row = etree_to_dict(elem)
+                # Free memory: clear processed element and prune older siblings.
+                elem.clear()
+                parent = elem.getparent()
+                if parent is not None:
+                    while elem.getprevious() is not None:
+                        del parent[0]
         self.pos += 1
         return row[self.tagname]
 
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk XML records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             chunk.append(self.read())
         return chunk

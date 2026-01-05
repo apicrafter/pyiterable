@@ -1,10 +1,11 @@
 from __future__ import annotations
+
 import typing
-import json
 from collections import defaultdict
+
 import lxml.etree as etree
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 def etree_to_dict(t, prefix_strip=True):
@@ -119,14 +120,16 @@ class KMLIterable(BaseFileIterable):
     datamode = 'binary'
     
     def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None,
-                 mode='r', prefix_strip: bool = True, options: dict = {}):
-        super(KMLIterable, self).__init__(filename, stream, codec=codec, mode=mode,
+                 mode='r', prefix_strip: bool = True, options: dict = None):
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, mode=mode,
                                           binary=True, encoding='utf8', options=options)
         self.prefix_strip = prefix_strip
         self.reset()
     
     def reset(self):
-        super(KMLIterable, self).reset()
+        super().reset()
         self.features = []
         self.pos = 0
         
@@ -150,7 +153,7 @@ class KMLIterable(BaseFileIterable):
                         self.features.append(feature)
                 
                 self.iterator = iter(self.features)
-            except Exception as e:
+            except Exception:
                 self.features = []
                 self.iterator = iter(self.features)
     
@@ -182,7 +185,7 @@ class KMLIterable(BaseFileIterable):
     def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk KML features"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:
@@ -266,4 +269,4 @@ class KMLIterable(BaseFileIterable):
         if self.mode in ['w', 'wr'] and hasattr(self, 'root_written'):
             footer = '</Document>\n</kml>\n'
             self.fobj.write(footer.encode('utf-8') if self.binary else footer)
-        super(KMLIterable, self).close()
+        super().close()

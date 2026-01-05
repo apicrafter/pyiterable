@@ -1,26 +1,30 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import msgpack
     HAS_MSGPACK = True
 except ImportError:
     HAS_MSGPACK = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class MessagePackIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_MSGPACK:
             raise ImportError("MessagePack support requires 'msgpack' package")
-        super(MessagePackIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(MessagePackIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             self.unpacker = msgpack.Unpacker(self.fobj, raw=False, use_list=True)
@@ -47,7 +51,7 @@ class MessagePackIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk MessagePack records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

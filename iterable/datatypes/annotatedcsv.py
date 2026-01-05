@@ -1,13 +1,12 @@
 from __future__ import annotations
-import typing
+
 import csv
 import logging
+import typing
 from datetime import datetime
-from io import StringIO
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 from ..helpers.utils import rowincount
-
 
 DEFAULT_ENCODING = 'utf8'
 DEFAULT_DELIMITER = ','
@@ -70,7 +69,9 @@ class AnnotatedCSVIterable(BaseFileIterable):
     
     def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None,
                  keys: list[str] = None, delimiter: str = None, quotechar: str = '"',
-                 mode: str = 'r', encoding: str = None, autodetect: bool = False, options: dict = {}):
+                 mode: str = 'r', encoding: str = None, autodetect: bool = False, options: dict = None):
+        if options is None:
+            options = {}
         logging.debug(f'Params: encoding: {encoding}, options {options}')
         self.encoding = None
         self.fileobj = stream
@@ -89,7 +90,7 @@ class AnnotatedCSVIterable(BaseFileIterable):
         logging.debug(f'Final encoding {self.encoding}')
         self.keys = keys
         
-        super(AnnotatedCSVIterable, self).__init__(filename, stream, codec=codec, binary=False,
+        super().__init__(filename, stream, codec=codec, binary=False,
                                                     encoding=self.encoding, mode=mode, options=options)
         
         if not delimiter:
@@ -106,7 +107,7 @@ class AnnotatedCSVIterable(BaseFileIterable):
         self.header_row = None
         self.write_options = options  # Store options for writing annotations
         
-        logging.debug('Detected delimiter %s' % (self.delimiter))
+        logging.debug(f'Detected delimiter {self.delimiter}')
         self.reset()
     
     @staticmethod
@@ -120,7 +121,7 @@ class AnnotatedCSVIterable(BaseFileIterable):
     
     def reset(self):
         """Reset iterable"""
-        super(AnnotatedCSVIterable, self).reset()
+        super().reset()
         
         if self.fobj is None and self.codec is not None:
             fobj = self.codec.textIO(self.encoding)
@@ -242,7 +243,7 @@ class AnnotatedCSVIterable(BaseFileIterable):
             
             # Skip annotation rows - check if any value starts with #
             if row:
-                for key, value in row.items():
+                for _key, value in row.items():
                     if value and str(value).strip().startswith('#'):
                         continue  # Skip this row, it's an annotation
                 # Also check if the row looks like an annotation row (first key/value is #something)
@@ -380,7 +381,7 @@ class AnnotatedCSVIterable(BaseFileIterable):
     def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk annotated CSV records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:
@@ -408,7 +409,6 @@ class AnnotatedCSVIterable(BaseFileIterable):
         if not self.keys:
             return
         
-        has_annotations = False
         
         # Write datatype annotation if available
         if 'datatypes' in self.write_options and self.write_options['datatypes']:
@@ -416,7 +416,6 @@ class AnnotatedCSVIterable(BaseFileIterable):
             if len(datatypes) == len(self.keys):
                 row = ['#datatype'] + datatypes
                 self.fobj.write(self.delimiter.join(row) + '\n')
-                has_annotations = True
         
         # Write group annotation if available
         if 'group' in self.write_options and self.write_options['group']:
@@ -424,7 +423,6 @@ class AnnotatedCSVIterable(BaseFileIterable):
             if len(group_flags) == len(self.keys):
                 row = ['#group'] + ['true' if flag else 'false' for flag in group_flags]
                 self.fobj.write(self.delimiter.join(row) + '\n')
-                has_annotations = True
         
         # Write default annotation if available
         if 'default' in self.write_options and self.write_options['default']:
@@ -432,7 +430,6 @@ class AnnotatedCSVIterable(BaseFileIterable):
             if len(default_values) == len(self.keys):
                 row = ['#default'] + [str(v) if v is not None else '' for v in default_values]
                 self.fobj.write(self.delimiter.join(row) + '\n')
-                has_annotations = True
         
         # Write header row after annotations (if annotations were written) or if no annotations
         if self.writer:

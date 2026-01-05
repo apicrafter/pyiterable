@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
 from iterable.datatypes import GELIterable
 
 
@@ -11,11 +10,11 @@ class TestGELF:
 
     def test_flatonly(self):
         flag = GELIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_has_totals(self):
         flag = GELIterable.has_totals()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         """Test basic open/close"""

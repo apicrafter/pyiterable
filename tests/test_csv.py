@@ -1,7 +1,8 @@
-# -*- coding: utf-8 -*- 
 import pytest
-from iterable.datatypes import CSVIterable
 from fixdata import FIXTURES
+
+from iterable.datatypes import CSVIterable
+
 
 class TestCSV:
     def test_id(self):
@@ -10,7 +11,7 @@ class TestCSV:
 
     def test_flatonly(self):
         flag = CSVIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         iterable = CSVIterable('fixtures/2cols6rows.csv')        
@@ -43,7 +44,7 @@ class TestCSV:
     def test_parsesimple_count(self):
         iterable = CSVIterable('fixtures/2cols6rows.csv')        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()

@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
-from iterable.datatypes import GMLIterable
+
 from fixdata import FIXTURES
+
+from iterable.datatypes import GMLIterable
 
 # Create fixture file if it doesn't exist
 FIXTURE_FILE = 'fixtures/2cols6rows.gml'
@@ -40,7 +40,7 @@ class TestGML:
 
     def test_flatonly(self):
         flag = GMLIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         iterable = GMLIterable(FIXTURE_FILE)        
@@ -48,7 +48,7 @@ class TestGML:
 
     def test_has_totals(self):
         iterable = GMLIterable(FIXTURE_FILE)
-        assert GMLIterable.has_totals() == True
+        assert GMLIterable.has_totals()
         total = iterable.totals()
         assert total == len(FIXTURES)
         iterable.close()

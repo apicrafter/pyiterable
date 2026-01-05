@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import typing
+
 try:
     from warcio.archiveiterator import ArchiveIterator  # type: ignore[import-untyped]
     from warcio.warcwriter import WARCWriter  # type: ignore[import-untyped]
@@ -7,7 +9,7 @@ try:
 except ImportError:
     HAS_WARCIO = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class WARCIterable(BaseFileIterable):
@@ -19,10 +21,12 @@ class WARCIterable(BaseFileIterable):
     datamode = 'binary'
     
     def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None,
-                 mode: str = 'r', options: dict = {}):
+                 mode: str = 'r', options: dict = None):
+        if options is None:
+            options = {}
         if not HAS_WARCIO:
             raise ImportError("WARC file support requires 'warcio' package. Install it with: pip install warcio")
-        super(WARCIterable, self).__init__(filename, stream, codec=codec, binary=True, 
+        super().__init__(filename, stream, codec=codec, binary=True, 
                                           mode=mode, noopen=True, options=options)
         self.pos = 0
         self.archive_iterator = None
@@ -32,7 +36,7 @@ class WARCIterable(BaseFileIterable):
     
     def reset(self):
         """Reset iterable"""
-        super(WARCIterable, self).reset()
+        super().reset()
         self.pos = 0
         
         # Close previously opened file if we opened it
@@ -62,7 +66,7 @@ class WARCIterable(BaseFileIterable):
             if hasattr(fileobj, 'seek'):
                 try:
                     fileobj.seek(0)
-                except (IOError, OSError):
+                except OSError:
                     pass  # File might not be seekable (e.g., stdin)
             
             self.archive_iterator = ArchiveIterator(fileobj)
@@ -196,7 +200,7 @@ class WARCIterable(BaseFileIterable):
     def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk WARC records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:
@@ -208,27 +212,12 @@ class WARCIterable(BaseFileIterable):
         if self.warc_writer is None:
             raise RuntimeError("WARC file not opened for writing")
         
-        from warcio.statusandheaders import StatusAndHeaders  # type: ignore[import-untyped]
-        from warcio.recordloader import ArcWarcRecord  # type: ignore[import-untyped]
         import io
         
         # Extract record information
         rec_type = record.get('rec_type', 'response')
         target_uri = record.get('target_uri', record.get('url', ''))
         warc_headers = record.get('rec_headers', {})
-        
-        # Create WARC headers
-        headers_list = []
-        for key, value in warc_headers.items():
-            headers_list.append((key, str(value)))
-        
-        # Add required headers if not present
-        if 'WARC-Type' not in warc_headers:
-            headers_list.append(('WARC-Type', rec_type))
-        if 'WARC-Target-URI' not in warc_headers and target_uri:
-            headers_list.append(('WARC-Target-URI', target_uri))
-        
-        status_headers = StatusAndHeaders('', headers_list, protocol='')
         
         # Get content
         content = record.get('content', b'')
@@ -243,19 +232,25 @@ class WARCIterable(BaseFileIterable):
         
         # Determine content type
         content_type = record.get('content_type', 'application/octet-stream')
-        
-        # Create WARC record object
-        warc_record = ArcWarcRecord(
-            'warc',  # format
-            rec_type,  # rec_type
-            status_headers,  # rec_headers
-            payload_stream,  # raw_stream (payload)
-            None,  # http_headers (can be None for non-HTTP records)
-            content_type,  # content_type
-            content_length  # length
+
+        # Use WARCWriter helper to build a valid WARC/1.0 record (proper status line + headers).
+        warc_headers_dict = {k: str(v) for k, v in (warc_headers or {}).items()}
+
+        # warcio expects HTTP payloads for 'response'/'request' unless http_headers are provided.
+        # Many callers (including our tests) provide arbitrary payload bytes, so store those as
+        # 'resource' records while preserving target_uri and provided WARC headers.
+        create_type = rec_type
+        if rec_type in ('response', 'request') and record.get('http_headers') is None:
+            create_type = 'resource'
+
+        warc_record = self.warc_writer.create_warc_record(
+            target_uri or '',
+            create_type,
+            payload=payload_stream,
+            length=content_length,
+            warc_content_type=content_type,
+            warc_headers_dict=warc_headers_dict,
         )
-        
-        # Write WARC record
         self.warc_writer.write_record(warc_record)
     
     def write_bulk(self, records: list[dict]):
@@ -278,4 +273,4 @@ class WARCIterable(BaseFileIterable):
                 self.codec.close()
             except:
                 pass
-        super(WARCIterable, self).close()
+        super().close()

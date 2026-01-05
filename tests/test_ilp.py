@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-import pytest
 from iterable.datatypes import ILPIterable
 
 
@@ -10,7 +8,7 @@ class TestILP:
     
     def test_flatonly(self):
         flag = ILPIterable.is_flatonly()
-        assert flag == False
+        assert not flag
     
     def test_parse_simple_line(self):
         """Test parsing a simple ILP line"""
@@ -75,7 +73,7 @@ class TestILP:
         line = 'weather,location=us-midwest active=t'
         result = parse_line_protocol(line)
         
-        assert result['fields']['active'] == True
+        assert result['fields']['active']
     
     def test_format_line_protocol(self):
         """Test formatting a record to ILP"""

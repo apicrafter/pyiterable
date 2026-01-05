@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 ITERABLE_TYPE_STREAM = 10
 ITERABLE_TYPE_FILE = 20
 ITERABLE_TYPE_CODEC = 30
@@ -10,7 +9,9 @@ import typing
 
 class BaseCodec:
     """Basic codec class"""
-    def __init__(self, filename: str = None, fileobj: typing.IO = None, mode: str = 'r', open_it: bool = False, options:dict = {}):
+    def __init__(self, filename: str = None, fileobj: typing.IO = None, mode: str = 'r', open_it: bool = False, options:dict = None):
+        if options is None:
+            options = {}
         self._fileobj = fileobj
         self.filename = filename
         self.mode = mode
@@ -127,8 +128,10 @@ class BaseFileIterable(BaseIterable):
     """Basic file iterable"""
     datamode = 'text'
 
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, binary:bool = False, encoding:str = 'utf8', noopen:bool = False, mode:str = 'r', options:dict = {}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, binary:bool = False, encoding:str = 'utf8', noopen:bool = False, mode:str = 'r', options:dict = None):
         """Init basic file iterable"""
+        if options is None:
+            options = {}
         self.filename = filename
         self.noopen = noopen
         self.encoding = encoding
@@ -141,6 +144,8 @@ class BaseFileIterable(BaseIterable):
             self.stype = ITERABLE_TYPE_FILE
         elif codec is not None:
             self.stype = ITERABLE_TYPE_CODEC
+        else:
+            raise ValueError("BaseFileIterable requires filename, stream, or codec")
         self.fobj = None
 
         if self.stype == ITERABLE_TYPE_FILE:
@@ -174,6 +179,11 @@ class BaseFileIterable(BaseIterable):
                 self.fobj.seek(0)
         elif self.stype == ITERABLE_TYPE_CODEC:
             if self.fobj is not None and self.mode not in ['w', 'wb']:
+                # Close any existing wrapper to avoid leaks and ensure buffers are flushed.
+                try:
+                    self.fobj.close()
+                except Exception:
+                    pass
                 self.codec.reset()
                 self.fobj = self.codec.fileobj()    
                 if self.datamode == 'text':
@@ -189,7 +199,13 @@ class BaseFileIterable(BaseIterable):
             if self.fobj is not None:
                 self.fobj.close()
         elif self.stype == ITERABLE_TYPE_CODEC:
-            if self.codec is not None:
+            # Close wrapper first to flush any buffered text, which is critical for codecs.
+            if self.fobj is not None:
+                try:
+                    self.fobj.close()
+                finally:
+                    self.fobj = None
+            elif self.codec is not None:
                 self.codec.close()
 
     def __enter__(self):

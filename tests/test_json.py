@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*- 
 import pytest
-from iterable.datatypes import JSONIterable
-
 from fixdata import FIXTURES
+
+from iterable.datatypes import JSONIterable
 
 
 class TestJSON:
@@ -12,7 +11,7 @@ class TestJSON:
 
     def test_flatonly(self):
         flag = JSONIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         iterable = JSONIterable('fixtures/2cols6rows_array.json')        
@@ -61,7 +60,7 @@ class TestJSON:
     def test_parsesimple_count(self):
         iterable = JSONIterable('fixtures/2cols6rows_array.json')        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()

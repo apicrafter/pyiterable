@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import bencode
     HAS_BENCODE = True
@@ -12,21 +14,23 @@ except ImportError:
         HAS_BENCODEPY = False
         HAS_BENCODE = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class BencodeIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_BENCODE and not HAS_BENCODEPY:
             raise ImportError("Bencode support requires 'bencode' or 'bencodepy' package")
-        super(BencodeIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, options=options)
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(BencodeIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             content = self.fobj.read()
@@ -105,7 +109,7 @@ class BencodeIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk Bencode records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

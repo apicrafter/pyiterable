@@ -1,14 +1,13 @@
 from __future__ import annotations
-import typing
+
 import csv
 import json
-import os
 import logging
-from urllib.parse import urljoin, urlparse
+import os
+import typing
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 from ..helpers.utils import rowincount
-
 
 DEFAULT_ENCODING = 'utf8'
 DEFAULT_DELIMITER = ','
@@ -19,7 +18,9 @@ class CSVWIterable(BaseFileIterable):
     
     def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None,
                  metadata_file: str = None, delimiter: str = None, quotechar: str = '"',
-                 mode: str = 'r', encoding: str = None, options: dict = {}):
+                 mode: str = 'r', encoding: str = None, options: dict = None):
+        if options is None:
+            options = {}
         logging.debug(f'Params: encoding: {encoding}, options {options}')
         self.encoding = None
         self.fileobj = stream
@@ -37,7 +38,7 @@ class CSVWIterable(BaseFileIterable):
         
         logging.debug(f'Final encoding {self.encoding}')
         
-        super(CSVWIterable, self).__init__(filename, stream, codec=codec, binary=False,
+        super().__init__(filename, stream, codec=codec, binary=False,
                                            encoding=self.encoding, mode=mode, options=options)
         
         if not delimiter:
@@ -69,7 +70,7 @@ class CSVWIterable(BaseFileIterable):
         self.schema = {}
         self.columns = []
         
-        logging.debug('Detected delimiter %s' % (self.delimiter))
+        logging.debug(f'Detected delimiter {self.delimiter}')
         self.reset()
     
     def _load_metadata(self):
@@ -78,7 +79,7 @@ class CSVWIterable(BaseFileIterable):
             return
         
         try:
-            with open(self.metadata_file, 'r', encoding='utf-8') as f:
+            with open(self.metadata_file, encoding='utf-8') as f:
                 self.metadata = json.load(f)
             
             # Extract table schema
@@ -122,7 +123,7 @@ class CSVWIterable(BaseFileIterable):
     
     def reset(self):
         """Reset iterable"""
-        super(CSVWIterable, self).reset()
+        super().reset()
         
         if self.fobj is None and self.codec is not None:
             fobj = self.codec.textIO(self.encoding)
@@ -222,7 +223,7 @@ class CSVWIterable(BaseFileIterable):
     def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk CSVW records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

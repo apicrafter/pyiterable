@@ -1,4 +1,5 @@
 import pytest
+
 from iterable.datatypes.capnp import CapnpIterable
 
 try:
@@ -17,7 +18,7 @@ def test_capnp_id():
 @pytest.mark.skipif(not HAS_CAPNP, reason="Cap'n Proto library not available")
 def test_capnp_flatonly():
     """Test Cap'n Proto is not flat only"""
-    assert CapnpIterable.is_flatonly() == False
+    assert not CapnpIterable.is_flatonly()
 
 
 @pytest.mark.skipif(not HAS_CAPNP, reason="Cap'n Proto library not available")

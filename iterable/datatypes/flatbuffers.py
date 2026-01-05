@@ -1,20 +1,24 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import flatbuffers
     HAS_FLATBUFFERS = True
 except ImportError:
     HAS_FLATBUFFERS = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class FlatBuffersIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', schema_file:str = None, root_type:str = None, options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', schema_file:str = None, root_type:str = None, options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_FLATBUFFERS:
             raise ImportError("FlatBuffers support requires 'flatbuffers' package")
-        super(FlatBuffersIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.schema_file = schema_file
         self.root_type = root_type
         if 'schema_file' in options:
@@ -28,7 +32,7 @@ class FlatBuffersIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(FlatBuffersIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             try:
@@ -73,7 +77,7 @@ class FlatBuffersIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk FlatBuffers records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

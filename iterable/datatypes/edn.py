@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import edn_format
     HAS_EDN_FORMAT = True
@@ -12,20 +14,22 @@ except ImportError:
         HAS_PYEDN = False
         HAS_EDN_FORMAT = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class EDNIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_EDN_FORMAT and not HAS_PYEDN:
             raise ImportError("EDN support requires 'edn_format' or 'pyedn' package")
-        super(EDNIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(EDNIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             content = self.fobj.read()
@@ -116,7 +120,7 @@ class EDNIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk EDN records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

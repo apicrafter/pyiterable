@@ -1,11 +1,10 @@
 from __future__ import annotations
-import typing
+
 import re
-import logging
+import typing
 from itertools import product
 
-from ..base import BaseFileIterable, BaseCodec
-
+from ..base import BaseCodec, BaseFileIterable
 
 DEFAULT_ENCODING = 'utf8'
 
@@ -14,9 +13,11 @@ class PXIterable(BaseFileIterable):
     """PC-Axis (PX) file format reader"""
     
     def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None, 
-                 mode: str = 'r', encoding: str = None, options: dict = {}):
+                 mode: str = 'r', encoding: str = None, options: dict = None):
+        if options is None:
+            options = {}
         self.encoding = encoding or options.get('encoding', DEFAULT_ENCODING)
-        super(PXIterable, self).__init__(filename, stream, codec=codec, binary=False, 
+        super().__init__(filename, stream, codec=codec, binary=False, 
                                          encoding=self.encoding, mode=mode, options=options)
         self.metadata = {}
         self.stub_vars = []
@@ -44,8 +45,8 @@ class PXIterable(BaseFileIterable):
         key = key.strip()
         value = value.strip()
         
-        # Remove quotes if present
-        if value.startswith('"') and value.endswith('"'):
+        # Remove outer quotes only if it's a single quoted scalar (not a quoted list like `"a" "b"`).
+        if value.startswith('"') and value.endswith('"') and value.count('"') == 2:
             value = value[1:-1]
         
         return key.upper(), value
@@ -59,7 +60,6 @@ class PXIterable(BaseFileIterable):
     def _parse_metadata(self, content: str):
         """Parse PC-Axis metadata section"""
         lines = content.split('\n')
-        in_data_section = False
         data_start_idx = 0
         
         for i, line in enumerate(lines):
@@ -67,7 +67,6 @@ class PXIterable(BaseFileIterable):
             
             # Check for DATA= marker
             if line.upper().startswith('DATA='):
-                in_data_section = True
                 data_start_idx = i + 1
                 # Handle DATA= on same line
                 if '=' in line:
@@ -133,7 +132,7 @@ class PXIterable(BaseFileIterable):
         records = []
         
         # Get all variable names in order
-        all_vars = self.stub_vars + self.heading_vars
+        self.stub_vars + self.heading_vars
         
         # Calculate dimensions
         stub_dims = [len(self.values.get(var, [])) for var in self.stub_vars]
@@ -148,7 +147,7 @@ class PXIterable(BaseFileIterable):
         for dim in heading_dims:
             total_heading_combinations *= dim if dim > 0 else 1
         
-        total_expected = total_stub_combinations * total_heading_combinations
+        total_stub_combinations * total_heading_combinations
         
         # Generate all combinations of stub variables
         stub_value_lists = [self.values.get(var, ['']) for var in self.stub_vars]
@@ -201,7 +200,7 @@ class PXIterable(BaseFileIterable):
     
     def reset(self):
         """Reset iterable"""
-        super(PXIterable, self).reset()
+        super().reset()
         self.pos = 0
         
         if self.mode == 'r':
@@ -252,7 +251,7 @@ class PXIterable(BaseFileIterable):
     def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk PC-Axis records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read(skip_empty=False))
             except StopIteration:

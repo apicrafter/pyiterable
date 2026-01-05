@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*- 
-import pytest
-from iterable.datatypes import CSVIterable
-from iterable.codecs import LZ4Codec
 from fixdata import FIXTURES
+
+from iterable.codecs import LZ4Codec
+from iterable.datatypes import CSVIterable
+
 
 class TestLZ4:
     def test_fileexts(self):
@@ -45,7 +45,7 @@ class TestLZ4:
         codecobj = LZ4Codec('fixtures/2cols6rows.csv.lz4', mode='r')
         iterable = CSVIterable(codec=codecobj)        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()

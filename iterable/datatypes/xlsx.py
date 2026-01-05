@@ -1,14 +1,17 @@
 from __future__ import annotations
+
 import typing
+
 from openpyxl import load_workbook
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
+
 
 def read_row_keys(rownum, ncols, sheet):
     """Read single row by row num"""
     tmp = list()
     for i in range(0, ncols):
-        ct = sheet.cell_type(rownum, i)
+        sheet.cell_type(rownum, i)
         cell_value = sheet.cell_value(rownum, i)
         get_col = str(cell_value)
         tmp.append(get_col)    
@@ -17,8 +20,10 @@ def read_row_keys(rownum, ncols, sheet):
 
 class XLSXIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', keys: list[str] = None, page:int = 0, start_line:int = 0, options:dict={}):
-        super(XLSXIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', keys: list[str] = None, page:int = 0, start_line:int = 0, options:dict=None):
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, noopen=True, options=options)
         self.keys = keys
         self.start_line = start_line + 1
         self.page = page
@@ -30,7 +35,7 @@ class XLSXIterable(BaseFileIterable):
         pass
 
     def reset(self):
-        super(XLSXIterable, self).reset()
+        super().reset()
         self.workbook = load_workbook(self.filename)
         self.sheet = self.workbook[self.workbook.sheetnames[self.page]]
         self.pos = self.start_line
@@ -47,7 +52,7 @@ class XLSXIterable(BaseFileIterable):
     def skip(self, num:int = 1):
         while num > 0:
             num -= 1
-            o = next(self.cursor)
+            next(self.cursor)
 
     @staticmethod
     def has_totals():
@@ -72,19 +77,19 @@ class XLSXIterable(BaseFileIterable):
         tmp = list()
         for cell in row:
             tmp.append(str(cell.value))
-        result = dict(zip(self.keys, tmp))
+        result = dict(zip(self.keys, tmp, strict=False))
         self.pos += 1
         return result
 
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk XLSX records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             row = next(self.cursor)
             tmp = list()
             for cell in row:
                 tmp.append(str(cell.value))
-            result = dict(zip(self.keys, tmp))
+            result = dict(zip(self.keys, tmp, strict=False))
             chunk.append(result)
             self.pos += 1
         return chunk

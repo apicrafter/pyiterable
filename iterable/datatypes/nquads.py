@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import typing
-from ..base import BaseFileIterable, BaseCodec
+
+from ..base import BaseCodec
 from .ntriples import NTriplesIterable
 
 
@@ -11,8 +13,10 @@ class NQuadsIterable(NTriplesIterable):
     One quad per line (N-Triples with graph context).
     """
     
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict={}):
-        super(NQuadsIterable, self).__init__(filename, stream, codec=codec, mode=mode, encoding=encoding, options=options)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict=None):
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, mode=mode, encoding=encoding, options=options)
         pass
 
     @staticmethod

@@ -1,6 +1,6 @@
+
 import pytest
-import os
-import tempfile
+
 from iterable.datatypes.ods import ODSIterable
 
 try:
@@ -33,4 +33,4 @@ def test_ods_id():
 @pytest.mark.skipif(not HAS_ODF and not HAS_PYEXCEL_ODS, reason="ODS library not available")
 def test_ods_flatonly():
     """Test ODS is flat only"""
-    assert ODSIterable.is_flatonly() == True
+    assert ODSIterable.is_flatonly()

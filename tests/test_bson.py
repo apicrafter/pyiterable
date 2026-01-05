@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*- 
-import pytest
+from fixdata import FIXTURES
+
 from iterable.datatypes import BSONIterable
 
-from fixdata import FIXTURES
 
 class TestBSON:
     def test_id(self):
@@ -11,7 +10,7 @@ class TestBSON:
 
     def test_flatonly(self):
         flag = BSONIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         iterable = BSONIterable('fixtures/2cols6rows_flat.bson')        
@@ -52,7 +51,7 @@ class TestBSON:
     def test_parsesimple_count(self):
         iterable = BSONIterable('fixtures/2cols6rows_flat.bson')        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()

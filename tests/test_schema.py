@@ -1,12 +1,9 @@
-# -*- coding: utf-8 -*-
-import pytest
 import datetime
-from iterable.helpers.schema import (
-    merge_schemes,
-    get_schemes,
-    get_schema,
-    schema2fieldslist
-)
+
+import pytest
+
+from iterable.helpers.schema import get_schema, get_schemes, merge_schemes, schema2fieldslist
+
 try:
     import bson
     HAS_BSON = True

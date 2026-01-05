@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
 from iterable.datatypes import NTriplesIterable
 
 
@@ -11,11 +10,11 @@ class TestNTriples:
 
     def test_flatonly(self):
         flag = NTriplesIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_has_totals(self):
         flag = NTriplesIterable.has_totals()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         """Test basic open/close"""

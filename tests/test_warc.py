@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*- 
 import pytest
-from iterable.datatypes import WARCIterable
+
 from iterable.codecs import GZIPCodec
+from iterable.datatypes import WARCIterable
 
 
 class TestWARC:
@@ -11,11 +11,11 @@ class TestWARC:
 
     def test_flatonly(self):
         flag = WARCIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_has_totals(self):
         flag = WARCIterable.has_totals()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         codecobj = GZIPCodec('fixtures/sample.warc.gz', mode='r', open_it=True)
@@ -129,7 +129,6 @@ class TestWARC:
     def test_write_single_record(self):
         """Test writing a single WARC record"""
         import os
-        import tempfile
         
         test_file = 'testdata/test_warc_write.warc'
         os.makedirs('testdata', exist_ok=True)
@@ -159,7 +158,6 @@ class TestWARC:
     def test_write_bulk_records(self):
         """Test writing multiple WARC records"""
         import os
-        import tempfile
         
         test_file = 'testdata/test_warc_write_bulk.warc'
         os.makedirs('testdata', exist_ok=True)

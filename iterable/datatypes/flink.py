@@ -1,8 +1,10 @@
 from __future__ import annotations
-import typing
-import struct
+
 import json
-from ..base import BaseFileIterable, BaseCodec
+import struct
+import typing
+
+from ..base import BaseCodec, BaseFileIterable
 
 
 class FlinkIterable(BaseFileIterable):
@@ -14,14 +16,16 @@ class FlinkIterable(BaseFileIterable):
     datamode = 'binary'
     
     def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', 
-                 include_metadata:bool = True, options:dict={}):
+                 include_metadata:bool = True, options:dict=None):
         """
         Initialize Flink iterable.
         
         Args:
             include_metadata: Include checkpoint_id, timestamp in output (default: True)
         """
-        super(FlinkIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.include_metadata = include_metadata
         if 'include_metadata' in options:
             self.include_metadata = options['include_metadata']
@@ -31,7 +35,7 @@ class FlinkIterable(BaseFileIterable):
 
     def reset(self):
         """Reset iterable"""
-        super(FlinkIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             # File is already opened by parent class
@@ -104,7 +108,7 @@ class FlinkIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk Flink checkpoint records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

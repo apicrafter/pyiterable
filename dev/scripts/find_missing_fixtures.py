@@ -20,6 +20,7 @@ CODECS = {
 
 # Existing fixtures in tests/fixtures/
 import os
+
 fixtures_dir = 'tests/fixtures'
 existing_files = set()
 if os.path.exists(fixtures_dir):
@@ -78,7 +79,7 @@ print("-" * 80)
 for datatype in sorted(TEXT_DATATYPES):
     if datatype in existing_by_datatype:
         print(f"\n{datatype.upper()}:")
-        for f, codec in sorted(existing_by_datatype[datatype]):
+        for f, _codec in sorted(existing_by_datatype[datatype]):
             print(f"  ✓ {f}")
 
 print("\n" + "=" * 80)

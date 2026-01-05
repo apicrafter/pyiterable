@@ -1,13 +1,15 @@
 from __future__ import annotations
-import typing
-from json import loads, dumps
-import datetime
 
-from ..base import BaseFileIterable, BaseCodec
+import datetime
+import typing
+from json import dumps, loads
+
+from ..base import BaseCodec, BaseFileIterable
 from ..helpers.utils import rowincount
 
 
-date_handler = lambda obj: (
+def date_handler(obj):
+    return (
     obj.isoformat()
     if isinstance(obj, (datetime.datetime, datetime.date))
     else None
@@ -21,14 +23,16 @@ class GELIterable(BaseFileIterable):
     """
     datamode = 'text'
     
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict={}):
-        super(GELIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict=None):
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
         self.pos = 0
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(GELIterable, self).reset()
+        super().reset()
         self.pos = 0
 
     @staticmethod
@@ -65,7 +69,7 @@ class GELIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk GELF records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 line = self.fobj.readline()
                 if not line:

@@ -1,18 +1,21 @@
 from __future__ import annotations
+
 import typing
-from json import loads, dumps
-import datetime
+
 import duckdb
-from ..base import BaseFileIterable, BaseCodec
+
+from ..base import BaseCodec, BaseFileIterable
 
 DUCKDB_USE_CACHE = True
 DUCKDB_CACHE_SIZE = 1000
 
 
-class DuckDBIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, engine:str="duckdb", mode:str = 'r', encoding:str = 'utf8', options:dict={}):
+class DuckDBEngineIterable(BaseFileIterable):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, engine:str="duckdb", mode:str = 'r', encoding:str = 'utf8', options:dict=None):
+        if options is None:
+            options = {}
         self.pos = 0
-        super(DuckDBIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)                
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)                
         self.slice = [0, DUCKDB_CACHE_SIZE]
         self.cached_batch = None
         pass
@@ -75,4 +78,8 @@ class DuckDBIterable(BaseFileIterable):
         """Read bulk records"""
         chunk = duckdb.sql(f"select * from '{self.filename}' offset {self.pos} limit {num}").df().to_dict('records')
         return chunk
+
+
+# Backwards-compatible alias (engine)
+DuckDBIterable = DuckDBEngineIterable
 

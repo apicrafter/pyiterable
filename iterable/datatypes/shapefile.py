@@ -1,6 +1,6 @@
 from __future__ import annotations
+
 import typing
-import json
 
 try:
     import shapefile
@@ -8,7 +8,7 @@ try:
 except ImportError:
     HAS_SHAPEFILE = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 def shape_to_geojson(shape_record, shape_obj):
@@ -64,7 +64,9 @@ class ShapefileIterable(BaseFileIterable):
     datamode = 'binary'
     
     def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None,
-                 mode='r', options: dict = {}):
+                 mode='r', options: dict = None):
+        if options is None:
+            options = {}
         if not HAS_SHAPEFILE:
             raise ImportError("pyshp library is required for Shapefile support. Install it with: pip install pyshp")
         
@@ -79,12 +81,12 @@ class ShapefileIterable(BaseFileIterable):
             else:
                 filename = shp_file  # Will be created if writing
         
-        super(ShapefileIterable, self).__init__(filename, stream, codec=codec, mode=mode,
+        super().__init__(filename, stream, codec=codec, mode=mode,
                                                 binary=True, encoding='utf8', options=options)
         self.reset()
     
     def reset(self):
-        super(ShapefileIterable, self).reset()
+        super().reset()
         self.features = []
         self.pos = 0
         
@@ -96,12 +98,12 @@ class ShapefileIterable(BaseFileIterable):
                 self.records = self.reader.records()
                 
                 # Convert all features
-                for i, (shape_obj, record) in enumerate(zip(self.shapes, self.records)):
+                for _i, (shape_obj, record) in enumerate(zip(self.shapes, self.records, strict=False)):
                     feature = shape_to_geojson(shapefile._ShapeRecord(shape_obj, record), shape_obj)
                     self.features.append(feature)
                 
                 self.iterator = iter(self.features)
-            except Exception as e:
+            except Exception:
                 self.features = []
                 self.iterator = iter(self.features)
         elif self.mode in ['w', 'wr']:
@@ -137,7 +139,7 @@ class ShapefileIterable(BaseFileIterable):
     def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk shapefile features"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:
@@ -174,7 +176,6 @@ class ShapefileIterable(BaseFileIterable):
                 elif isinstance(value, float):
                     field_type = 'F'
                     field_length = 19
-                    field_decimal = 10
                 else:
                     field_type = 'C'
                     field_length = 254
@@ -251,4 +252,4 @@ class ShapefileIterable(BaseFileIterable):
         if hasattr(self, 'reader') and self.reader is not None:
             # Shapefile reader doesn't need explicit close
             pass
-        super(ShapefileIterable, self).close()
+        super().close()

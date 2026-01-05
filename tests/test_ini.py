@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
 from iterable.datatypes import INIIterable
 
 
@@ -11,7 +10,7 @@ class TestINI:
 
     def test_flatonly(self):
         flag = INIIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         # Create a simple INI file for testing

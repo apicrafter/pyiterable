@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
-from iterable.datatypes import TOMLIterable
+
+import pytest
 from fixdata import FIXTURES
+
+from iterable.datatypes import TOMLIterable
 
 # Create fixture file if it doesn't exist
 FIXTURE_FILE = 'fixtures/2cols6rows.toml'
@@ -15,7 +16,7 @@ def setup_module():
             with open(FIXTURE_FILE, 'w', encoding='utf-8') as f:
                 # Create TOML with array of tables
                 for record in FIXTURES:
-                    f.write(f"[[item]]\n")
+                    f.write("[[item]]\n")
                     f.write(f"id = \"{record['id']}\"\n")
                     f.write(f"name = \"{record['name']}\"\n")
                     f.write("\n")
@@ -40,7 +41,7 @@ class TestTOML:
     def test_flatonly(self):
         try:
             flag = TOMLIterable.is_flatonly()
-            assert flag == False
+            assert not flag
         except ImportError:
             pytest.skip("TOML support requires tomli/tomli-w or toml package")
 

@@ -1,26 +1,30 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import smile
     HAS_SMILE = True
 except ImportError:
     HAS_SMILE = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class SMILEIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_SMILE:
             raise ImportError("SMILE support requires 'smile-json' package")
-        super(SMILEIterable, self).__init__(filename, stream, codec=codec, mode=mode, binary=True, options=options)
+        super().__init__(filename, stream, codec=codec, mode=mode, binary=True, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(SMILEIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             # SMILE format can contain multiple documents
@@ -74,7 +78,7 @@ class SMILEIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk SMILE records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

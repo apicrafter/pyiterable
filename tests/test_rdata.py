@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
+
+import pytest
+
 from iterable.datatypes import RDataIterable
-from fixdata import FIXTURES
 
 # Note: RData files require actual .rdata or .RData files
 # This test will be skipped if pyreadr is not available
@@ -22,7 +22,7 @@ class TestRData:
     def test_flatonly(self):
         try:
             flag = RDataIterable.is_flatonly()
-            assert flag == True
+            assert flag
         except ImportError:
             pytest.skip("RData support requires pyreadr package")
 
@@ -36,7 +36,7 @@ class TestRData:
     def test_has_totals(self):
         try:
             iterable = RDataIterable(FIXTURE_FILE)
-            assert RDataIterable.has_totals() == True
+            assert RDataIterable.has_totals()
             total = iterable.totals()
             assert total > 0
             iterable.close()

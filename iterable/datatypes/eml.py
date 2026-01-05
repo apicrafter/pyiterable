@@ -1,26 +1,29 @@
 from __future__ import annotations
-import typing
+
 import email
+import typing
 from email.utils import parsedate_to_datetime
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class EMLIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict={}):
-        super(EMLIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict=None):
+        if options is None:
+            options = {}
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(EMLIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             # EML files are single email messages
             # If filename is provided, read it; otherwise use stream
             if self.filename:
-                with open(self.filename, 'r', encoding=self.encoding) as f:
+                with open(self.filename, encoding=self.encoding) as f:
                     content = f.read()
             else:
                 content = self.fobj.read()
@@ -113,7 +116,7 @@ class EMLIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk EML records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import pyreadstat
     HAS_PYREADSTAT = True
@@ -11,21 +13,23 @@ except ImportError:
     except ImportError:
         HAS_SAS7BDAT = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class SASIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_PYREADSTAT and not HAS_SAS7BDAT:
             raise ImportError("SAS file support requires either 'pyreadstat' or 'sas7bdat' package")
-        super(SASIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(SASIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             if HAS_PYREADSTAT:
@@ -79,7 +83,7 @@ class SASIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk SAS records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

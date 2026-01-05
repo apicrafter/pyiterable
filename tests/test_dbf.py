@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*- 
 import pytest
-from iterable.datatypes import DBFIterable
 from fixdata import FIXTURES
+
+from iterable.datatypes import DBFIterable
 
 
 class TestDBF:
@@ -11,7 +11,7 @@ class TestDBF:
 
     def test_flatonly(self):
         flag = DBFIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         iterable = DBFIterable('fixtures/2cols6rows.dbf')        
@@ -50,7 +50,7 @@ class TestDBF:
     def test_parsesimple_count(self):
         iterable = DBFIterable('fixtures/2cols6rows.dbf')        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()
@@ -72,7 +72,7 @@ class TestDBF:
 
     def test_has_totals(self):
         has_totals = DBFIterable.has_totals()
-        assert has_totals == True
+        assert has_totals
 
     def test_read_bulk_advances_and_stops(self):
         iterable = DBFIterable('fixtures/2cols6rows.dbf')

@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import tomli
     import tomli_w
@@ -13,20 +15,22 @@ except ImportError:
         HAS_TOML = False
         HAS_TOMLI = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class TOMLIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_TOMLI and not HAS_TOML:
             raise ImportError("TOML support requires either 'tomli' and 'tomli-w' or 'toml' package")
-        super(TOMLIterable, self).__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(TOMLIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             data_str = self.fobj.read()
@@ -77,7 +81,7 @@ class TOMLIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk TOML records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

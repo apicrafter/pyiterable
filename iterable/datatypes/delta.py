@@ -1,26 +1,30 @@
 from __future__ import annotations
+
 import typing
+
 try:
     import deltalake
     HAS_DELTALAKE = True
 except ImportError:
     HAS_DELTALAKE = False
 
-from ..base import BaseFileIterable, BaseCodec
+from ..base import BaseCodec, BaseFileIterable
 
 
 class DeltaIterable(BaseFileIterable):
     datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict={}):
+    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+        if options is None:
+            options = {}
         if not HAS_DELTALAKE:
             raise ImportError("Delta Lake support requires 'deltalake' package")
-        super(DeltaIterable, self).__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
+        super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.reset()
         pass
 
     def reset(self):
         """Reset iterable"""
-        super(DeltaIterable, self).reset()
+        super().reset()
         self.pos = 0
         if self.mode == 'r':
             # Delta Lake requires a path to the delta table directory
@@ -68,7 +72,7 @@ class DeltaIterable(BaseFileIterable):
     def read_bulk(self, num:int = 10) -> list[dict]:
         """Read bulk Delta records"""
         chunk = []
-        for n in range(0, num):
+        for _n in range(0, num):
             try:
                 chunk.append(self.read())
             except StopIteration:

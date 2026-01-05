@@ -43,14 +43,14 @@ The documentation is configured for deployment to `iterabledata.github.io`:
 If your repository is **not** named `iterabledata.github.io` under the `iterabledata` organization, you have two options:
 
 ### Option 1: Deploy from current repository
-If deploying from `apicrafter/pyiterable`:
+If deploying from `datenoio/iterabledata`:
 - Update `docusaurus.config.js`:
   ```javascript
-  organizationName: 'apicrafter',
-  projectName: 'pyiterable',
-  baseUrl: '/pyiterable/',  // Note the trailing slash
+  organizationName: 'datenoio',
+  projectName: 'iterabledata',
+  baseUrl: '/iterabledata/',  // Note the trailing slash
   ```
-- Your site will be available at `https://apicrafter.github.io/pyiterable/`
+- Your site will be available at `https://datenoio.github.io/iterabledata/`
 
 ### Option 2: Deploy to separate repository
 1. Create a new repository `iterabledata/iterabledata.github.io`

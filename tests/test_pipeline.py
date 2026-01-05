@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
-import tempfile
-from iterable.pipeline import Pipeline, pipeline
-from iterable.datatypes import CSVIterable, JSONLinesIterable
+
 from fixdata import FIXTURES
+
+from iterable.datatypes import CSVIterable, JSONLinesIterable
+from iterable.pipeline import Pipeline, pipeline
 
 
 class TestPipeline:
@@ -29,8 +28,8 @@ class TestPipeline:
         assert p.trigger_func is None
         assert p.trigger_on == 1000
         assert p.final_func is None
-        assert p.reset_iterables == True
-        assert p.skip_nulls == True
+        assert p.reset_iterables
+        assert p.skip_nulls
         assert p.start_state == {}
         
         source.close()
@@ -280,7 +279,7 @@ class TestPipeline:
         
         # Read one record to move position
         _ = source.read()
-        initial_pos = source.pos if hasattr(source, 'pos') else None
+        source.pos if hasattr(source, 'pos') else None
         
         def process_func(record, state):
             return record

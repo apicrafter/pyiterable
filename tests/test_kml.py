@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*- 
-import pytest
 import os
-from iterable.datatypes import KMLIterable
+
 from fixdata import FIXTURES
+
+from iterable.datatypes import KMLIterable
 
 # Create fixture file if it doesn't exist
 FIXTURE_FILE = 'fixtures/2cols6rows.kml'
@@ -38,7 +38,7 @@ class TestKML:
 
     def test_flatonly(self):
         flag = KMLIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         iterable = KMLIterable(FIXTURE_FILE)        
@@ -46,7 +46,7 @@ class TestKML:
 
     def test_has_totals(self):
         iterable = KMLIterable(FIXTURE_FILE)
-        assert KMLIterable.has_totals() == True
+        assert KMLIterable.has_totals()
         total = iterable.totals()
         assert total == len(FIXTURES)
         iterable.close()

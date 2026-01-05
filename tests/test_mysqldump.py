@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-import pytest
 import os
+
 from iterable.datatypes import MySQLDumpIterable
 
 
@@ -11,7 +10,7 @@ class TestMySQLDump:
 
     def test_flatonly(self):
         flag = MySQLDumpIterable.is_flatonly()
-        assert flag == True
+        assert flag
 
     def test_openclose(self):
         """Test basic open/close"""

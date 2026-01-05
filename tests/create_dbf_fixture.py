@@ -23,7 +23,6 @@ if __name__ == '__main__':
         print("Install it with: pip install dbf")
         sys.exit(1)
 
-    from fixdata import FIXTURES
 
 def create_dbf_fixture():
     """Create a DBF file with the same data as other fixtures"""

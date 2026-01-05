@@ -1,7 +1,8 @@
-# -*- coding: utf-8 -*- 
 import pytest
+from fixdata import FIXTURES_TYPES
+
 from iterable.engines import DuckDBIterable
-from fixdata import FIXTURES_TYPES, FIXTURES
+
 
 class TestParquet:
     def test_id(self):
@@ -34,7 +35,7 @@ class TestParquet:
     def test_parsesimple_count(self):
         iterable = DuckDBIterable('fixtures/2cols6rows.parquet')        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES_TYPES)
         iterable.close()

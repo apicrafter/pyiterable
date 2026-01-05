@@ -1,7 +1,7 @@
-import os
 import sys
-from iterable.datatypes import JSONLinesIterable, ParquetIterable
+
 from iterable.codecs import ZSTDCodec
+from iterable.datatypes import JSONLinesIterable, ParquetIterable
 
 BATCH_SIZE = 10000
 

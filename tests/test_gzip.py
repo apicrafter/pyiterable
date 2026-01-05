@@ -1,8 +1,8 @@
-# -*- coding: utf-8 -*- 
-import pytest
-from iterable.datatypes import CSVIterable
-from iterable.codecs import GZIPCodec
 from fixdata import FIXTURES
+
+from iterable.codecs import GZIPCodec
+from iterable.datatypes import CSVIterable
+
 
 class TestGZIP:
     def test_fileexts(self):
@@ -44,7 +44,7 @@ class TestGZIP:
         codecobj = GZIPCodec('fixtures/2cols6rows.csv.gz', mode='r', open_it=True)
         iterable = CSVIterable(codec=codecobj)        
         n = 0
-        for row in iterable:
+        for _row in iterable:
             n += 1
         assert n == len(FIXTURES)
         iterable.close()

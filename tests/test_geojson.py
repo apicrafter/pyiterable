@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*- 
-import pytest
-import os
 import json
-from iterable.datatypes import GeoJSONIterable
+import os
+
 from fixdata import FIXTURES
+
+from iterable.datatypes import GeoJSONIterable
 
 # Create fixture file if it doesn't exist
 FIXTURE_FILE = 'fixtures/2cols6rows.geojson'
@@ -39,7 +39,7 @@ class TestGeoJSON:
 
     def test_flatonly(self):
         flag = GeoJSONIterable.is_flatonly()
-        assert flag == False
+        assert not flag
 
     def test_openclose(self):
         iterable = GeoJSONIterable(FIXTURE_FILE)        
@@ -47,7 +47,7 @@ class TestGeoJSON:
 
     def test_has_totals(self):
         iterable = GeoJSONIterable(FIXTURE_FILE)
-        assert GeoJSONIterable.has_totals() == True
+        assert GeoJSONIterable.has_totals()
         total = iterable.totals()
         assert total == len(FIXTURES)
         iterable.close()

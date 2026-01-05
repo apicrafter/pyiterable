@@ -1,6 +1,6 @@
-import pytest
 import os
 import tempfile
+
 from iterable.datatypes.ltsv import LTSVIterable
 
 
@@ -82,7 +82,7 @@ def test_ltsv_write():
         writer.close()
         
         # Verify written data
-        with open(tmp_path, 'r', encoding='utf-8') as f:
+        with open(tmp_path, encoding='utf-8') as f:
             lines = f.readlines()
             assert len(lines) == 2
             assert 'time:2023-01-01T00:00:00Z' in lines[0]
@@ -160,12 +160,12 @@ def test_ltsv_id():
 
 def test_ltsv_flatonly():
     """Test LTSV is flat only"""
-    assert LTSVIterable.is_flatonly() == True
+    assert LTSVIterable.is_flatonly()
 
 
 def test_ltsv_has_totals():
     """Test LTSV has totals"""
-    assert LTSVIterable.has_totals() == True
+    assert LTSVIterable.has_totals()
 
 
 def test_ltsv_totals():
