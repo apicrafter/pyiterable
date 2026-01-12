@@ -64,12 +64,18 @@ This library simplifies data processing and conversion between formats while pre
 - **R Data** - R RDS and RData files
 - **PX** - PC-Axis format
 
+### Scientific Formats
+- **NetCDF** - Network Common Data Form for scientific data
+- **HDF5** - Hierarchical Data Format
+
 ### Geospatial Formats
 - **GeoJSON** - Geographic JSON format
 - **GeoPackage** - OGC GeoPackage format
 - **GML** - Geography Markup Language
 - **KML** - Keyhole Markup Language
 - **Shapefile** - ESRI Shapefile format
+- **MVT/PBF** - Mapbox Vector Tiles
+- **TopoJSON** - Topology-preserving GeoJSON extension
 
 ### RDF & Semantic Formats
 - **JSON-LD** - JSON for Linking Data
@@ -77,6 +83,14 @@ This library simplifies data processing and conversion between formats while pre
 - **Turtle** - Terse RDF Triple Language
 - **N-Triples** - Line-based RDF format
 - **N-Quads** - N-Triples with context
+
+### Feed Formats
+- **Atom** - Atom Syndication Format
+- **RSS** - Rich Site Summary feed format
+
+### Network Formats
+- **PCAP** - Packet Capture format
+- **PCAPNG** - PCAP Next Generation format
 
 ### Log & Event Formats
 - **Apache Log** - Apache access/error logs
@@ -101,6 +115,9 @@ This library simplifies data processing and conversion between formats while pre
 ### Office Formats
 - **XLS/XLSX** - Microsoft Excel files
 - **ODS** - OpenDocument Spreadsheet
+
+### CAD Formats
+- **DXF** - AutoCAD Drawing Exchange Format
 
 ### Streaming & Big Data Formats
 - **Kafka** - Apache Kafka format
@@ -553,6 +570,34 @@ See the [examples](examples/) directory for more complete examples:
 
 See the [tests](tests/) directory for comprehensive usage examples and test cases.
 
+## AI Integration Guides
+
+IterableData can be integrated with AI platforms and frameworks for intelligent data processing:
+
+- **[AI Frameworks](docs/integrations/AI_FRAMEWORKS.md)** - Integration with LangChain, CrewAI, and AutoGen
+  - Tool creation for data reading and format conversion
+  - Schema inference and data quality analysis
+  - Multi-agent workflows for data processing
+  
+- **[OpenAI](docs/integrations/OPENAI.md)** - Direct OpenAI API integration (GPT-4, GPT-3.5, etc.)
+  - Function calling and Assistants API
+  - Structured outputs for consistent results
+  - Natural language data analysis and transformation
+  
+- **[Claude](docs/integrations/CLAUDE.md)** - Anthropic Claude AI integration
+  - Claude API integration with tools support
+  - Intelligent data analysis and schema inference
+  - Format conversion with AI guidance
+  - Data quality assessment and documentation
+  
+- **[Gemini](docs/integrations/GEMINI.md)** - Google Gemini AI integration
+  - Natural language data analysis
+  - Intelligent format conversion with AI guidance
+  - Schema documentation and data quality assessment
+  - Function calling integration
+
+These guides provide patterns, examples, and best practices for combining IterableData's unified data interface with AI capabilities.
+
 ## Related Projects
 
 This library is used in:
@@ -571,7 +616,14 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-### Version 1.0.7 (2024-12-20)
+### Version 1.0.8 (2026-01-05)
+- **AI Integration Guides**: Added comprehensive guides for LangChain, CrewAI, AutoGen, and Google Gemini AI
+- **Documentation**: Added capability matrix and enhanced API documentation
+- **Development Tools**: Added benchmarking and utility scripts
+- **Code Improvements**: Enhanced format detection, codecs, and data type handlers
+- **Examples**: Added ZIP XML processing example
+
+### Version 1.0.7 (2024-12-15)
 - **Major Format Expansion**: Added support for 50+ new data formats across multiple categories
 - **Enhanced Compression**: Added LZO, Snappy, and SZIP codec support
 - **CI/CD**: Added GitHub Actions workflows for automated testing and deployment

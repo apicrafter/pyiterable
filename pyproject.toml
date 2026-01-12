@@ -51,10 +51,17 @@ stats = ["pyreadstat>=1.2.0"]
 protobuf = ["protobuf>=4.0.0"]
 ion = ["ion-python>=1.0.0"]
 hdf5 = ["h5py>=3.0.0"]
-geospatial = ["geojson>=3.0.0", "pyshp>=2.3.0", "fiona>=1.9.0"]
+geospatial = ["geojson>=3.0.0", "pyshp>=2.3.0", "fiona>=1.9.0", "mapbox-vector-tile>=1.2.0", "topojson>=1.5.0"]
 toml = ["tomli>=2.0.0", "tomli-w>=1.0.0", "toml>=0.10.0"]
 msgpack = ["msgpack>=1.0.0"]
 yaml = ["pyyaml>=6.0.0"]
+pcap = ["dpkt>=1.9.0"]
+netcdf = ["netCDF4>=1.6.0"]
+mvt = ["mapbox-vector-tile>=1.2.0"]
+topojson = ["topojson>=1.5.0"]
+feed = ["feedparser>=6.0.0"]
+dxf = ["ezdxf>=1.0.0"]
+
 
 # Convenience group
 all = [
@@ -85,11 +92,20 @@ all = [
     "toml>=0.10.0",
     "msgpack>=1.0.0",
     "pyyaml>=6.0.0",
+    "dpkt>=1.9.0",
+    "netCDF4>=1.6.0",
+    "mapbox-vector-tile>=1.2.0",
+    "topojson>=1.5.0",
+    "feedparser>=6.0.0",
+    "ezdxf>=1.0.0",
 ]
 
 dev = [
     "pytest>=7.0.0",
     "pytest-benchmark>=4.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-xdist>=3.3.0",
+    "pytest-timeout>=2.2.0",
     "mock>=4.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
@@ -97,6 +113,24 @@ dev = [
     "types-openpyxl>=3.0.0",
     "hypothesis>=6.0.0",
     "pandas>=1.5.0", # Often used in tests or examples
+    # Security tools
+    "bandit[toml]>=1.7.5",
+    "pip-audit>=2.6.1",
+    "safety>=2.3.0",
+    # Code quality
+    "vulture>=2.10",
+    "radon>=6.0.0",
+    "pydocstyle[toml]>=6.3.0",
+    # Coverage
+    "coverage[toml]>=7.3.0",
+    # Dependency management
+    "pip-tools>=7.3.0",
+    "pipdeptree>=2.9.0",
+    "pip-licenses>=4.3.0",
+    # Build tools
+    "build>=1.0.0",
+    "twine>=4.0.0",
+    "check-wheel-contents>=0.5.0",
 ]
 
 [project.urls]
@@ -119,9 +153,43 @@ select = ["E", "F", "I", "B", "UP"]
 ignore = []
 
 [tool.pytest.ini_options]
-addopts = "--doctest-modules --verbose"
+addopts = "--doctest-modules --verbose --cov=iterable --cov-report=term-missing --cov-report=html --cov-report=xml"
 testpaths = ["tests"]
 norecursedirs = ["examples", ".git", ".venv", "__pycache__", "*.egg", "build", "dist"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+timeout = 300
+timeout_method = "thread"
+
+[tool.coverage.run]
+source = ["iterable"]
+omit = ["*/tests/*", "*/test_*.py", "*/__pycache__/*"]
+branch = true
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+fail_under = 75
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.bandit]
+exclude_dirs = ["tests", "build", "dist", ".venv", "__pycache__", "examples"]
+skips = ["B101"]  # Skip assert_used warnings in tests
+
+[tool.pydocstyle]
+convention = "google"
+match = "(?!test_).*\\.py"
+match-dir = "(?!build|dist|tests|__pycache__)"

@@ -1,534 +1,184 @@
-# AI Agents Integration Guide
-
-This document provides guidance on integrating IterableData with AI agent frameworks for automated data processing, transformation, and analysis tasks.
-
-## Overview
-
-AI agents can leverage IterableData's unified interface to process various data formats, enabling intelligent data transformation, validation, schema inference, and format conversion workflows. This guide covers integration patterns, use cases, and best practices.
-
----
-
-## Supported Agent Frameworks
-
-### LangChain Agents
-
-LangChain agents can use IterableData as tools for reading, writing, and converting data formats.
-
-#### Basic Integration
-
-```python
-from langchain.agents import AgentExecutor, create_openai_functions_agent
-from langchain_openai import ChatOpenAI
-from langchain.tools import Tool
-from iterable.helpers.detect import open_iterable
-from iterable.convert import convert
-
-def read_iterable_data(filename: str, limit: int = 10) -> str:
-    """Read data from a file and return as JSON string."""
-    with open_iterable(filename) as source:
-        records = [row for i, row in enumerate(source) if i < limit]
-        return str(records)
-
-def convert_data_format(input_file: str, output_file: str, format_hint: str = None) -> str:
-    """Convert data from one format to another."""
-    convert(input_file, output_file)
-    return f"Converted {input_file} to {output_file}"
-
-# Create LangChain tools
-iterable_tools = [
-    Tool(
-        name="read_data",
-        func=read_iterable_data,
-        description="Read data from files (CSV, JSON, Parquet, XML, etc.). Returns first N records as JSON."
-    ),
-    Tool(
-        name="convert_format",
-        func=convert_data_format,
-        description="Convert data files between formats (e.g., CSV to JSON, Parquet to CSV)."
-    )
-]
-
-# Create agent
-llm = ChatOpenAI(model="gpt-4")
-agent = create_openai_functions_agent(llm, iterable_tools, "")
-agent_executor = AgentExecutor(agent=agent, tools=iterable_tools, verbose=True)
-
-# Use agent
-result = agent_executor.invoke({
-    "input": "Read the first 5 records from data.csv and convert it to JSON format"
-})
-```
-
-#### Advanced Pattern: Schema Inference Agent
-
-```python
-from langchain.agents import AgentExecutor, create_openai_functions_agent
-from langchain_openai import ChatOpenAI
-from langchain.tools import Tool
-from iterable.helpers.detect import open_iterable
-from iterable.helpers.schema import infer_schema
-import json
-
-def infer_data_schema(filename: str, sample_size: int = 100) -> str:
-    """Infer schema from a data file."""
-    with open_iterable(filename) as source:
-        schema = infer_schema(source, sample_size=sample_size)
-        return json.dumps(schema, indent=2)
-
-def analyze_data_quality(filename: str) -> str:
-    """Analyze data quality: missing values, duplicates, outliers."""
-    with open_iterable(filename) as source:
-        stats = {
-            "total_records": 0,
-            "null_counts": {},
-            "unique_values": {}
-        }
-        for record in source:
-            stats["total_records"] += 1
-            for key, value in record.items():
-                if value is None:
-                    stats["null_counts"][key] = stats["null_counts"].get(key, 0) + 1
-        return json.dumps(stats, indent=2)
-
-schema_tools = [
-    Tool(
-        name="infer_schema",
-        func=infer_data_schema,
-        description="Infer data schema from a file. Returns field types and structure."
-    ),
-    Tool(
-        name="analyze_quality",
-        func=analyze_data_quality,
-        description="Analyze data quality metrics including null counts and statistics."
-    )
-]
-
-llm = ChatOpenAI(model="gpt-4")
-agent = create_openai_functions_agent(llm, schema_tools, "")
-executor = AgentExecutor(agent=agent, tools=schema_tools, verbose=True)
-
-result = executor.invoke({
-    "input": "Analyze the schema and data quality of sales_data.parquet"
-})
-```
-
-### CrewAI Agents
-
-CrewAI agents can collaborate on data processing tasks using IterableData.
-
-```python
-from crewai import Agent, Task, Crew
-from iterable.helpers.detect import open_iterable
-from iterable.convert import convert
-
-def data_reader_tool(filename: str) -> str:
-    """Read and summarize data file."""
-    with open_iterable(filename) as source:
-        count = sum(1 for _ in source)
-        return f"File contains {count} records"
-
-def data_converter_tool(input_file: str, output_file: str) -> str:
-    """Convert data format."""
-    convert(input_file, output_file)
-    return f"Converted to {output_file}"
-
-# Define agents
-data_analyst = Agent(
-    role='Data Analyst',
-    goal='Analyze data files and provide insights',
-    backstory='Expert in data analysis and format conversion',
-    tools=[data_reader_tool, data_converter_tool],
-    verbose=True
-)
-
-data_engineer = Agent(
-    role='Data Engineer',
-    goal='Convert and transform data between formats',
-    backstory='Specialist in data pipeline and ETL operations',
-    tools=[data_reader_tool, data_converter_tool],
-    verbose=True
-)
-
-# Define tasks
-task1 = Task(
-    description='Read customer_data.csv and convert it to JSON format',
-    agent=data_analyst
-)
-
-task2 = Task(
-    description='Validate the converted JSON file structure',
-    agent=data_engineer
-)
-
-# Create crew
-crew = Crew(
-    agents=[data_analyst, data_engineer],
-    tasks=[task1, task2],
-    verbose=True
-)
-
-result = crew.kickoff()
-```
-
-### AutoGen Agents
-
-AutoGen agents can use IterableData for multi-agent data processing workflows.
-
-```python
-from autogen import ConversableAgent, GroupChat, GroupChatManager
-from iterable.helpers.detect import open_iterable
-import json
-
-def read_data_function(filename: str) -> str:
-    """Read data file and return summary."""
-    with open_iterable(filename) as source:
-        records = list(source)
-        return json.dumps({
-            "count": len(records),
-            "sample": records[:3] if records else []
-        })
-
-# Define agents
-data_agent = ConversableAgent(
-    name="data_processor",
-    system_message="You are a data processing agent. Use the read_data function to analyze files.",
-    llm_config={"model": "gpt-4"},
-    function_map={"read_data": read_data_function}
-)
-
-analyst_agent = ConversableAgent(
-    name="analyst",
-    system_message="You analyze data and provide insights.",
-    llm_config={"model": "gpt-4"}
-)
-
-# Create group chat
-groupchat = GroupChat(
-    agents=[data_agent, analyst_agent],
-    messages=[],
-    max_round=10
-)
-
-manager = GroupChatManager(groupchat=groupchat, llm_config={"model": "gpt-4"})
-
-# Start conversation
-result = manager.initiate_chat(
-    data_agent,
-    message="Read data.csv and provide analysis"
-)
-```
-
----
-
-## Use Cases
-
-### 1. Intelligent Data Conversion
-
-Agents can automatically detect input formats and convert to target formats with appropriate transformations.
-
-```python
-def smart_converter(input_file: str, target_format: str, schema_hint: str = None):
-    """Agent-powered format converter with intelligent schema handling."""
-    with open_iterable(input_file) as source:
-        # Agent analyzes format and schema
-        # Performs necessary transformations
-        # Outputs in target format
-        pass
-```
-
-### 2. Data Validation and Cleaning
-
-Agents can validate data quality, identify issues, and suggest or perform cleaning operations.
-
-```python
-def validate_data(filename: str) -> dict:
-    """Use agent to validate data structure and quality."""
-    with open_iterable(filename) as source:
-        issues = []
-        for i, record in enumerate(source):
-            # Agent checks for validation issues
-            # Collects problems and suggestions
-            pass
-        return {"issues": issues, "recommendations": []}
-```
-
-### 3. Schema Mapping and Transformation
-
-Agents can map schemas between formats, handle nested structures, and transform data accordingly.
-
-```python
-def transform_schema(input_file: str, target_schema: dict):
-    """Agent-driven schema transformation."""
-    with open_iterable(input_file) as source:
-        # Agent maps fields
-        # Transforms nested structures
-        # Applies type conversions
-        pass
-```
-
-### 4. Format Detection and Recommendation
-
-Agents can analyze data characteristics and recommend optimal formats for storage or processing.
-
-```python
-def recommend_format(filename: str, use_case: str) -> str:
-    """Agent recommends best format for use case."""
-    with open_iterable(filename) as source:
-        # Agent analyzes data characteristics
-        # Considers use case requirements
-        # Recommends optimal format
-        pass
-```
-
----
-
-## Best Practices
-
-### 1. Efficient Data Streaming
-
-When working with large files, use IterableData's iterator interface to stream data to agents rather than loading everything into memory.
-
-```python
-def process_large_file(filename: str, agent):
-    """Process large files efficiently."""
-    with open_iterable(filename) as source:
-        batch = []
-        for record in source:
-            batch.append(record)
-            if len(batch) >= 1000:
-                # Process batch with agent
-                agent.process_batch(batch)
-                batch = []
-        # Process remaining records
-        if batch:
-            agent.process_batch(batch)
-```
-
-### 2. Format-Specific Optimization
-
-Different formats have different characteristics. Agents should leverage format-specific features:
-
-- **Parquet/ORC**: Use columnar reading for analytics
-- **JSONL**: Stream line-by-line for large files
-- **CSV**: Use DuckDB engine for fast queries
-- **XML**: Handle nested structures carefully
-
-### 3. Error Handling
-
-Implement robust error handling for agent operations:
-
-```python
-def safe_agent_operation(filename: str, agent_func):
-    """Safely execute agent operations with error handling."""
-    try:
-        with open_iterable(filename) as source:
-            return agent_func(source)
-    except Exception as e:
-        # Agent handles errors intelligently
-        return {"error": str(e), "suggestion": "Check file format"}
-```
-
-### 4. Context Management
-
-Always use context managers (`with` statements) to ensure proper resource cleanup:
-
-```python
-# ✅ Good
-with open_iterable('data.csv') as source:
-    agent.process(source)
-
-# ❌ Bad
-source = open_iterable('data.csv')
-agent.process(source)
-# May leak file handles
-```
-
----
-
-## Integration Patterns
-
-### Pattern 1: Agent as Data Processor
-
-Agent processes data row-by-row with IterableData:
-
-```python
-def agent_process_pipeline(input_file: str, output_file: str, agent):
-    """Agent processes each record in pipeline."""
-    with open_iterable(input_file) as source, \
-         open_iterable(output_file, mode='w') as dest:
-        for record in source:
-            processed = agent.transform(record)
-            if processed:
-                dest.write(processed)
-```
-
-### Pattern 2: Agent as Format Converter
-
-Agent orchestrates format conversion with intelligent handling:
-
-```python
-def agent_convert(input_file: str, output_file: str, agent):
-    """Agent-driven format conversion."""
-    # Agent analyzes input format
-    # Determines conversion strategy
-    # Executes conversion
-    convert(input_file, output_file)
-    # Agent validates output
-```
-
-### Pattern 3: Agent as Schema Mapper
-
-Agent maps schemas between different formats:
-
-```python
-def agent_schema_map(input_file: str, target_schema: dict, agent):
-    """Agent maps input schema to target schema."""
-    with open_iterable(input_file) as source:
-        schema_map = agent.analyze_schema_mapping(source, target_schema)
-        # Apply mapping during conversion
-        pass
-```
-
----
-
-## Performance Considerations
-
-### Batch Processing
-
-Process data in batches for better agent efficiency:
-
-```python
-def batch_agent_processing(filename: str, agent, batch_size: int = 100):
-    """Process data in batches for agent operations."""
-    with open_iterable(filename) as source:
-        batch = []
-        for record in source:
-            batch.append(record)
-            if len(batch) >= batch_size:
-                agent.process_batch(batch)
-                batch = []
-```
-
-### Streaming for Large Files
-
-Use IterableData's streaming capabilities to avoid memory issues:
-
-```python
-def stream_to_agent(filename: str, agent):
-    """Stream data to agent without loading entire file."""
-    with open_iterable(filename) as source:
-        for record in source:
-            agent.stream_process(record)
-```
-
-### Caching Agent Results
-
-Cache agent analysis results to avoid reprocessing:
-
-```python
-from functools import lru_cache
-
-@lru_cache(maxsize=100)
-def agent_analyze_format(filename: str):
-    """Cache format analysis results."""
-    with open_iterable(filename) as source:
-        # Agent analyzes format
-        return {"format": "csv", "schema": {}}
-```
-
----
-
-## Example: Complete Agent Workflow
-
-```python
-from langchain.agents import AgentExecutor, create_openai_functions_agent
-from langchain_openai import ChatOpenAI
-from langchain.tools import Tool
-from iterable.helpers.detect import open_iterable
-from iterable.convert import convert
-from iterable.pipeline import pipeline
-import json
-
-def read_data_tool(filename: str, limit: int = 10) -> str:
-    """Read data from file."""
-    with open_iterable(filename) as source:
-        records = [row for i, row in enumerate(source) if i < limit]
-        return json.dumps(records, indent=2, default=str)
-
-def convert_data_tool(input_file: str, output_file: str) -> str:
-    """Convert data format."""
-    convert(input_file, output_file)
-    return f"Successfully converted {input_file} to {output_file}"
-
-def process_data_pipeline(input_file: str, output_file: str, transform_func):
-    """Process data through pipeline with transformation."""
-    def process_record(record: dict, state: dict) -> dict:
-        return transform_func(record)
-    
-    with open_iterable(input_file) as source, \
-         open_iterable(output_file, mode='w') as dest:
-        pipeline(
-            source=source,
-            destination=dest,
-            process_func=process_record
-        )
-    return f"Processed {input_file} -> {output_file}"
-
-# Create tools
-tools = [
-    Tool(name="read_data", func=read_data_tool, 
-         description="Read data from files (CSV, JSON, Parquet, etc.)"),
-    Tool(name="convert_format", func=convert_data_tool,
-         description="Convert between data formats"),
-    Tool(name="process_pipeline", func=process_data_pipeline,
-         description="Process data through transformation pipeline")
-]
-
-# Create agent
-llm = ChatOpenAI(model="gpt-4", temperature=0)
-agent = create_openai_functions_agent(llm, tools, 
-    "You are a data processing agent. Use tools to read, convert, and process data files.")
-executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-
-# Execute task
-result = executor.invoke({
-    "input": "Read data.csv, analyze its structure, and convert it to JSONL format"
-})
-```
-
----
-
-## Limitations and Considerations
-
-1. **Token Limits**: Large files may exceed LLM context windows. Use sampling or chunking strategies.
-
-2. **Cost**: Agent operations can be expensive. Consider caching and batch processing.
-
-3. **Latency**: Agent operations add latency. Use for complex tasks, not simple conversions.
-
-4. **Error Handling**: Agents may make mistakes. Always validate agent outputs.
-
-5. **Format Support**: Not all IterableData formats may be suitable for agent processing. Test compatibility.
-
----
-
-## Future Enhancements
-
-Potential areas for improvement:
-
-- **Native Agent Tools**: Built-in IterableData tools for common agent frameworks
-- **Agent-Optimized Formats**: Formats optimized for agent processing
-- **Schema Inference Agents**: Specialized agents for schema analysis
-- **Validation Agents**: Agents for data quality validation
-- **Transformation Agents**: Agents for intelligent data transformation
-
----
+<!-- OPENSPEC:START -->
+# OpenSpec Instructions
+
+These instructions are for AI assistants working in this project.
+
+Always open `@/openspec/AGENTS.md` when the request:
+- Mentions planning or proposals (words like proposal, spec, change, plan)
+- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
+- Sounds ambiguous and you need the authoritative spec before coding
+
+Use `@/openspec/AGENTS.md` to learn:
+- How to create and apply change proposals
+- Spec format and conventions
+- Project structure and guidelines
+
+Keep this managed block so 'openspec update' can refresh the instructions.
+
+<!-- OPENSPEC:END -->
+
+# AGENTS.md
+
+Instructions for AI coding agents working on the IterableData project.
+
+## Setup commands
+
+- Install dependencies: `pip install -e ".[dev]"`
+
+- Run tests: `pytest --verbose` (includes coverage automatically)
+
+- Run tests with parallel execution: `pytest -n auto`
+
+- Run linter: `ruff check iterable tests`
+
+- Format code: `ruff format iterable tests`
+
+- Type check: `mypy iterable`
+
+- Run all checks: `ruff check iterable tests && ruff format --check iterable tests && pytest`
+
+## Security and Quality Tools
+
+- Security scan: `bandit -r iterable -ll`
+- Dependency vulnerabilities: `pip-audit --requirement <(pip freeze)`
+- Dead code detection: `vulture iterable --min-confidence 80`
+- Code complexity: `radon cc iterable --min B`
+- Documentation style: `pydocstyle iterable`
+- Coverage report: `pytest --cov=iterable --cov-report=html` (opens `htmlcov/index.html`)
+
+## Code style
+
+- Python 3.10+ with type hints where appropriate
+- Maximum line length: 120 characters (configured in `pyproject.toml`)
+- Use `ruff` for linting and formatting (E, F, I, B, UP rules enabled)
+- Use double quotes for strings consistently
+- Follow PEP 8 with project-specific exceptions
+- Always use context managers (`with` statements) for file operations
+- Import organization: standard library, third-party, local imports
+
+## Project structure
+
+- `iterable/` - Main package directory
+  - `helpers/` - Utility functions (detect, schema, utils)
+  - `datatypes/` - Format-specific implementations (CSV, JSON, Parquet, etc.)
+  - `codecs/` - Compression codec implementations
+  - `engines/` - Processing engines (DuckDB, internal)
+  - `convert/` - Format conversion utilities
+  - `pipeline/` - Data pipeline processing
+- `tests/` - Test suite (one test file per format/feature)
+- `examples/` - Usage examples
+- `testdata/` - Test data files
+- `fixtures/` - Test fixtures
+
+## Testing instructions
+
+- All tests are in the `tests/` directory
+- Test files follow pattern: `test_*.py`
+- Test classes: `Test*`
+- Test functions: `test_*`
+- Run specific test: `pytest tests/test_csv.py -v`
+- Run specific test function: `pytest tests/test_csv.py::TestCSV::test_read -v`
+- Tests should pass for Python 3.10, 3.11, and 3.12
+- Always run tests before committing: `pytest --verbose`
+- Some format tests may be skipped if optional dependencies are missing (this is expected)
+
+## Import patterns
+
+- Main entry point: `from iterable.helpers.detect import open_iterable`
+- Format-specific: `from iterable.datatypes.csv import CSVIterable`
+- Codecs: `from iterable.codecs.gzipcodec import GZIPCodec`
+- Always use `open_iterable()` for user-facing code; direct class usage is for advanced cases
+
+## File handling
+
+- Always use context managers: `with open_iterable('file.csv') as source:`
+- Never call `.close()` when using `with` statements
+- Reset iterators with `.reset()` method when needed
+- Handle compression automatically via filename detection or explicit codec
+
+## Error handling
+
+- Format detection failures should provide helpful error messages
+- Missing optional dependencies should raise clear ImportError with installation instructions
+- Invalid file formats should raise appropriate exceptions (ValueError, TypeError)
+- Always handle file I/O errors gracefully
+
+## Adding new formats
+
+1. Create new file in `iterable/datatypes/` (e.g., `newformat.py`)
+2. Implement class inheriting from `BaseIterable` in `iterable/base.py`
+3. Implement required methods: `read()`, `write()`, `read_bulk()`, `write_bulk()`, etc.
+4. Add format detection logic in `iterable/helpers/detect.py`
+5. Create comprehensive tests in `tests/test_newformat.py`
+6. Update `detect_file_type()` to recognize the format
+7. Add optional dependency to `pyproject.toml` if needed
+8. Update documentation
+
+## Adding new codecs
+
+1. Create new file in `iterable/codecs/` (e.g., `newcodec.py`)
+2. Implement class with `read()`, `write()`, `close()` methods
+3. Update `iterable/helpers/detect.py` to detect the codec
+4. Add compression format detection logic
+5. Create tests in `tests/test_newcodec.py` or relevant test file
+6. Add optional dependency to `pyproject.toml`
+
+## Code conventions
+
+- Use `open_iterable()` for automatic format detection
+- Use format-specific classes only when needed
+- Always close files or use context managers
+- Prefer bulk operations (`read_bulk`, `write_bulk`) for performance
+- Use DuckDB engine when appropriate (CSV, JSONL files)
+- Handle encoding automatically via `chardet` or user specification
+
+## Linting and formatting
+
+- Run `ruff check iterable tests` before committing
+- Run `ruff format iterable tests` to auto-format
+- Fix all linting errors; warnings are treated as errors
+- Type hints are encouraged but not strictly required (mypy runs but failures are allowed)
+- Pre-commit hooks will automatically run security scans, code quality checks, and formatting on commit
+- Install pre-commit hooks: `pre-commit install`
+
+## Commit guidelines
+
+- Write clear, descriptive commit messages
+- Test your changes: `pytest --verbose`
+- Run linter: `ruff check iterable tests`
+- Ensure code follows project style
+- Update tests if adding new functionality
+- Update documentation if changing public APIs
+
+## PR guidelines
+
+- All tests must pass
+- Linter must pass: `ruff check iterable tests`
+- Code should be formatted: `ruff format --check iterable tests`
+- Include tests for new features
+- Update relevant documentation
+- Describe changes clearly in PR description
+
+## Development tips
+
+- Use `iterable.helpers.detect.open_iterable()` for most use cases
+- Check existing format implementations for patterns
+- Look at `tests/test_*.py` files for usage examples
+- Test with compressed files (`.gz`, `.bz2`, `.xz`, `.zst`, etc.)
+- Test with various encodings for text formats
+- Handle edge cases: empty files, malformed data, missing dependencies
+
+## Known issues
+
+- Some formats require optional dependencies (see `pyproject.toml` for optional-dependencies)
+- DuckDB engine only supports certain formats (CSV, JSONL, JSON) and codecs (GZIP, ZStandard)
+- Large files should use streaming (iterator interface) to avoid memory issues
+- XML parsing requires specifying tag names via `iterableargs={'tagname': 'item'}`
 
 ## Resources
 
-- [LangChain Documentation](https://python.langchain.com/)
-- [CrewAI Documentation](https://docs.crewai.com/)
-- [AutoGen Documentation](https://microsoft.github.io/autogen/)
-- [IterableData API Reference](../docs/api/)
-- [Format Documentation](../docs/formats/)
-
+- Main documentation: See `README.md` and `docs/` directory
+- API reference: `docs/docs/api/`
+- Format documentation: `docs/docs/formats/`
+- Examples: `examples/` directory
+- AI Integration guides: `docs/integrations/` directory

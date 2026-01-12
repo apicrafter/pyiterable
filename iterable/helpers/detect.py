@@ -147,6 +147,16 @@ DATATYPE_REGISTRY: dict[str, tuple[str, str]] = {
     'rda': ('iterable.datatypes.rdata', 'RDataIterable'),
     'rds': ('iterable.datatypes.rds', 'RDSIterable'),
     'lance': ('iterable.datatypes.lance', 'LanceIterable'),
+    'pcap': ('iterable.datatypes.pcap', 'PCAPIterable'),
+    'pcapng': ('iterable.datatypes.pcap', 'PCAPIterable'),
+    'nc': ('iterable.datatypes.netcdf', 'NetCDFIterable'),
+    'netcdf': ('iterable.datatypes.netcdf', 'NetCDFIterable'),
+    'mvt': ('iterable.datatypes.mvt', 'MVTIterable'),
+    'pbf': ('iterable.datatypes.mvt', 'MVTIterable'),
+    'topojson': ('iterable.datatypes.topojson', 'TopoJSONIterable'),
+    'atom': ('iterable.datatypes.feed', 'FeedIterable'),
+    'rss': ('iterable.datatypes.feed', 'FeedIterable'),
+    'dxf': ('iterable.datatypes.dxf', 'DXFIterable'),
 }
 
 CODEC_REGISTRY: dict[str, tuple[str, str]] = {
