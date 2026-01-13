@@ -4,6 +4,7 @@ import typing
 
 try:
     import flatbuffers
+
     HAS_FLATBUFFERS = True
 except ImportError:
     HAS_FLATBUFFERS = False
@@ -12,8 +13,18 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class FlatBuffersIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', schema_file:str = None, root_type:str = None, options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        schema_file: str = None,
+        root_type: str = None,
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_FLATBUFFERS:
@@ -21,10 +32,10 @@ class FlatBuffersIterable(BaseFileIterable):
         super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.schema_file = schema_file
         self.root_type = root_type
-        if 'schema_file' in options:
-            self.schema_file = options['schema_file']
-        if 'root_type' in options:
-            self.root_type = options['root_type']
+        if "schema_file" in options:
+            self.schema_file = options["schema_file"]
+        if "root_type" in options:
+            self.root_type = options["root_type"]
         # Note: FlatBuffers requires generated Python code from schema
         # This is a simplified implementation
         self.reset()
@@ -34,9 +45,9 @@ class FlatBuffersIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        if self.mode == 'r':
+        if self.mode == "r":
             try:
-                if hasattr(self.fobj, 'seek'):
+                if hasattr(self.fobj, "seek"):
                     self.fobj.seek(0)
                 # Read all data
                 data = self.fobj.read()
@@ -49,7 +60,7 @@ class FlatBuffersIterable(BaseFileIterable):
                     messages = []
                     # For now, we'll assume a single message or need schema info
                     # This would need to be customized based on actual schema
-                    messages.append({'data': 'FlatBuffers reading requires schema-specific implementation'})
+                    messages.append({"data": "FlatBuffers reading requires schema-specific implementation"})
                     self.iterator = iter(messages)
             except Exception:
                 self.iterator = iter([])
@@ -59,7 +70,7 @@ class FlatBuffersIterable(BaseFileIterable):
 
     @staticmethod
     def id() -> str:
-        return 'flatbuffers'
+        return "flatbuffers"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -72,9 +83,9 @@ class FlatBuffersIterable(BaseFileIterable):
             self.pos += 1
             return row
         except (StopIteration, EOFError, ValueError):
-            raise StopIteration
+            raise StopIteration from None
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk FlatBuffers records"""
         chunk = []
         for _n in range(0, num):
@@ -84,13 +95,13 @@ class FlatBuffersIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single FlatBuffers record"""
         # FlatBuffers writing requires schema-specific implementation
         # This is a placeholder
         raise NotImplementedError("FlatBuffers writing requires schema-specific generated code")
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk FlatBuffers records"""
         for record in records:
             self.write(record)

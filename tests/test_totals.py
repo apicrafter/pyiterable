@@ -57,5 +57,3 @@ def test_totals_match_record_count(iterable_cls, path, kwargs, header_may_affect
         assert totals_normalized in (n, n + 1)
     else:
         assert totals_normalized == n
-
-

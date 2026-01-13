@@ -4,20 +4,21 @@ import pytest
 
 from iterable.datatypes import PXIterable
 
-FIXTURE_FILE = 'fixtures/2cols6rows.px'
+FIXTURE_FILE = "fixtures/2cols6rows.px"
+
 
 @pytest.mark.skipif(not os.path.exists(FIXTURE_FILE), reason="PC-Axis fixture file not found")
 class TestPX:
     def test_id(self):
         datatype_id = PXIterable.id()
-        assert datatype_id == 'px'
+        assert datatype_id == "px"
 
     def test_flatonly(self):
         flag = PXIterable.is_flatonly()
         assert flag
 
     def test_openclose(self):
-        iterable = PXIterable(FIXTURE_FILE)        
+        iterable = PXIterable(FIXTURE_FILE)
         iterable.close()
 
     def test_has_totals(self):
@@ -32,10 +33,10 @@ class TestPX:
         row = iterable.read()
         assert isinstance(row, dict)
         # Check that row has expected keys
-        assert 'Age' in row
-        assert 'Gender' in row
-        assert 'Year' in row
-        assert 'VALUE' in row
+        assert "Age" in row
+        assert "Gender" in row
+        assert "Year" in row
+        assert "VALUE" in row
         iterable.close()
 
     def test_read_all(self):
@@ -48,10 +49,10 @@ class TestPX:
             pass
         assert len(rows) == 18
         # Check first row
-        assert rows[0]['Age'] == '0-4'
-        assert rows[0]['Gender'] == 'Male'
-        assert rows[0]['Year'] == '2020'
-        assert rows[0]['VALUE'] == 100
+        assert rows[0]["Age"] == "0-4"
+        assert rows[0]["Gender"] == "Male"
+        assert rows[0]["Year"] == "2020"
+        assert rows[0]["VALUE"] == 100
         iterable.close()
 
     def test_read_bulk(self):
@@ -64,8 +65,8 @@ class TestPX:
     def test_metadata(self):
         iterable = PXIterable(FIXTURE_FILE)
         # Check that metadata is parsed
-        assert hasattr(iterable, 'metadata')
-        assert 'TITLE' in iterable.metadata or '_TITLE' in iterable.read()
+        assert hasattr(iterable, "metadata")
+        assert "TITLE" in iterable.metadata or "_TITLE" in iterable.read()
         iterable.close()
 
     def test_reset(self):

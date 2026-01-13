@@ -9,11 +9,7 @@ from ..helpers.utils import rowincount
 
 
 def date_handler(obj):
-    return (
-    obj.isoformat()
-    if isinstance(obj, (datetime.datetime, datetime.date))
-    else None
-)
+    return obj.isoformat() if isinstance(obj, (datetime.datetime, datetime.date)) else None
 
 
 class GELIterable(BaseFileIterable):
@@ -21,9 +17,18 @@ class GELIterable(BaseFileIterable):
     Graylog Extended Log Format (GELF) reader/writer.
     GELF is JSON-based, one JSON object per line (similar to JSONL).
     """
-    datamode = 'text'
-    
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict=None):
+
+    datamode = "text"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        encoding: str = "utf8",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
@@ -37,7 +42,7 @@ class GELIterable(BaseFileIterable):
 
     @staticmethod
     def id() -> str:
-        return 'gelf'
+        return "gelf"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -46,7 +51,7 @@ class GELIterable(BaseFileIterable):
     @staticmethod
     def has_totals():
         """Has totals indicator"""
-        return True        
+        return True
 
     def totals(self):
         """Returns file totals"""
@@ -56,7 +61,7 @@ class GELIterable(BaseFileIterable):
             fobj = self.fobj
         return rowincount(self.filename, fobj)
 
-    def read(self, skip_empty:bool = False) -> dict:
+    def read(self, skip_empty: bool = False) -> dict:
         """Read single GELF record"""
         line = next(self.fobj)
         if skip_empty and len(line) == 0:
@@ -66,7 +71,7 @@ class GELIterable(BaseFileIterable):
             return loads(line)
         return None
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk GELF records"""
         chunk = []
         for _n in range(0, num):
@@ -84,21 +89,22 @@ class GELIterable(BaseFileIterable):
         """Write single GELF record"""
         # Ensure required GELF fields are present
         gelf_record = record.copy()
-        
+
         # GELF v1.1 requires version field
-        if 'version' not in gelf_record:
-            gelf_record['version'] = '1.1'
-        
+        if "version" not in gelf_record:
+            gelf_record["version"] = "1.1"
+
         # GELF requires timestamp (Unix timestamp)
-        if 'timestamp' not in gelf_record:
+        if "timestamp" not in gelf_record:
             import time
-            gelf_record['timestamp'] = time.time()
-        
+
+            gelf_record["timestamp"] = time.time()
+
         # GELF requires short_message or message
-        if 'short_message' not in gelf_record and 'message' not in gelf_record:
-            gelf_record['short_message'] = str(record)
-        
-        self.fobj.write(dumps(gelf_record, ensure_ascii=False, default=date_handler) + '\n')
+        if "short_message" not in gelf_record and "message" not in gelf_record:
+            gelf_record["short_message"] = str(record)
+
+        self.fobj.write(dumps(gelf_record, ensure_ascii=False, default=date_handler) + "\n")
 
     def write_bulk(self, records: list[dict]):
         """Write bulk GELF records"""

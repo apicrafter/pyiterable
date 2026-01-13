@@ -37,3 +37,22 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+    
+    - name: Security scan with Bandit
+      run: |
+        bandit -r iterable -f json -o bandit-report.json || true
+        bandit -r iterable -ll || true
+    
+    - name: Dependency vulnerability scan with pip-audit
+      run: |
+        pip freeze > requirements-frozen.txt
+        pip-audit --requirement requirements-frozen.txt || true
+        rm requirements-frozen.txt
+    
+    - name: Upload coverage reports
+      if: matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        fail_ci_if_error: false
+        flags: unittests

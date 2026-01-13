@@ -8,14 +8,15 @@ from iterable.datatypes import SASIterable
 # This test will be skipped if pyreadstat/sas7bdat is not available
 # or if fixture file doesn't exist
 
-FIXTURE_FILE = 'fixtures/2cols6rows.sas7bdat'
+FIXTURE_FILE = "fixtures/2cols6rows.sas7bdat"
+
 
 @pytest.mark.skipif(not os.path.exists(FIXTURE_FILE), reason="SAS fixture file not found")
 class TestSAS:
     def test_id(self):
         try:
             datatype_id = SASIterable.id()
-            assert datatype_id == 'sas7bdat'
+            assert datatype_id == "sas7bdat"
         except ImportError:
             pytest.skip("SAS support requires pyreadstat or sas7bdat package")
 
@@ -28,7 +29,7 @@ class TestSAS:
 
     def test_openclose(self):
         try:
-            iterable = SASIterable(FIXTURE_FILE)        
+            iterable = SASIterable(FIXTURE_FILE)
             iterable.close()
         except ImportError:
             pytest.skip("SAS support requires pyreadstat or sas7bdat package")

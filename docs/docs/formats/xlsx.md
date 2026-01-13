@@ -56,6 +56,26 @@ source = open_iterable('data.xlsx', iterableargs={
     'page': 'Sheet2'  # Sheet name
 })
 
+# List available sheets
+from iterable.datatypes.xlsx import XLSXIterable
+
+# Before opening - discover sheets
+sheets = XLSXIterable('data.xlsx').list_tables('data.xlsx')
+print(f"Available sheets: {sheets}")
+
+# After opening - list all sheets
+source = open_iterable('data.xlsx', iterableargs={'page': 0})
+all_sheets = source.list_tables()  # Reuses open workbook
+print(f"All sheets: {all_sheets}")
+
+# Iterate over all sheets
+for sheet_name in all_sheets:
+    source = open_iterable('data.xlsx', iterableargs={'page': sheet_name})
+    print(f"Processing sheet: {sheet_name}")
+    for row in source:
+        process(row)
+    source.close()
+
 # Writing
 dest = open_iterable('output.xlsx', mode='w')
 dest.write({'id': 1, 'name': 'John', 'age': 30})

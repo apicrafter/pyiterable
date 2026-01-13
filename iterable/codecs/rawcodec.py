@@ -7,7 +7,7 @@ from ..base import BaseCodec
 
 
 class RAWCodec(BaseCodec):
-    def __init__(self, filename:str, mode:str = 'r', open_it:bool = False, options:dict = None):
+    def __init__(self, filename: str, mode: str = "r", open_it: bool = False, options: dict = None):
         if options is None:
             options = {}
         super().__init__(filename, mode=mode, open_it=open_it, options=options)
@@ -17,7 +17,7 @@ class RAWCodec(BaseCodec):
         self._fileobj = open(self.filename, self.mode)
         return self._fileobj
 
-    def textIO(self, encoding: str = 'utf8'):
+    def textIO(self, encoding: str = "utf8"):
         """
         Return a text wrapper over the underlying stream.
 
@@ -36,7 +36,7 @@ class RAWCodec(BaseCodec):
 
     @staticmethod
     def id():
-        return 'raw'
+        return "raw"
 
     @staticmethod
     def fileexts() -> list[str]:

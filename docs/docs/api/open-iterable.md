@@ -25,8 +25,15 @@ open_iterable(
 ### `filename` (str, required)
 
 Path to the file to open. The function automatically detects:
-- **Format**: From file extension (`.csv`, `.jsonl`, `.parquet`, etc.)
+- **Format**: From file extension (`.csv`, `.jsonl`, `.parquet`, etc.) or content analysis (magic numbers and heuristics)
 - **Compression**: From file extension (`.gz`, `.bz2`, `.xz`, `.zst`, etc.)
+
+**Format Detection Strategy:**
+1. **Primary**: Filename extension detection (fast and reliable)
+2. **Fallback**: Content-based detection when extension is missing or unknown
+   - **Binary formats**: Magic number detection (e.g., `PAR1` for Parquet, `ORC` for ORC)
+   - **Text formats**: Content heuristics (e.g., JSON structure, CSV delimiter patterns)
+3. Works with files without extensions, streams, and files with incorrect extensions
 
 ### `mode` (str, optional)
 
@@ -160,11 +167,64 @@ except Exception as e:
 
 ### Common Exceptions
 
+The library uses a comprehensive exception hierarchy for better error handling:
+
+**Base Exception:**
+- **IterableDataError**: Base exception for all library errors
+
+**Format Exceptions:**
+- **FormatError**: Base exception for format-related errors
+- **FormatNotSupportedError**: Format is not supported or dependencies are missing
+- **FormatDetectionError**: Could not detect file format from filename or content
+- **FormatParseError**: Format parsing failed (malformed data)
+
+**Codec Exceptions:**
+- **CodecError**: Base exception for compression codec errors
+- **CodecNotSupportedError**: Compression codec is not supported
+- **CodecDecompressionError**: Decompression failed
+- **CodecCompressionError**: Compression failed
+
+**Read/Write Exceptions:**
+- **ReadError**: Error during data reading operations
+- **WriteError**: Error during data writing operations
+- **StreamingNotSupportedError**: Format doesn't support streaming
+
+**Resource Exceptions:**
+- **ResourceError**: Base exception for resource management errors
+- **StreamNotSeekableError**: Stream doesn't support seeking (required for `reset()`)
+- **ResourceLeakError**: Resource leak detected
+
+**Standard Exceptions:**
 - **FileNotFoundError**: File doesn't exist or path is incorrect
 - **UnicodeDecodeError**: Encoding issue - specify encoding explicitly
-- **ValueError**: Missing required parameters or unsupported format
 - **ImportError**: Missing optional dependency (e.g., `duckdb`, `pyarrow`)
 - **PermissionError**: Insufficient file permissions
+
+**Example Error Handling:**
+```python
+from iterable.helpers.detect import open_iterable
+from iterable.exceptions import (
+    FormatDetectionError,
+    FormatNotSupportedError,
+    CodecError
+)
+
+try:
+    with open_iterable('data.unknown') as source:
+        for row in source:
+            process(row)
+except FormatDetectionError as e:
+    print(f"Could not detect format: {e.reason}")
+    # Try with explicit format or check file content
+except FormatNotSupportedError as e:
+    print(f"Format '{e.format_id}' not supported: {e.reason}")
+    # Install missing dependencies or use different format
+except CodecError as e:
+    print(f"Compression error with {e.codec_name}: {e}")
+    # Check file integrity or try different codec
+except FileNotFoundError:
+    print("File not found")
+```
 
 ## Troubleshooting
 
@@ -177,7 +237,9 @@ except Exception as e:
 
 ### Wrong Format Detected
 
-- **Check extension**: File extension determines format detection
+- **Check extension**: File extension is the primary method for format detection
+- **Content-based detection**: The library automatically uses content analysis (magic numbers/heuristics) when extension detection fails
+- **Files without extensions**: Content-based detection works for files without extensions or with incorrect extensions
 - **Use `detect_file_type()`**: Verify format detection before opening
 - **Specify format explicitly**: Some formats may need explicit parameters
 
@@ -198,3 +260,4 @@ except Exception as e:
 - [Quick Start Guide](/getting-started/quick-start)
 - [Basic Usage](/getting-started/basic-usage)
 - [BaseIterable Methods](/api/base-iterable)
+- [Exception Hierarchy](/api/exceptions) - Comprehensive exception reference

@@ -6,7 +6,14 @@ from ..base import BaseCodec
 
 
 class LZ4Codec(BaseCodec):
-    def __init__(self, filename:str, compression_level:int = lz4.frame.COMPRESSIONLEVEL_MINHC, mode:str = 'r', open_it:bool = False, options:dict = None):
+    def __init__(
+        self,
+        filename: str,
+        compression_level: int = lz4.frame.COMPRESSIONLEVEL_MINHC,
+        mode: str = "r",
+        open_it: bool = False,
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         self.compression_level = compression_level
@@ -21,9 +28,10 @@ class LZ4Codec(BaseCodec):
 
     @staticmethod
     def id():
-        return 'lz4'
-
+        return "lz4"
 
     @staticmethod
     def fileexts() -> list[str]:
-        return ['lz4',]
+        return [
+            "lz4",
+        ]

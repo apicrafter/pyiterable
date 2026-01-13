@@ -5,6 +5,7 @@ import typing
 try:
     from thrift.protocol import TBinaryProtocol
     from thrift.transport import TTransport
+
     HAS_THRIFT = True
 except ImportError:
     HAS_THRIFT = False
@@ -13,16 +14,25 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class ThriftIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', struct_class = None, options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        struct_class=None,
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_THRIFT:
             raise ImportError("Apache Thrift support requires 'thrift' package")
         super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.struct_class = struct_class
-        if 'struct_class' in options:
-            self.struct_class = options['struct_class']
+        if "struct_class" in options:
+            self.struct_class = options["struct_class"]
         if self.struct_class is None:
             raise ValueError("Thrift requires struct_class parameter (the generated Thrift struct class)")
         self.reset()
@@ -32,9 +42,9 @@ class ThriftIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        if self.mode == 'r':
+        if self.mode == "r":
             try:
-                if hasattr(self.fobj, 'seek'):
+                if hasattr(self.fobj, "seek"):
                     self.fobj.seek(0)
                 # Read all data
                 data = self.fobj.read()
@@ -46,7 +56,7 @@ class ThriftIterable(BaseFileIterable):
                     messages = []
                     transport = TTransport.TMemoryBuffer(data)
                     protocol = TBinaryProtocol.TBinaryProtocol(transport)
-                    
+
                     # Try to read all structs
                     while True:
                         try:
@@ -59,7 +69,7 @@ class ThriftIterable(BaseFileIterable):
                             messages.append(msg_dict)
                         except Exception:
                             break
-                    
+
                     self.iterator = iter(messages)
             except Exception:
                 self.iterator = iter([])
@@ -69,7 +79,7 @@ class ThriftIterable(BaseFileIterable):
 
     @staticmethod
     def id() -> str:
-        return 'thrift'
+        return "thrift"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -82,9 +92,9 @@ class ThriftIterable(BaseFileIterable):
             self.pos += 1
             return row
         except (StopIteration, EOFError, ValueError):
-            raise StopIteration
+            raise StopIteration from None
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk Thrift records"""
         chunk = []
         for _n in range(0, num):
@@ -94,20 +104,20 @@ class ThriftIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single Thrift record"""
         struct = self.struct_class()
         # Set struct fields from dict
         for key, value in record.items():
             if hasattr(struct, key):
                 setattr(struct, key, value)
-        
+
         transport = TTransport.TMemoryBuffer()
         protocol = TBinaryProtocol.TBinaryProtocol(transport)
         struct.write(protocol)
         self.fobj.write(transport.getvalue())
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk Thrift records"""
         for record in records:
             self.write(record)

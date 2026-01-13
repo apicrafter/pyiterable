@@ -1,15 +1,16 @@
 """Tests for iterable/base.py"""
 
 import io
+
 import pytest
 
 from iterable.base import (
-    BaseCodec,
-    BaseIterable,
-    BaseFileIterable,
-    ITERABLE_TYPE_STREAM,
-    ITERABLE_TYPE_FILE,
     ITERABLE_TYPE_CODEC,
+    ITERABLE_TYPE_FILE,
+    ITERABLE_TYPE_STREAM,
+    BaseCodec,
+    BaseFileIterable,
+    BaseIterable,
 )
 
 
@@ -199,7 +200,7 @@ class TestBaseFileIterable:
         """Test BaseFileIterable initialization with filename"""
         test_file = tmp_path / "test.txt"
         test_file.write_text("test data")
-        
+
         iterable = BaseFileIterable(filename=str(test_file), noopen=True)
         assert iterable.filename == str(test_file)
         assert iterable.stype == ITERABLE_TYPE_FILE
@@ -216,7 +217,7 @@ class TestBaseFileIterable:
         """Test BaseFileIterable initialization with codec"""
         test_file = tmp_path / "test.txt"
         test_file.write_text("test data")
-        
+
         codec = MockCodec(filename=str(test_file), mode="r")
         iterable = BaseFileIterable(codec=codec, noopen=True)
         assert iterable.stype == ITERABLE_TYPE_CODEC
@@ -231,7 +232,7 @@ class TestBaseFileIterable:
         """Test BaseFileIterable initialization with options"""
         test_file = tmp_path / "test.txt"
         test_file.write_text("test data")
-        
+
         options = {"custom_option": "value"}
         iterable = BaseFileIterable(filename=str(test_file), noopen=True, options=options)
         assert iterable.custom_option == "value"
@@ -240,7 +241,7 @@ class TestBaseFileIterable:
         """Test open method with file type"""
         test_file = tmp_path / "test.txt"
         test_file.write_text("test data")
-        
+
         iterable = BaseFileIterable(filename=str(test_file), noopen=True)
         iterable.open()
         assert iterable.fobj is not None
@@ -250,7 +251,7 @@ class TestBaseFileIterable:
         """Test open method with binary mode"""
         test_file = tmp_path / "test.bin"
         test_file.write_bytes(b"test data")
-        
+
         iterable = BaseFileIterable(filename=str(test_file), binary=True, noopen=True, mode="r")
         iterable.open()
         assert iterable.fobj is not None
@@ -268,13 +269,13 @@ class TestBaseFileIterable:
         """Test reset method with file type"""
         test_file = tmp_path / "test.txt"
         test_file.write_text("line1\nline2\nline3")
-        
+
         iterable = BaseFileIterable(filename=str(test_file), noopen=False)
         # Read first line
         first_pos = iterable.fobj.tell()
         iterable.fobj.readline()
         assert iterable.fobj.tell() > first_pos
-        
+
         # Reset should seek to beginning
         iterable.reset()
         assert iterable.fobj.tell() == 0
@@ -284,7 +285,7 @@ class TestBaseFileIterable:
         """Test reset method with codec type"""
         test_file = tmp_path / "test.txt"
         test_file.write_text("test data")
-        
+
         codec = MockCodec(filename=str(test_file), mode="r", open_it=True)
         iterable = BaseFileIterable(codec=codec, noopen=False)
         # Set datamode as class attribute
@@ -297,7 +298,7 @@ class TestBaseFileIterable:
     def test_reset_codec_write_mode(self, tmp_path):
         """Test reset with codec in write mode doesn't reset"""
         test_file = tmp_path / "test.txt"
-        
+
         codec = MockCodec(filename=str(test_file), mode="w", open_it=True)
         iterable = BaseFileIterable(codec=codec, noopen=False, mode="w")
         iterable.datamode = "text"
@@ -309,11 +310,11 @@ class TestBaseFileIterable:
         """Test close method with file type"""
         test_file = tmp_path / "test.txt"
         test_file.write_text("test data")
-        
+
         iterable = BaseFileIterable(filename=str(test_file), noopen=False)
         assert iterable.fobj is not None
         assert not iterable.fobj.closed
-        
+
         iterable.close()
         assert iterable.fobj.closed
 
@@ -321,7 +322,7 @@ class TestBaseFileIterable:
         """Test close method with codec type"""
         test_file = tmp_path / "test.txt"
         test_file.write_text("test data")
-        
+
         codec = MockCodec(filename=str(test_file), mode="r", open_it=True)
         iterable = BaseFileIterable(codec=codec, noopen=False)
         iterable.datamode = "text"
@@ -341,7 +342,7 @@ class TestBaseFileIterable:
         """Test context manager protocol"""
         test_file = tmp_path / "test.txt"
         test_file.write_text("test data")
-        
+
         with BaseFileIterable(filename=str(test_file), noopen=False) as iterable:
             assert iterable.fobj is not None
         # File should be closed after context exit
@@ -351,6 +352,6 @@ class TestBaseFileIterable:
         """Test that datamode defaults to 'text'"""
         test_file = tmp_path / "test.txt"
         test_file.write_text("test")
-        
+
         iterable = BaseFileIterable(filename=str(test_file), noopen=True)
         assert iterable.datamode == "text"

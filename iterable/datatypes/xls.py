@@ -16,7 +16,7 @@ def read_row_keys(rownum, ncols, sheet):
         sheet.cell_type(rownum, i)
         cell_value = sheet.cell_value(rownum, i)
         get_col = str(cell_value)
-        tmp.append(get_col)    
+        tmp.append(get_col)
     return tmp
 
 
@@ -30,10 +30,9 @@ def read_single_row(rownum, ncols, datemode, keys, sheet):
             # Returns a tuple.
             dt_tuple = xlrd.xldate_as_tuple(cell_value, datemode)
             # Create datetime object from this tuple.
-            get_col = str(datetime.datetime(             
-                dt_tuple[0], dt_tuple[1], dt_tuple[2],
-                dt_tuple[3], dt_tuple[4], dt_tuple[5]
-            ))
+            get_col = str(
+                datetime.datetime(dt_tuple[0], dt_tuple[1], dt_tuple[2], dt_tuple[3], dt_tuple[4], dt_tuple[5])
+            )
         elif ct == xlrd.XL_CELL_NUMBER:
             get_col = int(cell_value)
         else:
@@ -43,10 +42,20 @@ def read_single_row(rownum, ncols, datemode, keys, sheet):
     return row
 
 
-
 class XLSIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', keys: list[str] = None, page:int = 0, start_line:int = 0, options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode="r",
+        keys: list[str] = None,
+        page: int = 0,
+        start_line: int = 0,
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         super().__init__(filename, stream, codec=codec, binary=True, mode=mode, noopen=True, options=options)
@@ -71,7 +80,7 @@ class XLSIterable(BaseFileIterable):
     @staticmethod
     def id() -> str:
         """ID of the data source type"""
-        return 'xls'
+        return "xls"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -79,9 +88,38 @@ class XLSIterable(BaseFileIterable):
         return True
 
     @staticmethod
+    def has_tables() -> bool:
+        """Indicates if this format supports multiple tables/sheets."""
+        return True
+
+    def list_tables(self, filename: str | None = None) -> list[str] | None:
+        """List available sheet names in the Excel file.
+
+        Args:
+            filename: Optional filename. If None, uses instance's filename and reuses open workbook.
+
+        Returns:
+            list[str]: List of sheet names, or empty list if no sheets.
+        """
+        # If workbook is already open, reuse it
+        if filename is None and hasattr(self, "workbook") and self.workbook is not None:
+            return self.workbook.sheet_names()
+
+        # Otherwise, open temporarily
+        target_filename = filename if filename is not None else self.filename
+        if target_filename is None:
+            return None
+
+        workbook = open_workbook(target_filename)
+        try:
+            return workbook.sheet_names()
+        finally:
+            workbook.release_resources()
+
+    @staticmethod
     def has_totals():
         """Has totals indicator"""
-        return True        
+        return True
 
     def totals(self):
         """Returns file totals"""
@@ -95,7 +133,7 @@ class XLSIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk XLS records"""
         chunk = []
         ncols = self.sheet.ncols

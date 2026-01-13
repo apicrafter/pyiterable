@@ -8,14 +8,15 @@ from iterable.datatypes import StataIterable
 # This test will be skipped if pyreadstat is not available
 # or if fixture file doesn't exist
 
-FIXTURE_FILE = 'fixtures/2cols6rows.dta'
+FIXTURE_FILE = "fixtures/2cols6rows.dta"
+
 
 @pytest.mark.skipif(not os.path.exists(FIXTURE_FILE), reason="Stata fixture file not found")
 class TestStata:
     def test_id(self):
         try:
             datatype_id = StataIterable.id()
-            assert datatype_id == 'dta'
+            assert datatype_id == "dta"
         except ImportError:
             pytest.skip("Stata support requires pyreadstat package")
 
@@ -28,7 +29,7 @@ class TestStata:
 
     def test_openclose(self):
         try:
-            iterable = StataIterable(FIXTURE_FILE)        
+            iterable = StataIterable(FIXTURE_FILE)
             iterable.close()
         except ImportError:
             pytest.skip("Stata support requires pyreadstat package")

@@ -9,36 +9,40 @@ import chardet
 
 from ..base import BaseIterable
 
-DEFAULT_DELIMITERS = [',', ';', '\t', '|']
+DEFAULT_DELIMITERS = [",", ";", "\t", "|"]
 
-def rowincount(filename:str=None, fileobj=None):
+
+def rowincount(filename: str = None, fileobj=None):
     """Count number of rows by filename or file object"""
     totals = 0
     if filename is not None:
-        f = open(filename, 'rb')
-        bufgen = takewhile(lambda x: x, (f.read(1024*1024) for _ in repeat(None)))
-        totals = sum(buf.count(b'\n') for buf in bufgen)
-        f.close()        
+        f = open(filename, "rb")
+        bufgen = takewhile(lambda x: x, (f.read(1024 * 1024) for _ in repeat(None)))
+        totals = sum(buf.count(b"\n") for buf in bufgen)
+        f.close()
     elif fileobj is not None:
         f = fileobj
-        bufgen = takewhile(lambda x: x, (f.read(1024*1024) for _ in repeat(None)))
-        totals = sum(buf.count(b'\n') for buf in bufgen)                
+        bufgen = takewhile(lambda x: x, (f.read(1024 * 1024) for _ in repeat(None)))
+        totals = sum(buf.count(b"\n") for buf in bufgen)
     else:
-        raise ValueError('Filename or fileobj should not be None')
+        raise ValueError("Filename or fileobj should not be None")
     return totals
 
 
-def detect_encoding_raw(filename:str = None, stream:typing.IO=None, limit:int=1000000) -> str:
-    """Detect file or file object encoding reading 1MB data by default and using chardet"""    
+def detect_encoding_raw(filename: str = None, stream: typing.IO = None, limit: int = 1000000) -> str:
+    """Detect file or file object encoding reading 1MB data by default and using chardet"""
     if filename is not None:
-        f = open(filename, 'rb')
+        f = open(filename, "rb")
         chunk = f.read(limit)
         f.close()
         return chardet.detect(chunk)
     else:
         return chardet.detect(stream.read(limit))
 
-def detect_delimiter(filename:str = None, stream:typing.IO=None, encoding:str ='utf8', limit:int=20, threshold=0.6) -> str:
+
+def detect_delimiter(
+    filename: str = None, stream: typing.IO = None, encoding: str = "utf8", limit: int = 20, threshold=0.6
+) -> str:
     """Detect CSV file or file object delimiter with known encoding and limit with number of lines"""
     lines = []
     char_map = {}
@@ -59,20 +63,20 @@ def detect_delimiter(filename:str = None, stream:typing.IO=None, encoding:str ='
                 lines.append(line)
 
     if not lines:
-        return ','
+        return ","
 
     for char in DEFAULT_DELIMITERS:
         char_map[char] = []
-    
+
     for line in lines:
         for char in DEFAULT_DELIMITERS:
             char_map[char].append(line.count(char))
-    
+
     candidates = {}
-    for char in char_map:        
+    for char in char_map:
         if min(char_map[char]) != 0 and mean(char_map[char]) / max(char_map[char]) > threshold:
             candidates[char] = max(char_map[char])
-            
+
     if candidates:
         delimiter = max(candidates, key=candidates.get)
     else:
@@ -80,12 +84,13 @@ def detect_delimiter(filename:str = None, stream:typing.IO=None, encoding:str ='
         delimiter = max(DEFAULT_DELIMITERS, key=lambda c: sum(line.count(c) for line in lines))
     return delimiter
 
-def get_dict_value(d:dict, keys: list[str]):
+
+def get_dict_value(d: dict, keys: list[str]):
     """Return value of selected dict key"""
     out = []
     if d is None:
         return out
-#    keys = key.split('.')
+    #    keys = key.split('.')
     if len(keys) == 1:
         if type(d) == type({}) or isinstance(d, OrderedDict):
             if keys[0] in d.keys():
@@ -94,7 +99,7 @@ def get_dict_value(d:dict, keys: list[str]):
             for r in d:
                 if r and keys[0] in r.keys():
                     out.append(r[keys[0]])
-#        return out
+    #        return out
     else:
         if type(d) == type({}) or isinstance(d, OrderedDict):
             if keys[0] in d.keys():
@@ -124,7 +129,7 @@ def strip_dict_fields(record, fields, startkey=0):
     return record
 
 
-def dict_generator(indict:dict, pre:list=None):
+def dict_generator(indict: dict, pre: list = None):
     """Processes python dictionary and return list of key values
     :param indict
     :param pre
@@ -144,48 +149,49 @@ def dict_generator(indict:dict, pre:list=None):
                         #                print 'dgen', value, key, pre
                         for d in dict_generator(v, pre + [key]):
                             yield d
-#                    for d in dict_generator(v, [key] + pre):
-#                        yield d
+            #                    for d in dict_generator(v, [key] + pre):
+            #                        yield d
             else:
                 yield pre + [key, value]
     else:
         yield indict
 
 
-def guess_int_size(value:int):
+def guess_int_size(value: int):
     """Guess integer size"""
     if value < 255:
-        return 'uint8'
+        return "uint8"
     if value < 65535:
-        return 'uint16'
-    return 'uint32'
+        return "uint16"
+    return "uint32"
 
-def guess_datatype(s:str, qd:Object) -> dict:
+
+def guess_datatype(s: str, qd: Object) -> dict:
     """Guesses type of data by string provided
     :param s
     :param qd
     :return datatype"""
-    attrs = {'base' : 'str'}
-#    s = unicode(s)
+    attrs = {"base": "str"}
+    #    s = unicode(s)
     if s is None:
-       return {'base' : 'empty'}
+        return {"base": "empty"}
     if type(s) == int:
-        return {'base' : 'int'}
+        return {"base": "int"}
     if type(s) == float:
-        return {'base' : 'float'}
+        return {"base": "float"}
     elif type(s) != str:
-#        print((type(s)))
-        return {'base' : 'typed'}
-#    s = s.decode('utf8', 'ignore')
+        #        print((type(s)))
+        return {"base": "typed"}
+    #    s = s.decode('utf8', 'ignore')
     if s.isdigit():
         if s[0] == 0:
-            attrs = {'base' : 'numstr'}
+            attrs = {"base": "numstr"}
         else:
-            attrs = {'base' : 'int', 'subtype' : guess_int_size(int(s))}
+            attrs = {"base": "int", "subtype": guess_int_size(int(s))}
     else:
         try:
             float(s)
-            attrs = {'base' : 'float'}
+            attrs = {"base": "float"}
             return attrs
         except ValueError:
             pass
@@ -193,20 +199,22 @@ def guess_datatype(s:str, qd:Object) -> dict:
             is_date = False
             res = qd.match(s)
             if res:
-                attrs = {'base': 'date', 'pat': res['pattern']}
+                attrs = {"base": "date", "pat": res["pattern"]}
                 is_date = True
             if not is_date:
                 if len(s.strip()) == 0:
-                    attrs = {'base' : 'empty'}
+                    attrs = {"base": "empty"}
     return attrs
 
 
-def count_file_newlines(filename:str = None, stream:typing.IO = None):
+def count_file_newlines(filename: str = None, stream: typing.IO = None):
     """Counts number of lines in file"""
+
     def _make_gen(reader):
         while True:
-            b = reader(2 ** 16)
-            if not b: break
+            b = reader(2**16)
+            if not b:
+                break
             yield b
 
     if fname:
@@ -217,7 +225,7 @@ def count_file_newlines(filename:str = None, stream:typing.IO = None):
     return count
 
 
-def get_dict_keys(iterable:list[dict], limit:int=1000) -> list[str]:
+def get_dict_keys(iterable: list[dict], limit: int = 1000) -> list[str]:
     """Returns dictionary keys"""
     n = 0
     keys = []
@@ -232,7 +240,8 @@ def get_dict_keys(iterable:list[dict], limit:int=1000) -> list[str]:
                 keys.append(k)
     return keys
 
-def get_iterable_keys(iterable:BaseIterable, limit:int=1000) -> list[str]:
+
+def get_iterable_keys(iterable: BaseIterable, limit: int = 1000) -> list[str]:
     """Returns BaseIterable object keys"""
     n = 0
     keys = []
@@ -247,26 +256,31 @@ def get_iterable_keys(iterable:BaseIterable, limit:int=1000) -> list[str]:
                 keys.append(k)
     return keys
 
-def is_flat_object(item:object) -> bool:
+
+def is_flat_object(item: object) -> bool:
     """Measures if object is flat"""
     for _k, v in item.items():
         if isinstance(v, tuple) or isinstance(v, list):
             return False
         elif isinstance(v, dict):
-            if not _is_flat(v): return False
+            if not _is_flat(v):
+                return False
     return True
+
 
 # -*- coding: utf-8 -*-
 
-def get_dict_value_path(adict:dict, key:str, prefix:list=None):
+
+def get_dict_value_path(adict: dict, key: str, prefix: list = None):
     if prefix is None:
-        prefix = key.split('.')
+        prefix = key.split(".")
     if len(prefix) == 1:
         return adict[prefix[0]]
     else:
         return get_dict_value_path(adict[prefix[0]], key, prefix=prefix[1:])
 
-def get_dict_value_deep(adict:dict, key:str, prefix:list = None, as_array:bool = False, splitter:str = '.'):
+
+def get_dict_value_deep(adict: dict, key: str, prefix: list = None, as_array: bool = False, splitter: str = "."):
     """Used to get value from hierarhic dicts in python with params with dots as splitter"""
     if prefix is None:
         prefix = key.split(splitter)
@@ -275,7 +289,9 @@ def get_dict_value_deep(adict:dict, key:str, prefix:list = None, as_array:bool =
             if prefix[0] not in adict.keys():
                 return None
             if as_array:
-                return [adict[prefix[0]], ]
+                return [
+                    adict[prefix[0]],
+                ]
             return adict[prefix[0]]
         elif type(adict) == type([]):
             if as_array:

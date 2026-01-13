@@ -4,7 +4,8 @@ import typing
 
 try:
     from rdflib import BNode, Graph, Literal, URIRef
-    from rdflib.namespace import RDF
+    from rdflib.namespace import RDF  # noqa: F401
+
     HAS_RDFLIB = True
 except ImportError:
     HAS_RDFLIB = False
@@ -13,8 +14,18 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class TurtleIterable(BaseFileIterable):
-    datamode = 'text'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', subject:str = None, predicate:str = None, options:dict=None):
+    datamode = "text"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        subject: str = None,
+        predicate: str = None,
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_RDFLIB:
@@ -22,10 +33,10 @@ class TurtleIterable(BaseFileIterable):
         super().__init__(filename, stream, codec=codec, binary=False, mode=mode, options=options)
         self.subject = subject
         self.predicate = predicate
-        if 'subject' in options:
-            self.subject = options['subject']
-        if 'predicate' in options:
-            self.predicate = options['predicate']
+        if "subject" in options:
+            self.subject = options["subject"]
+        if "predicate" in options:
+            self.predicate = options["predicate"]
         self.graph = None
         self.reset()
         pass
@@ -34,33 +45,33 @@ class TurtleIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        
-        if self.mode == 'r':
+
+        if self.mode == "r":
             # Load RDF graph
             self.graph = Graph()
             if self.fobj is not None:
                 # Read from file object
                 content = self.fobj.read()
-                self.graph.parse(data=content, format='turtle')
+                self.graph.parse(data=content, format="turtle")
             elif self.filename is not None:
-                self.graph.parse(self.filename, format='turtle')
-            
+                self.graph.parse(self.filename, format="turtle")
+
             # Convert triples to dict records
             # Each record represents a subject with its properties
             subjects = {}
             for s, p, o in self.graph:
                 s_str = str(s)
                 if s_str not in subjects:
-                    subjects[s_str] = {'subject': s_str}
+                    subjects[s_str] = {"subject": s_str}
                 # Convert predicate to key (use local name if URI)
-                p_key = str(p).split('/')[-1].split('#')[-1]
+                p_key = str(p).split("/")[-1].split("#")[-1]
                 # Convert object to value
                 if isinstance(o, Literal):
                     o_value = str(o)
                 else:
                     o_value = str(o)
                 subjects[s_str][p_key] = o_value
-            
+
             self.iterator = iter(list(subjects.values()))
         else:
             # Write mode
@@ -69,7 +80,7 @@ class TurtleIterable(BaseFileIterable):
 
     @staticmethod
     def id() -> str:
-        return 'turtle'
+        return "turtle"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -82,9 +93,9 @@ class TurtleIterable(BaseFileIterable):
             self.pos += 1
             return row
         except (StopIteration, EOFError, ValueError):
-            raise StopIteration
+            raise StopIteration from None
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk Turtle/RDF records"""
         chunk = []
         for _n in range(0, num):
@@ -94,21 +105,21 @@ class TurtleIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single Turtle/RDF record"""
         # Convert dict to RDF triples
-        subject_uri = record.get('subject', record.get('@id'))
+        subject_uri = record.get("subject", record.get("@id"))
         if not subject_uri:
             # Generate a blank node
             subject = BNode()
         else:
             subject = URIRef(subject_uri)
-        
+
         for key, value in record.items():
-            if key in ['subject', '@id']:
+            if key in ["subject", "@id"]:
                 continue
             predicate = URIRef(key)
-            if isinstance(value, str) and (value.startswith('http://') or value.startswith('https://')):
+            if isinstance(value, str) and (value.startswith("http://") or value.startswith("https://")):
                 object_ref = URIRef(value)
             else:
                 object_ref = Literal(value)
@@ -121,9 +132,9 @@ class TurtleIterable(BaseFileIterable):
 
     def close(self):
         """Close and serialize graph if in write mode"""
-        if self.mode in ['w', 'wr'] and self.graph is not None:
+        if self.mode in ["w", "wr"] and self.graph is not None:
             if self.fobj is not None:
-                self.fobj.write(self.graph.serialize(format='turtle'))
+                self.fobj.write(self.graph.serialize(format="turtle"))
             elif self.filename is not None:
-                self.graph.serialize(destination=self.filename, format='turtle')
+                self.graph.serialize(destination=self.filename, format="turtle")
         super().close()

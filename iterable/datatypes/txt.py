@@ -7,23 +7,29 @@ from ..helpers.utils import rowincount
 
 
 class TxtIterable(BaseFileIterable):
-    def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None, 
-                 mode: str = 'r', encoding: str = 'utf8', parser: typing.Callable[[str], dict] = None, 
-                 options: dict = None):
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        encoding: str = "utf8",
+        parser: typing.Callable[[str], dict] = None,
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         self.pos = 0
         self.parser = parser
         # Check if parser is provided in options
-        if self.parser is None and 'parser' in options:
-            self.parser = options['parser']
-        super().__init__(filename, stream, codec=codec, binary=False, 
-                                          mode=mode, encoding=encoding, options=options)
+        if self.parser is None and "parser" in options:
+            self.parser = options["parser"]
+        super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
         pass
 
     @staticmethod
     def id() -> str:
-        return 'txt'
+        return "txt"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -44,7 +50,7 @@ class TxtIterable(BaseFileIterable):
 
     def read(self, skip_empty: bool = False):
         """Read single line from text file
-        
+
         Returns:
             - If parser is None: returns line content as string (with newline stripped)
             - If parser is provided: returns dict result of parser applied to the line
@@ -53,8 +59,8 @@ class TxtIterable(BaseFileIterable):
         if skip_empty and len(line.strip()) == 0:
             return self.read(skip_empty)
         self.pos += 1
-        line = line.rstrip('\n\r')
-        
+        line = line.rstrip("\n\r")
+
         if self.parser is not None:
             # Apply parser to line and return dict
             result = self.parser(line)
@@ -77,7 +83,7 @@ class TxtIterable(BaseFileIterable):
 
     def write(self, record):
         """Write single line to text file
-        
+
         Args:
             record: If parser is None, expects a string. If parser is provided, expects a dict
                    that will be converted back to a line (implementation depends on parser)
@@ -89,14 +95,14 @@ class TxtIterable(BaseFileIterable):
             if isinstance(record, dict):
                 # Simple conversion - join values with space
                 # Users should override this or provide a custom writer
-                line = ' '.join(str(v) for v in record.values())
+                line = " ".join(str(v) for v in record.values())
             else:
                 line = str(record)
         else:
             # If no parser, record should be a string
             line = str(record)
-        
-        self.fobj.write(line + '\n')
+
+        self.fobj.write(line + "\n")
 
     def write_bulk(self, records):
         """Write bulk lines to text file"""

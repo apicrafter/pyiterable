@@ -7,16 +7,26 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class PGCopyIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', delimiter:str = '\t', null:str = '\\N', options:dict=None):
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        encoding: str = "utf8",
+        delimiter: str = "\t",
+        null: str = "\\N",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
         self.delimiter = delimiter
         self.null = null
-        if 'delimiter' in options:
-            self.delimiter = options['delimiter']
-        if 'null' in options:
-            self.null = options['null']
+        if "delimiter" in options:
+            self.delimiter = options["delimiter"]
+        if "null" in options:
+            self.null = options["null"]
         self.reset()
         pass
 
@@ -24,7 +34,7 @@ class PGCopyIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        if self.mode == 'r':
+        if self.mode == "r":
             # PostgreSQL COPY format is tab-delimited by default
             # Skip header if present (starts with column names)
             # Format: col1\tcol2\tcol3\n
@@ -33,7 +43,7 @@ class PGCopyIterable(BaseFileIterable):
             self.fobj.seek(0)
             first_line = self.fobj.readline()
             self.fobj.seek(0)
-            
+
             # Check if first line looks like header (no tabs with numbers/quotes)
             if not any(char.isdigit() for char in first_line) and self.delimiter in first_line:
                 # Likely a header
@@ -48,7 +58,7 @@ class PGCopyIterable(BaseFileIterable):
 
     @staticmethod
     def id() -> str:
-        return 'pgcopy'
+        return "pgcopy"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -56,14 +66,14 @@ class PGCopyIterable(BaseFileIterable):
 
     def read(self) -> dict:
         """Read single PostgreSQL COPY record"""
-        if hasattr(self, 'has_header') and not self.has_header:
+        if hasattr(self, "has_header") and not self.has_header:
             row = next(self.reader)
             # Convert to dict with generic column names
             result = {}
             for idx, value in enumerate(row):
                 if value == self.null:
                     value = None
-                result[f'col_{idx}'] = value
+                result[f"col_{idx}"] = value
             self.pos += 1
             return result
         else:
@@ -75,7 +85,7 @@ class PGCopyIterable(BaseFileIterable):
             self.pos += 1
             return row
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk PostgreSQL COPY records"""
         chunk = []
         for _n in range(0, num):
@@ -85,21 +95,16 @@ class PGCopyIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single PostgreSQL COPY record"""
         if self.writer is None:
             # Initialize writer on first write
             self.keys = list(record.keys())
-            self.writer = csv.DictWriter(
-                self.fobj, 
-                fieldnames=self.keys, 
-                delimiter=self.delimiter,
-                lineterminator='\n'
-            )
+            self.writer = csv.DictWriter(self.fobj, fieldnames=self.keys, delimiter=self.delimiter, lineterminator="\n")
             # Write header
             header_row = {k: k for k in self.keys}
             self.writer.writerow(header_row)
-        
+
         # Convert None to NULL marker
         row = {}
         for key in self.keys:
@@ -108,27 +113,22 @@ class PGCopyIterable(BaseFileIterable):
                 row[key] = self.null
             else:
                 row[key] = str(value)
-        
+
         self.writer.writerow(row)
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk PostgreSQL COPY records"""
         if not records:
             return
-        
+
         if self.writer is None:
             # Initialize writer
             self.keys = list(records[0].keys())
-            self.writer = csv.DictWriter(
-                self.fobj, 
-                fieldnames=self.keys, 
-                delimiter=self.delimiter,
-                lineterminator='\n'
-            )
+            self.writer = csv.DictWriter(self.fobj, fieldnames=self.keys, delimiter=self.delimiter, lineterminator="\n")
             # Write header
             header_row = {k: k for k in self.keys}
             self.writer.writerow(header_row)
-        
+
         # Write all records
         for record in records:
             row = {}

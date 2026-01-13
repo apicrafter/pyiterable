@@ -7,12 +7,18 @@ from .fwf import FixedWidthIterable
 from .json import JSONIterable
 from .jsonl import JSONLinesIterable
 from .jsonld import JSONLDIterable
+from .libsvm import LIBSVMIterable
 from .ltsv import LTSVIterable
 from .mysqldump import MySQLDumpIterable
 from .psv import PSVIterable, SSVIterable
 from .txt import TxtIterable
 
 # Optional formats - import conditionally
+try:
+    from .arff import ARFFIterable
+except ImportError:
+    pass
+
 try:
     from .duckdb import DuckDBIterable
 except ImportError:
@@ -115,6 +121,11 @@ except ImportError:
     pass
 
 try:
+    from .html import HTMLIterable
+except ImportError:
+    pass
+
+try:
     from .geopackage import GeoPackageIterable
 except ImportError:
     pass
@@ -126,6 +137,11 @@ except ImportError:
 
 try:
     from .hdf5 import HDF5Iterable
+except ImportError:
+    pass
+
+try:
+    from .numpy import NumPyIterable
 except ImportError:
     pass
 
@@ -363,3 +379,95 @@ try:
     from .zipxml import ZIPXMLSource
 except ImportError:
     pass
+
+__all__ = [
+    # Core formats
+    "AnnotatedCSVIterable",
+    "ApacheLogIterable",
+    "CSVIterable",
+    "CSVWIterable",
+    "FixedWidthIterable",
+    "JSONIterable",
+    "JSONLinesIterable",
+    "JSONLDIterable",
+    "LIBSVMIterable",
+    "LTSVIterable",
+    "MySQLDumpIterable",
+    "PSVIterable",
+    "SSVIterable",
+    "TxtIterable",
+    # Optional formats
+    "ARFFIterable",
+    "ArrowIterable",
+    "ASN1Iterable",
+    "AVROIterable",
+    "BeamIterable",
+    "BencodeIterable",
+    "BSONIterable",
+    "CapnpIterable",
+    "CBORIterable",
+    "CDXIterable",
+    "CEFIterable",
+    "DBFIterable",
+    "DeltaIterable",
+    "DuckDBIterable",
+    "EDNIterable",
+    "EMLIterable",
+    "FlatBuffersIterable",
+    "FlexBuffersIterable",
+    "FlinkIterable",
+    "GELIterable",
+    "GeoJSONIterable",
+    "GeoPackageIterable",
+    "GMLIterable",
+    "HDF5Iterable",
+    "HOCONIterable",
+    "HTMLIterable",
+    "HudiIterable",
+    "ICALIterable",
+    "IcebergIterable",
+    "ILPIterable",
+    "INIIterable",
+    "IonIterable",
+    "KafkaIterable",
+    "KMLIterable",
+    "LanceIterable",
+    "LDIFIterable",
+    "MBOXIterable",
+    "MessagePackIterable",
+    "MHTMLIterable",
+    "NQuadsIterable",
+    "NTriplesIterable",
+    "NumPyIterable",
+    "ODSIterable",
+    "ORCIterable",
+    "ParquetIterable",
+    "PGCopyIterable",
+    "PickleIterable",
+    "ProtobufIterable",
+    "PulsarIterable",
+    "PXIterable",
+    "RDataIterable",
+    "RDFXMLIterable",
+    "RDSIterable",
+    "RecordIOIterable",
+    "SASIterable",
+    "SequenceFileIterable",
+    "ShapefileIterable",
+    "SMILEIterable",
+    "SPSSIterable",
+    "SQLiteIterable",
+    "StataIterable",
+    "TFRecordIterable",
+    "ThriftIterable",
+    "TOMLIterable",
+    "TurtleIterable",
+    "UBJSONIterable",
+    "VCFIterable",
+    "WARCIterable",
+    "XLSIterable",
+    "XLSXIterable",
+    "XMLIterable",
+    "YAMLIterable",
+    "ZIPXMLSource",
+]

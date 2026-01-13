@@ -4,6 +4,7 @@ import typing
 
 try:
     import yaml
+
     HAS_YAML = True
 except ImportError:
     HAS_YAML = False
@@ -12,7 +13,15 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class YAMLIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict=None):
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        encoding: str = "utf8",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_YAML:
@@ -25,7 +34,7 @@ class YAMLIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        if self.mode == 'r':
+        if self.mode == "r":
             # YAML can have multiple documents separated by ---
             self.documents = list(yaml.safe_load_all(self.fobj))
             self.current_doc = 0
@@ -40,13 +49,13 @@ class YAMLIterable(BaseFileIterable):
                 elif isinstance(doc, dict):
                     self.data.append(doc)
                 else:
-                    self.data.append({'value': doc})
+                    self.data.append({"value": doc})
         else:
             self.data = []
 
     @staticmethod
     def id() -> str:
-        return 'yaml'
+        return "yaml"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -60,7 +69,7 @@ class YAMLIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk YAML records"""
         chunk = []
         for _n in range(0, num):
@@ -70,13 +79,13 @@ class YAMLIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single YAML record"""
         yaml.dump(record, self.fobj, default_flow_style=False, allow_unicode=True)
-        self.fobj.write('---\n')
+        self.fobj.write("---\n")
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk YAML records"""
         for record in records:
             yaml.dump(record, self.fobj, default_flow_style=False, allow_unicode=True)
-            self.fobj.write('---\n')
+            self.fobj.write("---\n")

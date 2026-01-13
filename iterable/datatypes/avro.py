@@ -9,7 +9,9 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class AVROIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', options:dict=None):
+    def __init__(
+        self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None, mode="r", options: dict = None
+    ):
         if options is None:
             options = {}
         super().__init__(filename, stream, codec=codec, mode=mode, binary=True, options=options)
@@ -22,16 +24,13 @@ class AVROIterable(BaseFileIterable):
         self.pos = 0
         self.cursor = DataFileReader(self.fobj, DatumReader())
 
-
     @staticmethod
     def id() -> str:
-        return 'avro'
-
+        return "avro"
 
     @staticmethod
     def is_flatonly() -> bool:
         return True
-
 
     def read(self) -> dict:
         """Read single record"""
@@ -39,10 +38,9 @@ class AVROIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk records"""
         chunk = []
         for _n in range(0, num):
             chunk.append(self.read())
         return chunk
-

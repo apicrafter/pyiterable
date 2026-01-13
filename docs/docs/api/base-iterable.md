@@ -156,6 +156,86 @@ if source.has_totals():
 source.close()
 ```
 
+### `has_tables() -> bool`
+
+Check if the iterable format supports multiple tables, sheets, datasets, or other named collections.
+
+**Returns:** `True` if the format supports table listing, `False` otherwise.
+
+**Example:**
+```python
+from iterable.datatypes.xlsx import XLSXIterable
+
+if XLSXIterable.has_tables():
+    # This format supports multiple sheets
+    source = open_iterable('data.xlsx')
+    sheets = source.list_tables()
+    print(f"Available sheets: {sheets}")
+    source.close()
+```
+
+### `list_tables(filename: str | None = None) -> list[str] | None`
+
+List available tables, sheets, datasets, layers, or other named collections in the file.
+
+**Parameters:**
+- `filename` (str | None): Optional filename. If provided, opens the file temporarily to list tables. If `None`, uses the instance's filename and reuses any open connections.
+
+**Returns:** 
+- `list[str]`: List of table/sheet names if the format supports it
+- `[]`: Empty list if the file has no tables
+- `None`: If the format doesn't support table listing
+
+**Example - Discovery before opening:**
+```python
+from iterable.datatypes.xlsx import XLSXIterable
+
+# List sheets without opening the file
+sheets = XLSXIterable('data.xlsx').list_tables('data.xlsx')
+print(f"Available sheets: {sheets}")
+
+# Then open specific sheet
+source = open_iterable('data.xlsx', iterableargs={'page': sheets[1]})
+```
+
+**Example - Discovery after opening:**
+```python
+# Open file on first sheet
+source = open_iterable('data.xlsx', iterableargs={'page': 0})
+
+# List all available sheets (reuses open workbook)
+all_sheets = source.list_tables()
+print(f"All sheets: {all_sheets}")
+
+# Process current sheet
+for row in source:
+    process(row)
+
+source.close()
+```
+
+**Example - Database tables:**
+```python
+# List tables in SQLite database
+source = open_iterable('data.db', iterableargs={'table': 'users'})
+tables = source.list_tables()  # Reuses connection
+print(f"Available tables: {tables}")
+
+# Switch to different table
+source2 = open_iterable('data.db', iterableargs={'table': tables[1]})
+```
+
+**Supported Formats:**
+- **Excel formats** (XLSX, XLS, ODS): Returns sheet names
+- **Database formats** (SQLite, DuckDB): Returns table names
+- **Scientific formats** (HDF5, NetCDF): Returns dataset/variable names
+- **Geospatial formats** (GeoPackage): Returns layer names
+- **Statistical formats** (RData): Returns R object names
+- **Markup formats** (HTML, XML): Returns table IDs/indices (HTML) or tag names (XML)
+- **Archive formats** (ZIPXML): Returns XML filenames within ZIP archive
+- **Data lake formats** (Iceberg, Hudi): Returns table names from catalogs
+- **Other formats**: Returns `None` (not supported)
+
 ## Complete Example
 
 ```python
@@ -204,6 +284,8 @@ finally:
 2. **Use bulk operations**: `read_bulk()` and `write_bulk()` are faster for large files
 3. **Check totals availability**: Use `has_totals()` before calling `totals()`
 4. **Reset when needed**: Use `reset()` to re-read files
+5. **Discover tables before opening**: Use `list_tables()` to explore multi-table files before processing
+6. **Reuse connections**: When already opened, `list_tables()` reuses open connections for efficiency
 
 ## Related Topics
 

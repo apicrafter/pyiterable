@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import typing
+
 import numpy as np
 
 try:
     import netCDF4
+
     HAS_NETCDF = True
 except ImportError:
     HAS_NETCDF = False
@@ -13,15 +15,21 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class NetCDFIterable(BaseFileIterable):
-    datamode = 'binary'
+    datamode = "binary"
 
-    def __init__(self, filename: str = None, stream: typing.IO = None, codec: BaseCodec = None,
-                 mode: str = 'r', options: dict = None):
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_NETCDF:
             raise ImportError("NetCDF support requires 'netCDF4' package")
-        
+
         self.options = options
         super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.reset()
@@ -30,18 +38,18 @@ class NetCDFIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        if self.mode == 'r':
+        if self.mode == "r":
             if self.filename:
-                self.nc_dataset = netCDF4.Dataset(self.filename, 'r')
-            elif hasattr(self.fobj, 'read') and hasattr(self.fobj, 'name'):
-                 # netCDF4 requires a filename or memory mapping, but from python 3 file obj it's tricky without a name.
-                 # If it has a name, we use it.
-                 self.nc_dataset = netCDF4.Dataset(self.fobj.name, 'r')
+                self.nc_dataset = netCDF4.Dataset(self.filename, "r")
+            elif hasattr(self.fobj, "read") and hasattr(self.fobj, "name"):
+                # netCDF4 requires a filename or memory mapping, but from python 3 file obj it's tricky without a name.
+                # If it has a name, we use it.
+                self.nc_dataset = netCDF4.Dataset(self.fobj.name, "r")
             else:
-                 # If we have a stream of bytes but no filename, netCDF4 can read from memory if we pass the bytes.
-                 # But BaseFileIterable usually gives us a stream.
-                 # For now, let's require a filename or a named stream.
-                 raise ValueError("NetCDF reading currently requires a filename or a file object with a name attribute.")
+                # If we have a stream of bytes but no filename, netCDF4 can read from memory if we pass the bytes.
+                # But BaseFileIterable usually gives us a stream.
+                # For now, let's require a filename or a named stream.
+                raise ValueError("NetCDF reading currently requires a filename or a file object with a name attribute.")
 
             self.iterator = self.__iterator()
         else:
@@ -65,35 +73,35 @@ class NetCDFIterable(BaseFileIterable):
                 yield {name: var[:] for name, var in variables.items()}
             return
 
-        target_dim_name = self.options.get('dimension')
+        target_dim_name = self.options.get("dimension")
         if not target_dim_name:
             # Try to find unlimited dimension
             for name, dim in dims.items():
                 if dim.isunlimited():
                     target_dim_name = name
                     break
-            
+
             # If no unlimited, just pick the first one (often time or similar)
             if not target_dim_name and len(dims) > 0:
                 target_dim_name = list(dims.keys())[0]
 
         if not target_dim_name:
-             # Should be covered by "if not dims" check but safety first
-             return
+            # Should be covered by "if not dims" check but safety first
+            return
 
         target_dim = dims[target_dim_name]
         size = target_dim.size
 
         # Pre-select variables that use this dimension
-        # If a variable doesn't use the dimension, should we emit it every time? 
-        # Usually metadata variables (scalars) are emitted once or repeated. 
+        # If a variable doesn't use the dimension, should we emit it every time?
+        # Usually metadata variables (scalars) are emitted once or repeated.
         # Let's include everything for now, handling shape.
-        
+
         variables = self.nc_dataset.variables
         # Optim optimization: separate variables into "sliced" and "scalar/other"
         sliced_vars = []
         other_vars = []
-        
+
         for name, var in variables.items():
             if target_dim_name in var.dimensions:
                 # We need to find WHICH axis corresponds to target_dim
@@ -111,7 +119,7 @@ class NetCDFIterable(BaseFileIterable):
                 slicer = [slice(None)] * var.ndim
                 slicer[axis_idx] = i
                 val = var[tuple(slicer)]
-                
+
                 # Convert numpy types to python native types if it's a scalar result
                 # masked arrays need handling
                 if np.ma.is_masked(val):
@@ -120,7 +128,7 @@ class NetCDFIterable(BaseFileIterable):
                     val = val.item()
                 elif isinstance(val, bytes):
                     # decode chars/strings
-                    val = val.decode('utf-8', 'ignore')
+                    val = val.decode("utf-8", "ignore")
 
                 record[name] = val
 
@@ -129,30 +137,59 @@ class NetCDFIterable(BaseFileIterable):
             # But standard CSV/JSONL logic implies full record.
             # Maybe we should only include scalars for 'other_vars'
             for name, var in other_vars:
-                 val = var[:]
-                 if np.ma.is_masked(val):
-                     if val.size == 1:
-                         val = None
-                     else:
-                         val = val.tolist()
-                 elif isinstance(val, np.generic):
-                     val = val.item()
-                 
-                 # Optimization: if it's a byte string (char array), decode
-                 if hasattr(val, 'decode'):
-                     val = val.decode('utf-8', 'ignore')
-                 
-                 record[name] = val
-            
+                val = var[:]
+                if np.ma.is_masked(val):
+                    if val.size == 1:
+                        val = None
+                    else:
+                        val = val.tolist()
+                elif isinstance(val, np.generic):
+                    val = val.item()
+
+                # Optimization: if it's a byte string (char array), decode
+                if hasattr(val, "decode"):
+                    val = val.decode("utf-8", "ignore")
+
+                record[name] = val
+
             yield record
 
     @staticmethod
     def id() -> str:
-        return 'netcdf'
+        return "netcdf"
 
     @staticmethod
     def is_flatonly() -> bool:
         return False
+
+    @staticmethod
+    def has_tables() -> bool:
+        """Indicates if this format supports multiple tables/variables."""
+        return True
+
+    def list_tables(self, filename: str | None = None) -> list[str] | None:
+        """List available variable names in the NetCDF file.
+
+        Args:
+            filename: Optional filename. If None, uses instance's filename and reuses open dataset.
+
+        Returns:
+            list[str]: List of variable names, or empty list if no variables.
+        """
+        # If dataset is already open, reuse it
+        if filename is None and hasattr(self, "nc_dataset") and self.nc_dataset is not None:
+            return list(self.nc_dataset.variables.keys())
+
+        # Otherwise, open temporarily
+        target_filename = filename if filename is not None else self.filename
+        if target_filename is None:
+            return None
+
+        nc_dataset = netCDF4.Dataset(target_filename, "r")
+        try:
+            return list(nc_dataset.variables.keys())
+        finally:
+            nc_dataset.close()
 
     @staticmethod
     def has_totals():
@@ -160,10 +197,10 @@ class NetCDFIterable(BaseFileIterable):
 
     def totals(self):
         # Return size of target dimension if possible
-        if hasattr(self, 'nc_dataset'):
-             # Logic duplicate from __iterator roughly
+        if hasattr(self, "nc_dataset"):
+            # Logic duplicate from __iterator roughly
             dims = self.nc_dataset.dimensions
-            target_dim_name = self.options.get('dimension')
+            target_dim_name = self.options.get("dimension")
             if not target_dim_name:
                 for name, dim in dims.items():
                     if dim.isunlimited():
@@ -171,13 +208,13 @@ class NetCDFIterable(BaseFileIterable):
                         break
                 if not target_dim_name and len(dims) > 0:
                     target_dim_name = list(dims.keys())[0]
-            
+
             if target_dim_name and target_dim_name in dims:
-                 return dims[target_dim_name].size
+                return dims[target_dim_name].size
         return 0
 
     def close(self):
-        if hasattr(self, 'nc_dataset'):
+        if hasattr(self, "nc_dataset"):
             self.nc_dataset.close()
         super().close()
 

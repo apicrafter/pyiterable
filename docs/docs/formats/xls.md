@@ -47,6 +47,19 @@ source = open_iterable('data.xls', iterableargs={
     'page': 1  # Second sheet (0-indexed)
 })
 
+# List available sheets
+from iterable.datatypes.xls import XLSIterable
+
+# Discover sheets before opening
+sheets = XLSIterable('data.xls').list_tables('data.xls')
+print(f"Available sheets: {sheets}")
+
+# List sheets after opening (reuses workbook)
+source = open_iterable('data.xls', iterableargs={'page': 0})
+all_sheets = source.list_tables()  # Reuses open workbook
+print(f"All sheets: {all_sheets}")
+source.close()
+
 # Specify column names manually
 source = open_iterable('data.xls', iterableargs={
     'keys': ['id', 'name', 'date'],

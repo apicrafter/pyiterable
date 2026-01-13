@@ -1,24 +1,64 @@
 from __future__ import annotations
 
 import json
+import os
 import typing
+
+try:
+    import ijson
+
+    HAS_IJSON = True
+except ImportError:
+    HAS_IJSON = False
 
 from ..base import BaseCodec, BaseFileIterable
 
 
 class JSONIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', tagname:str= None, options:dict=None):
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode="r",
+        tagname: str = None,
+        options: dict = None,
+    ):
         if options is None:
             options = {}
-        self.tagname = tagname or options.get('tagname')
+        self.tagname = tagname or options.get("tagname")
+        self._streaming = False
+        self._parser = None
+        self._items_buffer = []
         super().__init__(filename, stream, codec=codec, mode=mode, binary=False, options=options)
         self.reset()
         pass
 
+    def _should_use_streaming(self) -> bool:
+        """Determine if streaming parser should be used"""
+        if not HAS_IJSON:
+            return False
+        # Use streaming for files larger than 10MB or non-seekable streams
+        if self.filename:
+            try:
+                file_size = os.path.getsize(self.filename)
+                return file_size > 10 * 1024 * 1024  # 10MB threshold
+            except (OSError, TypeError):
+                # Can't determine size, use streaming for safety
+                return True
+        # For streams without filename, use streaming if not seekable
+        if hasattr(self.fobj, "seekable"):
+            return not self.fobj.seekable()
+        # Default to streaming for unknown cases
+        return True
+
     def reset(self):
         super().reset()
         self.pos = 0
-        if self.mode in ['w', 'wr']:
+        self._streaming = False
+        self._parser = None
+        self._items_buffer = []
+        if self.mode in ["w", "wr"]:
             # Re-initialize output (truncate if needed) and prepare streaming JSON writing.
             if hasattr(self.fobj, "seek") and hasattr(self.fobj, "truncate"):
                 try:
@@ -33,46 +73,109 @@ class JSONIterable(BaseFileIterable):
             if self.tagname:
                 self.fobj.write('{"' + str(self.tagname) + '":[')
             else:
-                self.fobj.write('[')
+                self.fobj.write("[")
             self.total = 0
             self.data = None
         else:
-            self.data = json.load(self.fobj)
-            if self.tagname:
-                self.data = self.data[self.tagname]
-            self.total = len(self.data)
+            # Determine if we should use streaming parser
+            if self._should_use_streaming():
+                # Use streaming parser
+                self._streaming = True
+                self.fobj.seek(0)
+                if self.tagname:
+                    # Parse items from a specific key in the JSON object
+                    self._parser = ijson.items(self.fobj, self.tagname + ".item")
+                else:
+                    # Parse items from a JSON array
+                    self._parser = ijson.items(self.fobj, "item")
+                # Pre-fetch first item to check if parser works
+                try:
+                    self._first_item = next(self._parser)
+                    self._items_buffer = [self._first_item]
+                    self.total = None  # Unknown total for streaming
+                except StopIteration:
+                    self._items_buffer = []
+                    self.total = 0
+            else:
+                # Use traditional json.load() for small files
+                self._streaming = False
+                self.data = json.load(self.fobj)
+                if self.tagname:
+                    self.data = self.data[self.tagname]
+                self.total = len(self.data)
 
     @staticmethod
     def id() -> str:
-        return 'json'
+        return "json"
 
     @staticmethod
     def has_totals():
         """Has totals indicator"""
-        return True        
+        return True
 
     def totals(self):
         """Returns file totals"""
+        if self.total is None:
+            # For streaming mode, total is unknown
+            return None
         return self.total
 
     @staticmethod
     def is_flatonly() -> bool:
         return False
 
-    def read(self, skip_empty:bool = False) -> dict:
+    def is_streaming(self) -> bool:
+        """Returns True if using streaming parser"""
+        return self._streaming
+
+    def read(self, skip_empty: bool = False) -> dict:
         """Read single JSON record"""
-        if self.pos >= self.total:
-            raise StopIteration
+        if self._streaming:
+            # Use streaming parser
+            if self._items_buffer:
+                # Return buffered item
+                item = self._items_buffer.pop(0)
+                self.pos += 1
+                return item
+            # Try to get next item from parser
+            try:
+                item = next(self._parser)
+                self.pos += 1
+                return item
+            except StopIteration:
+                raise StopIteration from None
+        else:
+            # Use loaded data
+            if self.pos >= self.total:
+                raise StopIteration
+            row = self.data[self.pos]
+            self.pos += 1
+            return row
 
-        row = self.data[self.pos]
-        self.pos += 1
-        return row
-
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk JSON records"""
         chunk = []
-        for _n in range(0, num):
-            chunk.append(self.read())
+        if self._streaming:
+            # For streaming, read from buffer first, then parser
+            while len(chunk) < num:
+                if self._items_buffer:
+                    chunk.append(self._items_buffer.pop(0))
+                    self.pos += 1
+                else:
+                    try:
+                        item = next(self._parser)
+                        chunk.append(item)
+                        self.pos += 1
+                    except StopIteration:
+                        break
+        else:
+            # For non-streaming, use efficient slicing
+            remaining = self.total - self.pos
+            if remaining == 0:
+                return []
+            read_count = min(num, remaining)
+            chunk = self.data[self.pos : self.pos + read_count]
+            self.pos += read_count
         return chunk
 
     def write(self, record: dict):
@@ -81,7 +184,7 @@ class JSONIterable(BaseFileIterable):
 
     def write_bulk(self, records: list[dict]):
         """Write bulk JSON records (array items)."""
-        if self.mode not in ['w', 'wr']:
+        if self.mode not in ["w", "wr"]:
             raise ValueError("Write mode not enabled")
         if not records:
             return
@@ -94,7 +197,7 @@ class JSONIterable(BaseFileIterable):
 
     def close(self):
         """Close iterable and finalize JSON output if writing."""
-        if self.mode in ['w', 'wr'] and getattr(self, "_write_started", False):
+        if self.mode in ["w", "wr"] and getattr(self, "_write_started", False):
             if self.tagname:
                 self.fobj.write("]}")
             else:

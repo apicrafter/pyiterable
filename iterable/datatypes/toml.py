@@ -5,10 +5,12 @@ import typing
 try:
     import tomli
     import tomli_w
+
     HAS_TOMLI = True
 except ImportError:
     try:
         import toml
+
         HAS_TOML = True
         HAS_TOMLI = False
     except ImportError:
@@ -19,7 +21,15 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class TOMLIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict=None):
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        encoding: str = "utf8",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_TOMLI and not HAS_TOML:
@@ -32,13 +42,13 @@ class TOMLIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        if self.mode == 'r':
+        if self.mode == "r":
             data_str = self.fobj.read()
             if HAS_TOMLI:
                 self.data = tomli.loads(data_str)
             else:
                 self.data = toml.loads(data_str)
-            
+
             # TOML files typically contain tables/arrays of tables
             # Try to find array of tables or convert top-level to list
             if isinstance(self.data, dict):
@@ -49,24 +59,24 @@ class TOMLIterable(BaseFileIterable):
                         # Array of tables
                         for item in value:
                             item_copy = item.copy()
-                            item_copy['_table'] = key
+                            item_copy["_table"] = key
                             self.items.append(item_copy)
                     elif isinstance(value, dict):
                         # Single table
                         value_copy = value.copy()
-                        value_copy['_table'] = key
+                        value_copy["_table"] = key
                         self.items.append(value_copy)
                     else:
                         # Scalar value
                         self.items.append({key: value})
             else:
                 self.items = self.data if isinstance(self.data, list) else [self.data]
-            
+
             self.iterator = iter(self.items)
 
     @staticmethod
     def id() -> str:
-        return 'toml'
+        return "toml"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -78,7 +88,7 @@ class TOMLIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk TOML records"""
         chunk = []
         for _n in range(0, num):
@@ -88,11 +98,15 @@ class TOMLIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single TOML record"""
-        self.write_bulk([record, ])
+        self.write_bulk(
+            [
+                record,
+            ]
+        )
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk TOML records"""
         # Convert records to TOML format
         if HAS_TOMLI:

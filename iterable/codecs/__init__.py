@@ -10,34 +10,48 @@ try:
     from .brotlicodec import BrotliCodec
 except ImportError:
     # brotli_file not available
-    pass
+    BrotliCodec = None  # type: ignore[assignment, misc]
 
 try:
     from .lz4codec import LZ4Codec
 except ImportError:
     # lz4 not available
-    pass
+    LZ4Codec = None  # type: ignore[assignment, misc]
 
 try:
     from .lzocodec import LZOCodec
 except ImportError:
     # python-lzo not available
-    pass
+    LZOCodec = None  # type: ignore[assignment, misc]
 
 try:
     from .snappycodec import SnappyCodec
 except ImportError:
     # python-snappy not available
-    pass
+    SnappyCodec = None  # type: ignore[assignment, misc]
 
 try:
     from .zstdcodec import ZSTDCodec
 except ImportError:
     # zstandard not available
-    pass
+    ZSTDCodec = None  # type: ignore[assignment, misc]
 
 try:
     from .szipcodec import SZipCodec
 except ImportError:
     # py7zr not available
-    pass
+    SZipCodec = None  # type: ignore[assignment, misc]
+
+__all__ = [
+    "BZIP2Codec",
+    "BrotliCodec",
+    "GZIPCodec",
+    "LZ4Codec",
+    "LZMACodec",
+    "LZOCodec",
+    "RAWCodec",
+    "SnappyCodec",
+    "SZipCodec",
+    "ZIPCodec",
+    "ZSTDCodec",
+]

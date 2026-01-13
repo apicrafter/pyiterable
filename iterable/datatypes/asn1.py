@@ -5,6 +5,7 @@ import typing
 try:
     from pyasn1.codec.der import decoder, encoder
     from pyasn1.type import univ
+
     HAS_PYASN1 = True
 except ImportError:
     HAS_PYASN1 = False
@@ -13,8 +14,16 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class ASN1Iterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_PYASN1:
@@ -27,14 +36,14 @@ class ASN1Iterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        if self.mode == 'r':
+        if self.mode == "r":
             content = self.fobj.read()
-            
+
             try:
                 # Try to decode as single ASN.1 structure
                 asn1Object, rest = decoder.decode(content, asn1Spec=univ.Sequence())
                 self.items = [self._asn1_to_dict(asn1Object)]
-            except:
+            except Exception:
                 # Try parsing multiple structures
                 self.items = []
                 offset = 0
@@ -43,16 +52,16 @@ class ASN1Iterable(BaseFileIterable):
                         asn1Object, consumed = decoder.decode(content[offset:], asn1Spec=univ.Sequence())
                         self.items.append(self._asn1_to_dict(asn1Object))
                         offset += consumed
-                    except:
+                    except Exception:
                         break
-            
+
             self.iterator = iter(self.items)
         else:
             self.items = []
 
     @staticmethod
     def id() -> str:
-        return 'asn1'
+        return "asn1"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -63,15 +72,15 @@ class ASN1Iterable(BaseFileIterable):
         if isinstance(obj, univ.Sequence) or isinstance(obj, univ.Set):
             result = {}
             for idx, component in enumerate(obj):
-                key = f'field_{idx}'
-                if hasattr(component, 'getName'):
+                key = f"field_{idx}"
+                if hasattr(component, "getName"):
                     key = component.getName() or key
                 result[key] = self._asn1_to_dict(component)
             return result
         elif isinstance(obj, (univ.OctetString, univ.BitString)):
             try:
-                return obj.asOctets().decode('utf-8')
-            except:
+                return obj.asOctets().decode("utf-8")
+            except Exception:
                 return obj.asOctets().hex()
         elif isinstance(obj, (univ.Integer, univ.Real, univ.Boolean)):
             return int(obj)
@@ -86,13 +95,13 @@ class ASN1Iterable(BaseFileIterable):
         """Read single ASN.1 record"""
         row = next(self.iterator)
         self.pos += 1
-        
+
         if isinstance(row, dict):
             return row
         else:
-            return {'value': row}
+            return {"value": row}
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk ASN.1 records"""
         chunk = []
         for _n in range(0, num):
@@ -102,12 +111,12 @@ class ASN1Iterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single ASN.1 record"""
         # Convert dict to ASN.1 Sequence
         # This is a simplified conversion - real ASN.1 encoding requires schema
         from pyasn1.type import univ
-        
+
         seq = univ.Sequence()
         for idx, (_key, value) in enumerate(record.items()):
             if isinstance(value, str):
@@ -120,11 +129,11 @@ class ASN1Iterable(BaseFileIterable):
                 seq.setComponentByPosition(idx, univ.Null())
             else:
                 seq.setComponentByPosition(idx, univ.UTF8String(str(value)))
-        
+
         asn1_data = encoder.encode(seq)
         self.fobj.write(asn1_data)
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk ASN.1 records"""
         for record in records:
             self.write(record)

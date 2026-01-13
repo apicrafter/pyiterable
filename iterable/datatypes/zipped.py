@@ -6,14 +6,14 @@ from ..base import BaseIterable
 
 
 class ZIPSourceWrapper(BaseIterable):
-    def __init__(self, filename:str, binary:bool = False):
+    def __init__(self, filename: str, binary: bool = False):
         super().__init__()
-        self.fobj = ZipFile(filename, mode='r')
+        self.fobj = ZipFile(filename, mode="r")
         self.filenames = self.fobj.namelist()
         self.filenum = 0
         self.filepos = 0
         self.globalpos = 0
-        self.mode = 'rb' if binary else 'r'
+        self.mode = "rb" if binary else "r"
         self.current_file = self.fobj.open(self.filenames[self.filenum], mode=self.mode)
         pass
 
@@ -45,7 +45,7 @@ class ZIPSourceWrapper(BaseIterable):
                 row = self.read_single()
                 return row
             else:
-                raise StopIteration
+                raise StopIteration from None
 
     def __iter__(self) -> ZIPSourceWrapper:
         self.filenum = 0
@@ -57,7 +57,7 @@ class ZIPSourceWrapper(BaseIterable):
         """Not implemented single record read"""
         raise NotImplementedError
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk records"""
         chunk = []
         n = 0

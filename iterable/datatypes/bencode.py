@@ -4,10 +4,12 @@ import typing
 
 try:
     import bencode
+
     HAS_BENCODE = True
 except ImportError:
     try:
         import bencodepy
+
         HAS_BENCODEPY = True
         HAS_BENCODE = False
     except ImportError:
@@ -18,8 +20,16 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class BencodeIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_BENCODE and not HAS_BENCODEPY:
@@ -32,15 +42,15 @@ class BencodeIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        if self.mode == 'r':
+        if self.mode == "r":
             content = self.fobj.read()
-            
+
             if HAS_BENCODE:
                 try:
                     data = bencode.bdecode(content)
                     if isinstance(data, dict):
                         # Torrent file structure
-                        if 'info' in data:
+                        if "info" in data:
                             # Single torrent file
                             self.items = [self._convert_to_dict(data)]
                         else:
@@ -49,8 +59,8 @@ class BencodeIterable(BaseFileIterable):
                     elif isinstance(data, list):
                         self.items = [self._convert_to_dict(item) for item in data]
                     else:
-                        self.items = [{'value': data}]
-                except:
+                        self.items = [{"value": data}]
+                except Exception:
                     self.items = []
             else:
                 # bencodepy
@@ -62,17 +72,17 @@ class BencodeIterable(BaseFileIterable):
                     elif isinstance(data, list):
                         self.items = [self._convert_to_dict(item) for item in data]
                     else:
-                        self.items = [{'value': data}]
-                except:
+                        self.items = [{"value": data}]
+                except Exception:
                     self.items = []
-            
+
             self.iterator = iter(self.items)
         else:
             self.items = []
 
     @staticmethod
     def id() -> str:
-        return 'bencode'
+        return "bencode"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -83,15 +93,15 @@ class BencodeIterable(BaseFileIterable):
         if isinstance(obj, dict):
             result = {}
             for k, v in obj.items():
-                key = k.decode('utf-8') if isinstance(k, bytes) else str(k)
+                key = k.decode("utf-8") if isinstance(k, bytes) else str(k)
                 result[key] = self._convert_to_dict(v)
             return result
         elif isinstance(obj, list):
             return [self._convert_to_dict(item) for item in obj]
         elif isinstance(obj, bytes):
             try:
-                return obj.decode('utf-8')
-            except:
+                return obj.decode("utf-8")
+            except Exception:
                 return obj.hex()
         else:
             return obj
@@ -100,13 +110,13 @@ class BencodeIterable(BaseFileIterable):
         """Read single Bencode record"""
         row = next(self.iterator)
         self.pos += 1
-        
+
         if isinstance(row, dict):
             return row
         else:
-            return {'value': row}
+            return {"value": row}
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk Bencode records"""
         chunk = []
         for _n in range(0, num):
@@ -116,7 +126,7 @@ class BencodeIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single Bencode record"""
         if HAS_BENCODE:
             bencode_data = bencode.bencode(record)
@@ -125,7 +135,7 @@ class BencodeIterable(BaseFileIterable):
             bencode_data = encoder.encode(record)
         self.fobj.write(bencode_data)
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk Bencode records"""
         for record in records:
             self.write(record)

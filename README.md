@@ -7,13 +7,15 @@ This library simplifies data processing and conversion between formats while pre
 ## Features
 
 - **Unified API**: Single interface for reading/writing multiple data formats
-- **Automatic Format Detection**: Detects file type and compression from filename
+- **Automatic Format Detection**: Detects file type and compression from filename or content (magic numbers and heuristics)
+- **Format Capability Reporting**: Programmatically query format capabilities (read/write/bulk/totals/streaming/tables)
 - **Support for Compression**: Works seamlessly with compressed files
 - **Preserves Nested Data**: Handles complex nested structures as Python dictionaries
 - **DuckDB Integration**: Optional DuckDB engine for high-performance queries
 - **Pipeline Processing**: Built-in pipeline support for data transformation
 - **Encoding Detection**: Automatic encoding and delimiter detection for text files
 - **Bulk Operations**: Efficient batch reading and writing
+- **Table Listing**: Discover available tables, sheets, and datasets in multi-table formats
 - **Context Manager Support**: Use `with` statements for automatic resource cleanup
 
 ## Supported File Types
@@ -30,6 +32,7 @@ This library simplifies data processing and conversion between formats while pre
 - **FWF** - Fixed Width Format
 - **XML** - XML files with configurable tag parsing
 - **ZIP XML** - XML files within ZIP archives
+- **HTML** - HTML files with table extraction
 
 ### Binary Formats
 - **BSON** - Binary JSON format
@@ -63,6 +66,7 @@ This library simplifies data processing and conversion between formats while pre
 - **SPSS** - SPSS data files
 - **R Data** - R RDS and RData files
 - **PX** - PC-Axis format
+- **ARFF** - Attribute-Relation File Format (Weka format)
 
 ### Scientific Formats
 - **NetCDF** - Network Common Data Form for scientific data
@@ -99,6 +103,7 @@ This library simplifies data processing and conversion between formats while pre
 - **WARC** - Web ARChive format
 - **CDX** - Web archive index format
 - **ILP** - InfluxDB Line Protocol
+- **HTML** - HTML files with table extraction
 
 ### Email Formats
 - **EML** - Email message format
@@ -267,12 +272,23 @@ xlsx_file.close()
 ### Format Detection and Encoding
 
 ```python
-from iterable.helpers.detect import open_iterable, detect_file_type
+from iterable.helpers.detect import open_iterable, detect_file_type, detect_file_type_from_content
 from iterable.helpers.utils import detect_encoding, detect_delimiter
 
-# Detect file type and compression
+# Detect file type and compression (uses filename extension)
 result = detect_file_type('data.csv.gz')
 print(f"Type: {result['datatype']}, Codec: {result['codec']}")
+
+# Content-based detection (for files without extensions or streams)
+with open('data.unknown', 'rb') as f:
+    detected_format = detect_file_type_from_content(f)
+    print(f"Detected format: {detected_format}")  # e.g., 'parquet', 'json', 'csv'
+
+# open_iterable() automatically uses content-based detection as fallback
+# Works with files without extensions, streams, or incorrect extensions
+with open_iterable('data.unknown') as source:  # Detects from content
+    for row in source:
+        print(row)
 
 # Detect encoding for CSV files
 encoding_info = detect_encoding('data.csv')
@@ -286,6 +302,70 @@ source = open_iterable('data.csv', iterableargs={
     'encoding': encoding_info['encoding'],
     'delimiter': delimiter
 })
+```
+
+### Error Handling
+
+IterableData provides a comprehensive exception hierarchy for better error handling:
+
+```python
+from iterable.helpers.detect import open_iterable
+from iterable.exceptions import (
+    FormatDetectionError,
+    FormatNotSupportedError,
+    FormatParseError,
+    CodecError
+)
+
+try:
+    with open_iterable('data.unknown') as source:
+        for row in source:
+            process(row)
+except FormatDetectionError as e:
+    print(f"Could not detect format: {e.reason}")
+    # Try with explicit format or check file content
+except FormatNotSupportedError as e:
+    print(f"Format '{e.format_id}' not supported: {e.reason}")
+    # Install missing dependencies or use different format
+except FormatParseError as e:
+    print(f"Failed to parse {e.format_id} format")
+    if e.position:
+        print(f"Error at position: {e.position}")
+except CodecError as e:
+    print(f"Compression error with {e.codec_name}: {e.message}")
+    # Check file integrity or try different codec
+except Exception as e:
+    print(f"Unexpected error: {e}")
+```
+
+See [Exception Hierarchy documentation](docs/docs/api/exceptions.md) for complete exception reference.
+
+### Querying Format Capabilities
+
+```python
+from iterable.helpers.capabilities import (
+    get_format_capabilities,
+    get_capability,
+    list_all_capabilities
+)
+
+# Get all capabilities for a format
+caps = get_format_capabilities("csv")
+print(f"CSV readable: {caps['readable']}")
+print(f"CSV writable: {caps['writable']}")
+print(f"CSV supports totals: {caps['totals']}")
+print(f"CSV supports tables: {caps['tables']}")
+
+# Query a specific capability
+is_writable = get_capability("json", "writable")
+has_totals = get_capability("parquet", "totals")
+supports_tables = get_capability("xlsx", "tables")
+
+# List capabilities for all formats
+all_caps = list_all_capabilities()
+for format_id, capabilities in all_caps.items():
+    if capabilities.get("tables"):
+        print(f"{format_id} supports multiple tables")
 ```
 
 ### Format Conversion
@@ -615,6 +695,12 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
+### Version 1.0.9 (Unreleased)
+- **Enhanced Format Detection**: Added content-based format detection using magic numbers and heuristics for files without extensions, streams, and files with incorrect extensions
+- **Exception Hierarchy**: Added comprehensive exception hierarchy (`IterableDataError`, `FormatError`, `CodecError`, etc.) for better error handling
+- **Format Capability Reporting**: Added programmatic API to query format capabilities (`get_format_capabilities()`, `list_all_capabilities()`, `get_capability()`)
+- **Table Listing Support**: Added `list_tables()` and `has_tables()` methods for discovering tables, sheets, and datasets in multi-table formats
 
 ### Version 1.0.8 (2026-01-05)
 - **AI Integration Guides**: Added comprehensive guides for LangChain, CrewAI, AutoGen, and Google Gemini AI

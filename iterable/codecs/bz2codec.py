@@ -6,7 +6,9 @@ from ..base import BaseCodec
 
 
 class BZIP2Codec(BaseCodec):
-    def __init__(self, filename:str, compression_level:int = 5, mode:str = 'r', open_it:bool = False, options:dict = None):
+    def __init__(
+        self, filename: str, compression_level: int = 5, mode: str = "r", open_it: bool = False, options: dict = None
+    ):
         if options is None:
             options = {}
         self.compression_level = compression_level
@@ -21,4 +23,6 @@ class BZIP2Codec(BaseCodec):
 
     @staticmethod
     def fileexts() -> list[str]:
-        return ['bz2',]
+        return [
+            "bz2",
+        ]

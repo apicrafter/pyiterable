@@ -1,15 +1,24 @@
+import io
+import typing
+from abc import ABC, abstractmethod
+
 ITERABLE_TYPE_STREAM = 10
 ITERABLE_TYPE_FILE = 20
 ITERABLE_TYPE_CODEC = 30
 DEFAULT_BULK_NUMBER = 100
 
-import io
-import typing
-
 
 class BaseCodec:
     """Basic codec class"""
-    def __init__(self, filename: str = None, fileobj: typing.IO = None, mode: str = 'r', open_it: bool = False, options:dict = None):
+
+    def __init__(
+        self,
+        filename: str = None,
+        fileobj: typing.IO = None,
+        mode: str = "r",
+        open_it: bool = False,
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         self._fileobj = fileobj
@@ -20,30 +29,29 @@ class BaseCodec:
 
         if len(options) > 0:
             for k, v in options.items():
-                setattr(self, k, v)                    
+                setattr(self, k, v)
         pass
 
     @staticmethod
     def fileexts():
         """Return file extensions"""
         raise NotImplementedError
-  
 
     def reset(self):
         """Reset file"""
-#        if self._fileobj.seekable():
-#            self._fileobj.seek(0)
-#        else:
+        #        if self._fileobj.seekable():
+        #            self._fileobj.seek(0)
+        #        else:
         self.close()
-        self.open()            
+        self.open()
 
     def open(self):
         raise NotImplementedError
- 
+
     def fileobj(self):
         """Return file object"""
         return self._fileobj
-    
+
     def close(self):
         """Close codec. Not implemented by default"""
         raise NotImplementedError
@@ -59,37 +67,64 @@ class BaseCodec:
         self.close()
         return False
 
-    def textIO(self, encoding:str = 'utf8'):
+    def textIO(self, encoding: str = "utf8"):
         """Return text wrapper over binary stream"""
         return io.TextIOWrapper(self.fileobj(), encoding=encoding, write_through=False)
 
 
-class BaseIterable:
+class BaseIterable(ABC):
     """Base iterable data class"""
-    def __init__(self):
-        pass
 
+    def __init__(self):
+        """Initialize base iterable"""
+        self._closed = False
+
+    @abstractmethod
     def reset(self):
         """Reset iterator"""
-        raise NotImplementedError
+        pass
 
     @staticmethod
+    @abstractmethod
     def id():
         """Identifier of selected destination"""
-        raise NotImplementedError
+        pass
 
     @staticmethod
     def has_totals():
         """Has totals. Default: False"""
         return False
 
+    @staticmethod
+    def has_tables():
+        """Indicates if this format supports multiple tables/sheets/datasets.
 
+        Returns:
+            bool: True if format supports table listing, False otherwise.
+        """
+        return False
 
-    def read(self, skip_empty:bool = True):
+    def list_tables(self, filename: str | None = None) -> list[str] | None:
+        """List available tables, sheets, datasets, or other named collections.
+
+        Can be called as:
+        - Instance method: `iterable.list_tables()` - uses already opened file
+        - Class method: `XLSXIterable.list_tables(filename)` - opens file temporarily
+
+        Args:
+            filename: Optional filename for class method usage. If None, uses instance's filename.
+
+        Returns:
+            list[str] | None: List of table/sheet names, or None if not supported.
+            Returns empty list [] if file has no tables.
+        """
+        return None
+
+    def read(self, skip_empty: bool = True):
         """Read single record"""
         raise NotImplementedError
 
-    def read_bulk(self, num:int = DEFAULT_BULK_NUMBER):
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER):
         """Read multiple records"""
         raise NotImplementedError
 
@@ -99,10 +134,11 @@ class BaseIterable:
         return False
 
     def is_flat(self):
-        """Is source flat. Default: """ 
+        """Is source flat. Default: False"""
         if self.__class__().is_flatonly():
             return True
-        raise NotImplementedError
+        # For non-flat-only formats, default to False
+        return False
 
     def is_streaming(self):
         """Is source streaming. Default: False"""
@@ -112,23 +148,34 @@ class BaseIterable:
         return self.read()
 
     def __iter__(self):
-#        self.reset()
+        #        self.reset()
         return self
 
-    def write(self,  record: dict):
+    def write(self, record: dict):
         """Write single record"""
         raise NotImplementedError
 
-    def write_bulk(self,  records: list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write multiple records"""
         raise NotImplementedError
 
 
 class BaseFileIterable(BaseIterable):
     """Basic file iterable"""
-    datamode = 'text'
 
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, binary:bool = False, encoding:str = 'utf8', noopen:bool = False, mode:str = 'r', options:dict = None):
+    datamode = "text"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        binary: bool = False,
+        encoding: str = "utf8",
+        noopen: bool = False,
+        mode: str = "r",
+        options: dict = None,
+    ):
         """Init basic file iterable"""
         if options is None:
             options = {}
@@ -149,28 +196,30 @@ class BaseFileIterable(BaseIterable):
         self.fobj = None
 
         if self.stype == ITERABLE_TYPE_FILE:
-            if not noopen:                
+            if not noopen:
                 self.open()
         elif self.stype == ITERABLE_TYPE_STREAM:
             self.fobj = stream
         elif self.stype == ITERABLE_TYPE_CODEC:
-            if not noopen:                
-                self.fobj = self.codec.open() 
-                if self.datamode == 'text':
-                    self.fobj = self.codec.textIO(encoding=self.encoding) 
+            if not noopen:
+                self.fobj = self.codec.open()
+                if self.datamode == "text":
+                    self.fobj = self.codec.textIO(encoding=self.encoding)
         if len(options) > 0:
             for k, v in options.items():
-                setattr(self, k, v)            
-                  
+                setattr(self, k, v)
 
     def open(self):
         """Open file as file data source"""
-        if self.stype ==  ITERABLE_TYPE_FILE:
-            self.fobj = open(self.filename, self.mode + 'b') if self.binary else open(self.filename, self.mode, encoding=self.encoding)
+        if self.stype == ITERABLE_TYPE_FILE:
+            self.fobj = (
+                open(self.filename, self.mode + "b")
+                if self.binary
+                else open(self.filename, self.mode, encoding=self.encoding)
+            )
             return self.fobj
         else:
             raise NotImplementedError
-	
 
     def reset(self):
         """Reset file using seek(0)"""
@@ -178,20 +227,19 @@ class BaseFileIterable(BaseIterable):
             if self.fobj is not None:
                 self.fobj.seek(0)
         elif self.stype == ITERABLE_TYPE_CODEC:
-            if self.fobj is not None and self.mode not in ['w', 'wb']:
+            if self.fobj is not None and self.mode not in ["w", "wb"]:
                 # Close any existing wrapper to avoid leaks and ensure buffers are flushed.
                 try:
                     self.fobj.close()
                 except Exception:
                     pass
                 self.codec.reset()
-                self.fobj = self.codec.fileobj()    
-                if self.datamode == 'text':
-                    self.fobj = self.codec.textIO(encoding=self.encoding) 
-#                if self.fobj.seekable():   
- #                   self.fobj.seek(0)
+                self.fobj = self.codec.fileobj()
+                if self.datamode == "text":
+                    self.fobj = self.codec.textIO(encoding=self.encoding)
 
-
+    #                if self.fobj.seekable():
+    #                   self.fobj.seek(0)
 
     def close(self):
         """Close file as file data source"""

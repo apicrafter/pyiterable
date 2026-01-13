@@ -38,6 +38,13 @@ Writing is not currently supported for RData format.
 ```python
 from iterable.helpers.detect import open_iterable
 
+# List available R objects
+from iterable.datatypes.rdata import RDataIterable
+
+# Discover R objects before opening
+objects = RDataIterable('data.rdata').list_tables('data.rdata')
+print(f"Available R objects: {objects}")  # e.g., ['df1', 'df2', 'vector1']
+
 # Basic reading
 source = open_iterable('data.rdata')
 for row in source:

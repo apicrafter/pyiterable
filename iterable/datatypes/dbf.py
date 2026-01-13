@@ -8,15 +8,23 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class DBFIterable(BaseFileIterable):
-    datamode = 'binary'
-    
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', encoding:str = 'utf-8', options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode="r",
+        encoding: str = "utf-8",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         super().__init__(filename, stream, codec=codec, binary=True, mode=mode, noopen=True, options=options)
         self.encoding = encoding
-        if 'encoding' in options:
-            self.encoding = options['encoding']
+        if "encoding" in options:
+            self.encoding = options["encoding"]
         self.reset()
         pass
 
@@ -32,7 +40,7 @@ class DBFIterable(BaseFileIterable):
     @staticmethod
     def id() -> str:
         """ID of the data source type"""
-        return 'dbf'
+        return "dbf"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -55,9 +63,9 @@ class DBFIterable(BaseFileIterable):
             # Convert OrderedDict to regular dict
             return dict(record)
         except StopIteration:
-            raise StopIteration
+            raise StopIteration from None
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk DBF records"""
         chunk = []
         for _n in range(0, num):
@@ -68,5 +76,5 @@ class DBFIterable(BaseFileIterable):
             except StopIteration:
                 if len(chunk) > 0:
                     return chunk
-                raise StopIteration
+                raise StopIteration from None
         return chunk

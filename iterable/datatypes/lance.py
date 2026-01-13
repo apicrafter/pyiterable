@@ -6,6 +6,7 @@ import typing
 try:
     import lance
     import pyarrow
+
     HAS_LANCE = True
 except ImportError:
     HAS_LANCE = False
@@ -16,8 +17,18 @@ DEFAULT_BATCH_SIZE = 1024
 
 
 class LanceIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, mode: str = 'r', codec: BaseCodec = None, batch_size:int = DEFAULT_BATCH_SIZE, write_mode:str = 'create', options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        mode: str = "r",
+        codec: BaseCodec = None,
+        batch_size: int = DEFAULT_BATCH_SIZE,
+        write_mode: str = "create",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_LANCE:
@@ -29,7 +40,7 @@ class LanceIterable(BaseFileIterable):
         # Lance datasets are directory-based, so we need the directory path
         # If filename ends with .lance, remove it to get directory name
         if filename:
-            if filename.endswith('.lance'):
+            if filename.endswith(".lance"):
                 self.dataset_path = filename[:-6]  # Remove .lance extension
             else:
                 self.dataset_path = filename
@@ -46,7 +57,7 @@ class LanceIterable(BaseFileIterable):
         self.pos = 0
         self.dataset = None
         self.iterator = None
-        if self.mode == 'r':
+        if self.mode == "r":
             if self.filename:
                 # Lance datasets are directories, not files
                 dataset_path = self.dataset_path
@@ -56,12 +67,12 @@ class LanceIterable(BaseFileIterable):
                     self.iterator = self.__iterator(scanner)
                 else:
                     raise FileNotFoundError(f"Lance dataset not found at: {dataset_path}")
-        elif self.mode == 'w':
+        elif self.mode == "w":
             self.dataset = None  # Will be created on first write
 
     @staticmethod
     def id() -> str:
-        return 'lance'
+        return "lance"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -74,13 +85,13 @@ class LanceIterable(BaseFileIterable):
 
     def totals(self):
         """Returns file totals"""
-        if self.mode == 'r' and self.dataset:
+        if self.mode == "r" and self.dataset:
             return self.dataset.count_rows()
         return 0
 
     def flush(self):
         """Flush all data"""
-        if len(self.__buffer) > 0 and self.mode == 'w':
+        if len(self.__buffer) > 0 and self.mode == "w":
             table = pyarrow.Table.from_pylist(self.__buffer)
             dataset_path = self.dataset_path
             if not self.is_data_written:
@@ -95,7 +106,7 @@ class LanceIterable(BaseFileIterable):
 
     def close(self):
         """Close iterable"""
-        if self.mode == 'w' and len(self.__buffer) > 0:
+        if self.mode == "w" and len(self.__buffer) > 0:
             self.flush()
         super().close()
 
@@ -113,7 +124,7 @@ class LanceIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk Lance records"""
         chunk = []
         for _n in range(0, num):
@@ -125,7 +136,11 @@ class LanceIterable(BaseFileIterable):
 
     def write(self, record: dict):
         """Write single record"""
-        self.write_bulk([record, ])
+        self.write_bulk(
+            [
+                record,
+            ]
+        )
 
     def write_bulk(self, records: list[dict]):
         """Write bulk records"""

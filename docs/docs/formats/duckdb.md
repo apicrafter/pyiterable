@@ -65,6 +65,26 @@ with open_iterable('data.duckdb', iterableargs={
     for row in source:
         print(row)
 
+# List available tables
+from iterable.datatypes.duckdb import DuckDBDatabaseIterable
+
+# Before opening - discover tables
+tables = DuckDBDatabaseIterable('data.duckdb').list_tables('data.duckdb')
+print(f"Available tables: {tables}")
+
+# After opening - list all tables (reuses connection)
+source = open_iterable('data.duckdb', iterableargs={'table': 'users'})
+all_tables = source.list_tables()  # Reuses open connection
+print(f"All tables: {all_tables}")
+
+# Process each table
+for table_name in all_tables:
+    source = open_iterable('data.duckdb', iterableargs={'table': table_name})
+    print(f"Processing table: {table_name}")
+    for row in source:
+        process(row)
+    source.close()
+
 # Writing
 with open_iterable('output.duckdb', mode='w', iterableargs={
     'table': 'users'

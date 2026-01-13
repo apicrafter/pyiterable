@@ -2,6 +2,7 @@
 Pytest configuration for iterable tests.
 Ensures tests can find fixtures regardless of where pytest is run from.
 """
+
 import os
 import sys
 from pathlib import Path

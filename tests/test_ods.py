@@ -1,14 +1,15 @@
-
 import pytest
 
 from iterable.datatypes.ods import ODSIterable
 
 try:
-    from odf.opendocument import load
+    from odf.opendocument import load  # noqa: F401
+
     HAS_ODF = True
 except ImportError:
     try:
-        import pyexcel_ods3
+        import pyexcel_ods3  # noqa: F401
+
         HAS_PYEXCEL_ODS = True
         HAS_ODF = False
     except ImportError:
@@ -27,7 +28,7 @@ def test_ods_read():
 @pytest.mark.skipif(not HAS_ODF and not HAS_PYEXCEL_ODS, reason="ODS library not available")
 def test_ods_id():
     """Test ODS ID"""
-    assert ODSIterable.id() == 'ods'
+    assert ODSIterable.id() == "ods"
 
 
 @pytest.mark.skipif(not HAS_ODF and not HAS_PYEXCEL_ODS, reason="ODS library not available")

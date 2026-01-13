@@ -49,6 +49,19 @@ source = open_iterable('data.ods', iterableargs={
     'page': 1  # Second sheet (0-indexed)
 })
 
+# List available sheets
+from iterable.datatypes.ods import ODSIterable
+
+# Discover sheets before opening
+sheets = ODSIterable('data.ods').list_tables('data.ods')
+print(f"Available sheets: {sheets}")
+
+# List sheets after opening (reuses document)
+source = open_iterable('data.ods', iterableargs={'page': 0})
+all_sheets = source.list_tables()  # Reuses open document
+print(f"All sheets: {all_sheets}")
+source.close()
+
 # Writing
 dest = open_iterable('output.ods', mode='w')
 dest.write({'id': 1, 'name': 'John', 'age': 30})

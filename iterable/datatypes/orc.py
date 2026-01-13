@@ -12,18 +12,18 @@ def df_to_pyorc_schema(df):
     struct_schema = []
     for k, v in df.dtypes.to_dict().items():
         v = str(v)
-        if v == 'float64':
-            struct_schema.append(f'{k}:float')
-        elif v == 'float32':
-            struct_schema.append(f'{k}:float')
-        elif v == 'datetime64[ns]':
-            struct_schema.append(f'{k}:timestamp')
-        elif v == 'int32':
-            struct_schema.append(f'{k}:int')
-        elif v == 'int64':
-            struct_schema.append(f'{k}:int')
+        if v == "float64":
+            struct_schema.append(f"{k}:float")
+        elif v == "float32":
+            struct_schema.append(f"{k}:float")
+        elif v == "datetime64[ns]":
+            struct_schema.append(f"{k}:timestamp")
+        elif v == "int32":
+            struct_schema.append(f"{k}:int")
+        elif v == "int64":
+            struct_schema.append(f"{k}:int")
         else:
-            struct_schema.append(f'{k}:string')
+            struct_schema.append(f"{k}:string")
     return struct_schema
 
 
@@ -31,12 +31,24 @@ def fields_to_pyorc_schema(fields):
     """Converts list of fields to pyorc schema array"""
     struct_schema = []
     for field in fields:
-        struct_schema.append(f'{field}:string')    
+        struct_schema.append(f"{field}:string")
     return struct_schema
 
+
 class ORCIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str = 'r', keys:list[str] = None, schema:list[str] = None, compression:int = 5, options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        keys: list[str] = None,
+        schema: list[str] = None,
+        compression: int = 5,
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         self.keys = keys
@@ -51,30 +63,34 @@ class ORCIterable(BaseFileIterable):
         super().reset()
         self.pos = 0
         self.reader = None
-        if self.mode == 'r':
+        if self.mode == "r":
             self.reader = pyorc.Reader(self.fobj, struct_repr=pyorc.StructRepr.DICT)
         self.writer = None
-        if self.mode == 'w':
+        if self.mode == "w":
             if self.schema is not None:
-               struct_schema = self.schema
+                struct_schema = self.schema
             else:
-               struct_schema = fields_to_pyorc_schema(self.keys)
-            self.writer = pyorc.Writer(self.fobj, "struct<{}>".format(','.join(struct_schema)), struct_repr = pyorc.StructRepr.DICT, compression=self.compression, compression_strategy=1)  
-         
+                struct_schema = fields_to_pyorc_schema(self.keys)
+            self.writer = pyorc.Writer(
+                self.fobj,
+                "struct<{}>".format(",".join(struct_schema)),
+                struct_repr=pyorc.StructRepr.DICT,
+                compression=self.compression,
+                compression_strategy=1,
+            )
 
     @staticmethod
     def id() -> str:
-        return 'orc'
+        return "orc"
 
     @staticmethod
     def is_flatonly() -> bool:
         return True
 
-
     @staticmethod
     def has_totals():
         """Has totals indicator"""
-        return True        
+        return True
 
     def totals(self):
         """Returns file totals"""
@@ -82,9 +98,9 @@ class ORCIterable(BaseFileIterable):
 
     def close(self):
         """Close iterable"""
-        if self.writer is not None: self.writer.close()
+        if self.writer is not None:
+            self.writer.close()
         super().close()
-
 
     def read(self) -> dict:
         """Read single record"""
@@ -92,7 +108,7 @@ class ORCIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk records"""
         chunk = []
         for _n in range(0, num):

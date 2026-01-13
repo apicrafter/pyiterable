@@ -9,15 +9,19 @@ from ..helpers.utils import rowincount
 
 
 def date_handler(obj):
-    return (
-    obj.isoformat()
-    if isinstance(obj, (datetime.datetime, datetime.date))
-    else None
-)
+    return obj.isoformat() if isinstance(obj, (datetime.datetime, datetime.date)) else None
 
 
 class JSONLinesIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str = 'r', encoding:str = 'utf8', options:dict=None):
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        encoding: str = "utf8",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         self.pos = 0
@@ -26,7 +30,7 @@ class JSONLinesIterable(BaseFileIterable):
 
     @staticmethod
     def id() -> str:
-        return 'jsonl'
+        return "jsonl"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -35,7 +39,7 @@ class JSONLinesIterable(BaseFileIterable):
     @staticmethod
     def has_totals():
         """Has totals indicator"""
-        return True        
+        return True
 
     def totals(self):
         """Returns file totals"""
@@ -45,8 +49,7 @@ class JSONLinesIterable(BaseFileIterable):
             fobj = self.fobj
         return rowincount(self.filename, fobj)
 
-
-    def read(self, skip_empty:bool = False) -> dict:
+    def read(self, skip_empty: bool = False) -> dict:
         """Read single JSON lines record"""
         line = next(self.fobj)
         if skip_empty and len(line) == 0:
@@ -56,16 +59,30 @@ class JSONLinesIterable(BaseFileIterable):
             return loads(line)
         return None
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
-        """Read bulk JSON lines records"""
+    def read_bulk(self, num: int = 10) -> list[dict]:
+        """Read bulk JSON lines records efficiently"""
         chunk = []
         for _n in range(0, num):
-            chunk.append(loads(self.fobj.readline()))
+            line = self.fobj.readline()
+            if not line:
+                break
+            line = line.strip()
+            if line:
+                try:
+                    chunk.append(loads(line))
+                    self.pos += 1
+                except (ValueError, TypeError):
+                    # Skip invalid JSON lines
+                    continue
         return chunk
+
+    def is_streaming(self) -> bool:
+        """Returns True - JSONL always streams line by line"""
+        return True
 
     def write(self, record: dict):
         """Write single JSON lines record"""
-        self.fobj.write(dumps(record, ensure_ascii=False, default=date_handler) + '\n')
+        self.fobj.write(dumps(record, ensure_ascii=False, default=date_handler) + "\n")
 
     def write_bulk(self, records: list[dict]):
         """Write bulk JSON lines records"""

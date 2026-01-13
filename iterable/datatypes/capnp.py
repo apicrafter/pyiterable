@@ -5,6 +5,7 @@ import typing
 
 try:
     import capnp
+
     HAS_CAPNP = True
 except ImportError:
     HAS_CAPNP = False
@@ -13,8 +14,18 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class CapnpIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', schema_file:str = None, schema_name:str = None, options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        schema_file: str = None,
+        schema_name: str = None,
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_CAPNP:
@@ -22,10 +33,10 @@ class CapnpIterable(BaseFileIterable):
         super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
         self.schema_file = schema_file
         self.schema_name = schema_name
-        if 'schema_file' in options:
-            self.schema_file = options['schema_file']
-        if 'schema_name' in options:
-            self.schema_name = options['schema_name']
+        if "schema_file" in options:
+            self.schema_file = options["schema_file"]
+        if "schema_name" in options:
+            self.schema_name = options["schema_name"]
         if self.schema_file is None:
             raise ValueError("Cap'n Proto requires schema_file parameter")
         if self.schema_name is None:
@@ -38,16 +49,16 @@ class CapnpIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        
+
         # Load schema
         if not os.path.exists(self.schema_file):
             raise FileNotFoundError(f"Schema file not found: {self.schema_file}")
         self.schema = capnp.load(self.schema_file)
         self.message_class = getattr(self.schema, self.schema_name)
-        
-        if self.mode == 'r':
+
+        if self.mode == "r":
             try:
-                if hasattr(self.fobj, 'seek'):
+                if hasattr(self.fobj, "seek"):
                     self.fobj.seek(0)
                 # Read all data
                 data = self.fobj.read()
@@ -84,7 +95,7 @@ class CapnpIterable(BaseFileIterable):
 
     @staticmethod
     def id() -> str:
-        return 'capnp'
+        return "capnp"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -97,9 +108,9 @@ class CapnpIterable(BaseFileIterable):
             self.pos += 1
             return row
         except (StopIteration, EOFError, ValueError):
-            raise StopIteration
+            raise StopIteration from None
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk Cap'n Proto records"""
         chunk = []
         for _n in range(0, num):
@@ -109,13 +120,13 @@ class CapnpIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single Cap'n Proto record"""
         message = self.message_class.from_dict(record)
         packed = message.to_bytes_packed()
         self.fobj.write(packed)
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk Cap'n Proto records"""
         for record in records:
             self.write(record)

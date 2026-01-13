@@ -4,6 +4,7 @@ import typing
 
 try:
     import smile
+
     HAS_SMILE = True
 except ImportError:
     HAS_SMILE = False
@@ -12,8 +13,16 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class SMILEIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_SMILE:
@@ -26,7 +35,7 @@ class SMILEIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        if self.mode == 'r':
+        if self.mode == "r":
             # SMILE format can contain multiple documents
             content = self.fobj.read()
             try:
@@ -37,8 +46,8 @@ class SMILEIterable(BaseFileIterable):
                 elif isinstance(data, dict):
                     self.items = [data]
                 else:
-                    self.items = [{'value': data}]
-            except:
+                    self.items = [{"value": data}]
+            except Exception:
                 # If single document fails, try to parse as array
                 # SMILE format supports multiple documents concatenated
                 self.items = []
@@ -48,18 +57,18 @@ class SMILEIterable(BaseFileIterable):
                     if isinstance(data, list):
                         self.items = data
                     else:
-                        self.items = [{'value': data}]
-                except:
+                        self.items = [{"value": data}]
+                except Exception:
                     # If all parsing fails, create empty list
                     self.items = []
-            
+
             self.iterator = iter(self.items)
         else:
             self.items = []
 
     @staticmethod
     def id() -> str:
-        return 'smile'
+        return "smile"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -69,13 +78,13 @@ class SMILEIterable(BaseFileIterable):
         """Read single SMILE record"""
         row = next(self.iterator)
         self.pos += 1
-        
+
         if isinstance(row, dict):
             return row
         else:
-            return {'value': row}
+            return {"value": row}
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk SMILE records"""
         chunk = []
         for _n in range(0, num):
@@ -85,12 +94,12 @@ class SMILEIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single SMILE record"""
         smile_data = smile.dumps(record)
         self.fobj.write(smile_data)
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk SMILE records"""
         for record in records:
             self.write(record)

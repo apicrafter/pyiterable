@@ -6,7 +6,8 @@ from fixdata import FIXTURES
 from iterable.datatypes import GeoJSONIterable
 
 # Create fixture file if it doesn't exist
-FIXTURE_FILE = 'fixtures/2cols6rows.geojson'
+FIXTURE_FILE = "fixtures/2cols6rows.geojson"
+
 
 def setup_module():
     """Create fixture file if it doesn't exist"""
@@ -15,34 +16,32 @@ def setup_module():
         features = []
         for i, record in enumerate(FIXTURES):
             feature = {
-                'type': 'Feature',
-                'properties': record,
-                'geometry': {
-                    'type': 'Point',
-                    'coordinates': [i, i]  # Simple coordinates
-                }
+                "type": "Feature",
+                "properties": record,
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [i, i],  # Simple coordinates
+                },
             }
             features.append(feature)
-        
-        fc = {
-            'type': 'FeatureCollection',
-            'features': features
-        }
-        
-        with open(FIXTURE_FILE, 'w', encoding='utf-8') as f:
+
+        fc = {"type": "FeatureCollection", "features": features}
+
+        with open(FIXTURE_FILE, "w", encoding="utf-8") as f:
             json.dump(fc, f)
+
 
 class TestGeoJSON:
     def test_id(self):
         datatype_id = GeoJSONIterable.id()
-        assert datatype_id == 'geojson'
+        assert datatype_id == "geojson"
 
     def test_flatonly(self):
         flag = GeoJSONIterable.is_flatonly()
         assert not flag
 
     def test_openclose(self):
-        iterable = GeoJSONIterable(FIXTURE_FILE)        
+        iterable = GeoJSONIterable(FIXTURE_FILE)
         iterable.close()
 
     def test_has_totals(self):
@@ -56,8 +55,8 @@ class TestGeoJSON:
         iterable = GeoJSONIterable(FIXTURE_FILE)
         row = iterable.read()
         assert isinstance(row, dict)
-        assert 'type' in row
-        assert row['type'] == 'Feature'
+        assert "type" in row
+        assert row["type"] == "Feature"
         iterable.close()
 
     def test_read_all(self):
@@ -70,21 +69,14 @@ class TestGeoJSON:
         iterable.close()
 
     def test_write_read(self):
-        iterable = GeoJSONIterable('testdata/2cols6rows_test.geojson', mode='w')
+        iterable = GeoJSONIterable("testdata/2cols6rows_test.geojson", mode="w")
         # Create features
         for i, record in enumerate(FIXTURES):
-            feature = {
-                'type': 'Feature',
-                'properties': record,
-                'geometry': {
-                    'type': 'Point',
-                    'coordinates': [i, i]
-                }
-            }
+            feature = {"type": "Feature", "properties": record, "geometry": {"type": "Point", "coordinates": [i, i]}}
             iterable.write(feature)
         iterable.close()
-        
-        iterable = GeoJSONIterable('testdata/2cols6rows_test.geojson')
+
+        iterable = GeoJSONIterable("testdata/2cols6rows_test.geojson")
         n = 0
         for row in iterable:
             assert isinstance(row, dict)

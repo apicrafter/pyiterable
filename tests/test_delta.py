@@ -8,14 +8,15 @@ from iterable.datatypes import DeltaIterable
 # This test will be skipped if deltalake is not available
 # or if fixture directory doesn't exist
 
-FIXTURE_DIR = 'fixtures/2cols6rows_delta'
+FIXTURE_DIR = "fixtures/2cols6rows_delta"
+
 
 @pytest.mark.skipif(not os.path.exists(FIXTURE_DIR), reason="Delta Lake fixture directory not found")
 class TestDelta:
     def test_id(self):
         try:
             datatype_id = DeltaIterable.id()
-            assert datatype_id == 'delta'
+            assert datatype_id == "delta"
         except ImportError:
             pytest.skip("Delta Lake support requires deltalake package")
 
@@ -28,7 +29,7 @@ class TestDelta:
 
     def test_openclose(self):
         try:
-            iterable = DeltaIterable(FIXTURE_DIR)        
+            iterable = DeltaIterable(FIXTURE_DIR)
             iterable.close()
         except ImportError:
             pytest.skip("Delta Lake support requires deltalake package")

@@ -6,7 +6,8 @@ from fixdata import FIXTURES
 from iterable.datatypes import ShapefileIterable
 
 # Create fixture file if it doesn't exist
-FIXTURE_FILE = 'fixtures/2cols6rows.shp'
+FIXTURE_FILE = "fixtures/2cols6rows.shp"
+
 
 def setup_module():
     """Create fixture file if it doesn't exist"""
@@ -14,23 +15,24 @@ def setup_module():
         import shapefile
     except ImportError:
         pytest.skip("pyshp library not available")
-    
+
     if not os.path.exists(FIXTURE_FILE):
         # Create a simple shapefile
-        w = shapefile.Writer(FIXTURE_FILE.replace('.shp', ''))
-        w.field('id', 'C', 10)
-        w.field('name', 'C', 50)
-        
+        w = shapefile.Writer(FIXTURE_FILE.replace(".shp", ""))
+        w.field("id", "C", 10)
+        w.field("name", "C", 50)
+
         for i, record in enumerate(FIXTURES):
             w.point(i, i)
-            w.record(record['id'], record['name'])
-        
+            w.record(record["id"], record["name"])
+
         w.close()
+
 
 class TestShapefile:
     def test_id(self):
         datatype_id = ShapefileIterable.id()
-        assert datatype_id == 'shapefile'
+        assert datatype_id == "shapefile"
 
     def test_flatonly(self):
         flag = ShapefileIterable.is_flatonly()
@@ -38,7 +40,7 @@ class TestShapefile:
 
     def test_openclose(self):
         try:
-            iterable = ShapefileIterable(FIXTURE_FILE)        
+            iterable = ShapefileIterable(FIXTURE_FILE)
             iterable.close()
         except ImportError:
             pytest.skip("pyshp library not available")
@@ -58,9 +60,9 @@ class TestShapefile:
             iterable = ShapefileIterable(FIXTURE_FILE)
             row = iterable.read()
             assert isinstance(row, dict)
-            assert 'type' in row
-            assert row['type'] == 'Feature'
-            assert 'geometry' in row
+            assert "type" in row
+            assert row["type"] == "Feature"
+            assert "geometry" in row
             iterable.close()
         except ImportError:
             pytest.skip("pyshp library not available")
@@ -71,7 +73,7 @@ class TestShapefile:
             n = 0
             for row in iterable:
                 assert isinstance(row, dict)
-                assert 'geometry' in row
+                assert "geometry" in row
                 n += 1
             assert n == len(FIXTURES)
             iterable.close()
@@ -80,25 +82,22 @@ class TestShapefile:
 
     def test_write_read(self):
         try:
-            iterable = ShapefileIterable('testdata/2cols6rows_test.shp', mode='w')
+            iterable = ShapefileIterable("testdata/2cols6rows_test.shp", mode="w")
             # Create features
             for i, record in enumerate(FIXTURES):
                 feature = {
-                    'type': 'Feature',
-                    'properties': record,
-                    'geometry': {
-                        'type': 'Point',
-                        'coordinates': [i, i]
-                    }
+                    "type": "Feature",
+                    "properties": record,
+                    "geometry": {"type": "Point", "coordinates": [i, i]},
                 }
                 iterable.write(feature)
             iterable.close()
-            
-            iterable = ShapefileIterable('testdata/2cols6rows_test.shp')
+
+            iterable = ShapefileIterable("testdata/2cols6rows_test.shp")
             n = 0
             for row in iterable:
                 assert isinstance(row, dict)
-                assert 'geometry' in row
+                assert "geometry" in row
                 n += 1
             assert n == len(FIXTURES)
             iterable.close()

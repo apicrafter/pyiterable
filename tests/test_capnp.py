@@ -3,7 +3,8 @@ import pytest
 from iterable.datatypes.capnp import CapnpIterable
 
 try:
-    import capnp
+    import capnp  # noqa: F401
+
     HAS_CAPNP = True
 except ImportError:
     HAS_CAPNP = False
@@ -12,7 +13,7 @@ except ImportError:
 @pytest.mark.skipif(not HAS_CAPNP, reason="Cap'n Proto library not available")
 def test_capnp_id():
     """Test Cap'n Proto ID"""
-    assert CapnpIterable.id() == 'capnp'
+    assert CapnpIterable.id() == "capnp"
 
 
 @pytest.mark.skipif(not HAS_CAPNP, reason="Cap'n Proto library not available")
@@ -25,4 +26,4 @@ def test_capnp_flatonly():
 def test_capnp_requires_schema():
     """Test that Cap'n Proto requires schema"""
     with pytest.raises(ValueError):
-        CapnpIterable('test.capnp', mode='r')
+        CapnpIterable("test.capnp", mode="r")

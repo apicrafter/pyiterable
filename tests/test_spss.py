@@ -8,14 +8,15 @@ from iterable.datatypes import SPSSIterable
 # This test will be skipped if pyreadstat is not available
 # or if fixture file doesn't exist
 
-FIXTURE_FILE = 'fixtures/2cols6rows.sav'
+FIXTURE_FILE = "fixtures/2cols6rows.sav"
+
 
 @pytest.mark.skipif(not os.path.exists(FIXTURE_FILE), reason="SPSS fixture file not found")
 class TestSPSS:
     def test_id(self):
         try:
             datatype_id = SPSSIterable.id()
-            assert datatype_id == 'sav'
+            assert datatype_id == "sav"
         except ImportError:
             pytest.skip("SPSS support requires pyreadstat package")
 
@@ -28,7 +29,7 @@ class TestSPSS:
 
     def test_openclose(self):
         try:
-            iterable = SPSSIterable(FIXTURE_FILE)        
+            iterable = SPSSIterable(FIXTURE_FILE)
             iterable.close()
         except ImportError:
             pytest.skip("SPSS support requires pyreadstat package")

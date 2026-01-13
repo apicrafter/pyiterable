@@ -9,8 +9,16 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class BSONIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         super().__init__(filename, stream, codec=codec, binary=True, mode=mode, options=options)
@@ -23,8 +31,7 @@ class BSONIterable(BaseFileIterable):
 
     @staticmethod
     def id() -> str:
-        return 'bson'
-
+        return "bson"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -34,7 +41,7 @@ class BSONIterable(BaseFileIterable):
         """Write single bson record"""
         return next(self.reader)
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk bson record"""
         chunk = []
         for _n in range(0, num):
@@ -44,11 +51,11 @@ class BSONIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single bson record"""
         self.fobj.write(bson.BSON.encode(record))
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk bson record"""
         for record in records:
             self.fobj.write(bson.BSON.encode(record))

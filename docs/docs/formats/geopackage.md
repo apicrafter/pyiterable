@@ -51,11 +51,26 @@ for feature in source:
     # feature['properties'] contains attributes
 source.close()
 
+# List available layers
+from iterable.datatypes.geopackage import GeoPackageIterable
+
+# Discover layers before opening
+layers = GeoPackageIterable('data.gpkg').list_tables('data.gpkg')
+print(f"Available layers: {layers}")  # e.g., ['roads', 'buildings', 'parcels']
+
 # Reading specific layer
 source = open_iterable('data.gpkg', iterableargs={'layer': 'layer_name'})
 for feature in source:
     print(feature)
 source.close()
+
+# Process all layers
+for layer_name in layers:
+    source = open_iterable('data.gpkg', iterableargs={'layer': layer_name})
+    print(f"Processing layer: {layer_name}")
+    for feature in source:
+        process(feature)
+    source.close()
 
 # Writing
 dest = open_iterable('output.gpkg', mode='w')

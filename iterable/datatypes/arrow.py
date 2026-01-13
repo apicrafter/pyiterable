@@ -5,6 +5,7 @@ import typing
 try:
     import pyarrow
     import pyarrow.feather
+
     HAS_PYARROW = True
 except ImportError:
     HAS_PYARROW = False
@@ -15,8 +16,17 @@ DEFAULT_BATCH_SIZE = 1024
 
 
 class ArrowIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, mode: str = 'r', codec: BaseCodec = None, batch_size:int = DEFAULT_BATCH_SIZE, options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        mode: str = "r",
+        codec: BaseCodec = None,
+        batch_size: int = DEFAULT_BATCH_SIZE,
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_PYARROW:
@@ -33,16 +43,16 @@ class ArrowIterable(BaseFileIterable):
         super().reset()
         self.pos = 0
         self.reader = None
-        if self.mode == 'r':
+        if self.mode == "r":
             self.table = pyarrow.feather.read_table(self.fobj)
             self.iterator = self.__iterator()
         self.writer = None
-        if self.mode == 'w':
+        if self.mode == "w":
             self.writer = None  # Will be created on first write
 
     @staticmethod
     def id() -> str:
-        return 'arrow'
+        return "arrow"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -55,7 +65,7 @@ class ArrowIterable(BaseFileIterable):
 
     def totals(self):
         """Returns file totals"""
-        if self.mode == 'r':
+        if self.mode == "r":
             return len(self.table)
         return 0
 
@@ -71,7 +81,7 @@ class ArrowIterable(BaseFileIterable):
 
     def close(self):
         """Close iterable"""
-        if self.mode == 'w' and len(self.__buffer) > 0:
+        if self.mode == "w" and len(self.__buffer) > 0:
             self.flush()
         super().close()
 
@@ -86,7 +96,7 @@ class ArrowIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk Arrow records"""
         chunk = []
         for _n in range(0, num):
@@ -95,7 +105,11 @@ class ArrowIterable(BaseFileIterable):
 
     def write(self, record: dict):
         """Write single record"""
-        self.write_bulk([record, ])
+        self.write_bulk(
+            [
+                record,
+            ]
+        )
 
     def write_bulk(self, records: list[dict]):
         """Write bulk records"""

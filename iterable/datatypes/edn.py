@@ -4,10 +4,12 @@ import typing
 
 try:
     import edn_format
+
     HAS_EDN_FORMAT = True
 except ImportError:
     try:
         import pyedn
+
         HAS_PYEDN = True
         HAS_EDN_FORMAT = False
     except ImportError:
@@ -18,7 +20,15 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class EDNIterable(BaseFileIterable):
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', encoding:str = 'utf8', options:dict=None):
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        encoding: str = "utf8",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_EDN_FORMAT and not HAS_PYEDN:
@@ -31,9 +41,9 @@ class EDNIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        if self.mode == 'r':
+        if self.mode == "r":
             content = self.fobj.read()
-            
+
             if HAS_EDN_FORMAT:
                 # edn_format library
                 try:
@@ -43,11 +53,11 @@ class EDNIterable(BaseFileIterable):
                     elif isinstance(data, dict):
                         self.items = [data]
                     else:
-                        self.items = [{'value': data}]
-                except:
+                        self.items = [{"value": data}]
+                except Exception:
                     # Try parsing multiple EDN values
                     self.items = []
-                    for line in content.split('\n'):
+                    for line in content.split("\n"):
                         line = line.strip()
                         if line:
                             try:
@@ -55,8 +65,8 @@ class EDNIterable(BaseFileIterable):
                                 if isinstance(item, dict):
                                     self.items.append(item)
                                 else:
-                                    self.items.append({'value': item})
-                            except:
+                                    self.items.append({"value": item})
+                            except Exception:
                                 pass
             else:
                 # pyedn library
@@ -67,11 +77,11 @@ class EDNIterable(BaseFileIterable):
                     elif isinstance(data, dict):
                         self.items = [data]
                     else:
-                        self.items = [{'value': data}]
-                except:
+                        self.items = [{"value": data}]
+                except Exception:
                     # Try parsing multiple EDN values
                     self.items = []
-                    for line in content.split('\n'):
+                    for line in content.split("\n"):
                         line = line.strip()
                         if line:
                             try:
@@ -79,17 +89,17 @@ class EDNIterable(BaseFileIterable):
                                 if isinstance(item, dict):
                                     self.items.append(item)
                                 else:
-                                    self.items.append({'value': item})
-                            except:
+                                    self.items.append({"value": item})
+                            except Exception:
                                 pass
-            
+
             self.iterator = iter(self.items)
         else:
             self.items = []
 
     @staticmethod
     def id() -> str:
-        return 'edn'
+        return "edn"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -101,7 +111,7 @@ class EDNIterable(BaseFileIterable):
             return {str(k): self._convert_to_dict(v) for k, v in obj.items()}
         elif isinstance(obj, list):
             return [self._convert_to_dict(item) for item in obj]
-        elif hasattr(obj, '__dict__'):
+        elif hasattr(obj, "__dict__"):
             return {str(k): self._convert_to_dict(v) for k, v in obj.__dict__.items()}
         else:
             return obj
@@ -110,14 +120,14 @@ class EDNIterable(BaseFileIterable):
         """Read single EDN record"""
         row = next(self.iterator)
         self.pos += 1
-        
+
         # Convert to dict if needed
         if isinstance(row, dict):
             return row
         else:
             return self._convert_to_dict(row)
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk EDN records"""
         chunk = []
         for _n in range(0, num):
@@ -127,15 +137,15 @@ class EDNIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single EDN record"""
         if HAS_EDN_FORMAT:
             edn_str = edn_format.dumps(record)
         else:
             edn_str = pyedn.write(record)
-        self.fobj.write(edn_str + '\n')
+        self.fobj.write(edn_str + "\n")
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk EDN records"""
         for record in records:
             self.write(record)

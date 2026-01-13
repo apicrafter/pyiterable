@@ -6,8 +6,16 @@ from ..base import BaseCodec
 
 BROTLI_DEFAULT_COMPRESSION_LEVEL = 11
 
+
 class BrotliCodec(BaseCodec):
-    def __init__(self, filename:str, compression_level:int = BROTLI_DEFAULT_COMPRESSION_LEVEL, mode:str = 'r', open_it:bool = False, options:dict = None):
+    def __init__(
+        self,
+        filename: str,
+        compression_level: int = BROTLI_DEFAULT_COMPRESSION_LEVEL,
+        mode: str = "r",
+        open_it: bool = False,
+        options: dict = None,
+    ):
         "Code to support Brotli compression"
         if options is None:
             options = {}
@@ -23,8 +31,8 @@ class BrotliCodec(BaseCodec):
 
     @staticmethod
     def id():
-        return 'brotli'
+        return "brotli"
 
     @staticmethod
     def fileexts() -> list[str]:
-        return ['br', 'brotli']
+        return ["br", "brotli"]

@@ -10,7 +10,7 @@ def test_jsonl_roundtrip_hypothesis(tmp_path):
     hypothesis = pytest.importorskip("hypothesis")
     st = pytest.importorskip("hypothesis.strategies")
 
-    from iterable.helpers.detect import open_iterable
+    from iterable.helpers.detect import open_iterable  # noqa: F401
 
     # Keep generated data small and strictly JSON-serializable.
     record_strategy = st.dictionaries(
@@ -37,5 +37,3 @@ def test_jsonl_roundtrip_hypothesis(tmp_path):
         assert out == records
 
     _roundtrip()
-
-

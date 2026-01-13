@@ -6,10 +6,12 @@ try:
     from odf.opendocument import load
     from odf.table import Table, TableCell, TableRow
     from odf.text import P
+
     HAS_ODF = True
 except ImportError:
     try:
         import pyexcel_ods3
+
         HAS_PYEXCEL_ODS = True
         HAS_ODF = False
     except ImportError:
@@ -20,8 +22,19 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class ODSIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode='r', keys: list[str] = None, page:int = 0, start_line:int = 0, options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode="r",
+        keys: list[str] = None,
+        page: int = 0,
+        start_line: int = 0,
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_ODF and not HAS_PYEXCEL_ODS:
@@ -30,8 +43,8 @@ class ODSIterable(BaseFileIterable):
         self.keys = keys
         self.start_line = start_line + 1
         self.page = page
-        if 'page' in options.keys():
-            self.page = int(options['page'])
+        if "page" in options.keys():
+            self.page = int(options["page"])
         self.pos = self.start_line
         self.extracted_keys = keys is None
         self.reset()
@@ -41,7 +54,7 @@ class ODSIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = self.start_line
-        
+
         if HAS_ODF:
             # Using odfpy library
             self.doc = load(self.filename)
@@ -51,7 +64,7 @@ class ODSIterable(BaseFileIterable):
             self.sheet = self.sheets[self.page]
             self.rows = self.sheet.getElementsByType(TableRow)
             self.row_index = 0
-            
+
             if self.extracted_keys and len(self.rows) > 0:
                 # Extract keys from first row
                 first_row = self.rows[0]
@@ -74,7 +87,7 @@ class ODSIterable(BaseFileIterable):
             self.sheet_name = sheet_names[self.page]
             self.rows = self.data[self.sheet_name]
             self.row_index = 0
-            
+
             if self.extracted_keys and len(self.rows) > 0:
                 # Extract keys from first row
                 self.keys = [str(cell) for cell in self.rows[0]]
@@ -84,7 +97,7 @@ class ODSIterable(BaseFileIterable):
     @staticmethod
     def has_totals():
         """Has totals indicator"""
-        return True        
+        return True
 
     def totals(self):
         """Returns file totals"""
@@ -95,11 +108,54 @@ class ODSIterable(BaseFileIterable):
 
     @staticmethod
     def id() -> str:
-        return 'ods'
+        return "ods"
 
     @staticmethod
     def is_flatonly() -> bool:
         return True
+
+    @staticmethod
+    def has_tables() -> bool:
+        """Indicates if this format supports multiple tables/sheets."""
+        return True
+
+    def list_tables(self, filename: str | None = None) -> list[str] | None:
+        """List available sheet names in the ODS file.
+
+        Args:
+            filename: Optional filename. If None, uses instance's filename and reuses open document.
+
+        Returns:
+            list[str]: List of sheet names, or empty list if no sheets.
+        """
+        target_filename = filename if filename is not None else self.filename
+        if target_filename is None:
+            return None
+
+        # If document is already open and using same file, reuse it
+        if filename is None and hasattr(self, "doc") and self.doc is not None:
+            if HAS_ODF:
+                return [
+                    sheet.getAttribute("name") or f"Sheet{i}"
+                    for i, sheet in enumerate(self.doc.spreadsheet.getElementsByType(Table))
+                ]
+            elif HAS_PYEXCEL_ODS:
+                return list(self.data.keys()) if hasattr(self, "data") else []
+
+        # Otherwise, open temporarily
+        if HAS_ODF:
+            doc = load(target_filename)
+            try:
+                sheets = doc.spreadsheet.getElementsByType(Table)
+                return [sheet.getAttribute("name") or f"Sheet{i}" for i, sheet in enumerate(sheets)]
+            finally:
+                # odfpy doesn't have explicit close, but we can clear reference
+                del doc
+        elif HAS_PYEXCEL_ODS:
+            data = pyexcel_ods3.get_data(target_filename)
+            return list(data.keys())
+        else:
+            return None
 
     def read(self) -> dict:
         """Read single ODS record"""
@@ -135,7 +191,7 @@ class ODSIterable(BaseFileIterable):
             self.pos += 1
             return result
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk ODS records"""
         chunk = []
         for _n in range(0, num):
@@ -145,7 +201,7 @@ class ODSIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single ODS record"""
         raise NotImplementedError("ODS writing is not yet supported")
 

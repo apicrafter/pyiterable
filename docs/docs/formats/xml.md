@@ -64,6 +64,32 @@ finally:
     source.close()
 ```
 
+### Discovering Available Tags
+
+XML files can contain multiple tag types. Use `list_tables()` to discover available tag names:
+
+```python
+from iterable.datatypes.xml import XMLIterable
+
+# Before opening - discover tag names
+iterable = XMLIterable('data.xml')
+tag_names = iterable.list_tables('data.xml')
+print(f"Available tags: {tag_names}")
+
+# After opening - list all tags (reuses open file)
+source = open_iterable('data.xml', iterableargs={'tagname': 'book'})
+all_tags = source.list_tables()  # Reuses open file handle
+print(f"All tags: {all_tags}")
+
+# Process different tag types
+for tag_name in all_tags:
+    source = open_iterable('data.xml', iterableargs={'tagname': tag_name})
+    print(f"Processing tag: {tag_name}")
+    for row in source:
+        process(row)
+    source.close()
+```
+
 ## Parameters
 
 | Parameter | Type | Default | Required | Description |

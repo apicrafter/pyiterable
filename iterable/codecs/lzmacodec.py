@@ -9,8 +9,11 @@ LZMA_FILTERS = [
     {"id": lzma.FILTER_LZMA2, "preset": 7 | lzma.PRESET_EXTREME},
 ]
 
+
 class LZMACodec(BaseCodec):
-    def __init__(self, filename:str, compression_level:int = 5, mode:str = 'r', open_it:bool = False, options:dict = None):
+    def __init__(
+        self, filename: str, compression_level: int = 5, mode: str = "r", open_it: bool = False, options: dict = None
+    ):
         if options is None:
             options = {}
         self.compression_level = compression_level
@@ -18,13 +21,12 @@ class LZMACodec(BaseCodec):
 
     def open(self) -> lzma.LZMAFile:
         filters = LZMA_FILTERS
-        filters[0]['dist'] = self.compression_level
-        self._fileobj = lzma.LZMAFile(self.filename, mode=self.mode, format=lzma.FORMAT_XZ)#, filters=filters)
+        filters[0]["dist"] = self.compression_level
+        self._fileobj = lzma.LZMAFile(self.filename, mode=self.mode, format=lzma.FORMAT_XZ)  # , filters=filters)
         return self._fileobj
 
-
     def reset(self):
-        if self.mode in ['w', 'wb']:
+        if self.mode in ["w", "wb"]:
             pass
         else:
             super().reset()
@@ -34,8 +36,8 @@ class LZMACodec(BaseCodec):
 
     @staticmethod
     def id():
-        return 'xz'
-        
+        return "xz"
+
     @staticmethod
     def fileexts() -> list[str]:
-        return ['xz', 'lzma']
+        return ["xz", "lzma"]

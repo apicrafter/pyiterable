@@ -4,6 +4,7 @@ import typing
 
 try:
     import ion
+
     HAS_ION = True
 except ImportError:
     HAS_ION = False
@@ -12,8 +13,16 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class IonIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_ION:
@@ -26,7 +35,7 @@ class IonIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        if self.mode == 'r':
+        if self.mode == "r":
             # Read Ion data
             data = self.fobj.read()
             self.iterator = iter(ion.loads(data, single_value=False))
@@ -35,7 +44,7 @@ class IonIterable(BaseFileIterable):
 
     @staticmethod
     def id() -> str:
-        return 'ion'
+        return "ion"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -52,9 +61,9 @@ class IonIterable(BaseFileIterable):
             # If it's a list, convert to dict with index
             return {str(i): v for i, v in enumerate(value)}
         else:
-            return {'value': value}
+            return {"value": value}
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk Ion records"""
         chunk = []
         for _n in range(0, num):
@@ -64,11 +73,15 @@ class IonIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single Ion record"""
-        self.write_bulk([record, ])
+        self.write_bulk(
+            [
+                record,
+            ]
+        )
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk Ion records"""
         for record in records:
             ion_data = ion.dumps(record)

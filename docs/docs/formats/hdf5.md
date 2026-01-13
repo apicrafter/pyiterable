@@ -39,12 +39,25 @@ Writing support:
 ```python
 from iterable.helpers.detect import open_iterable
 
+# List available datasets
+from iterable.datatypes.hdf5 import HDF5Iterable
+
+# Discover datasets before opening
+datasets = HDF5Iterable('data.h5').list_tables('data.h5')
+print(f"Available datasets: {datasets}")  # e.g., ['/data', '/group/dataset1']
+
 # Reading with dataset path
 source = open_iterable('data.h5', iterableargs={
     'dataset_path': '/data'  # Path to dataset in HDF5 file
 })
 for row in source:
     print(row)
+source.close()
+
+# List datasets after opening (reuses file handle)
+source = open_iterable('data.h5', iterableargs={'dataset_path': '/data'})
+all_datasets = source.list_tables()  # Reuses open file handle
+print(f"All datasets: {all_datasets}")
 source.close()
 
 # Writing

@@ -4,6 +4,7 @@ import typing
 
 try:
     import ubjson
+
     HAS_UBJSON = True
 except ImportError:
     HAS_UBJSON = False
@@ -12,8 +13,16 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class UBJSONIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_UBJSON:
@@ -26,9 +35,9 @@ class UBJSONIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        if self.mode == 'r':
+        if self.mode == "r":
             try:
-                if hasattr(self.fobj, 'seek'):
+                if hasattr(self.fobj, "seek"):
                     self.fobj.seek(0)
                 # Read all data
                 data = self.fobj.read()
@@ -50,7 +59,7 @@ class UBJSONIterable(BaseFileIterable):
 
     @staticmethod
     def id() -> str:
-        return 'ubjson'
+        return "ubjson"
 
     @staticmethod
     def is_flatonly() -> bool:
@@ -63,9 +72,9 @@ class UBJSONIterable(BaseFileIterable):
             self.pos += 1
             return row
         except (StopIteration, EOFError, ValueError):
-            raise StopIteration
+            raise StopIteration from None
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk UBJSON records"""
         chunk = []
         for _n in range(0, num):
@@ -75,12 +84,12 @@ class UBJSONIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single UBJSON record"""
         encoded = ubjson.dumpb(record)
         self.fobj.write(encoded)
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk UBJSON records"""
         for record in records:
             self.write(record)

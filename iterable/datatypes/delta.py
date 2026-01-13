@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import os
 import typing
 
 try:
     import deltalake
+
     HAS_DELTALAKE = True
 except ImportError:
     HAS_DELTALAKE = False
@@ -12,8 +14,16 @@ from ..base import BaseCodec, BaseFileIterable
 
 
 class DeltaIterable(BaseFileIterable):
-    datamode = 'binary'
-    def __init__(self, filename:str = None, stream:typing.IO = None, codec: BaseCodec = None, mode:str='r', options:dict=None):
+    datamode = "binary"
+
+    def __init__(
+        self,
+        filename: str = None,
+        stream: typing.IO = None,
+        codec: BaseCodec = None,
+        mode: str = "r",
+        options: dict = None,
+    ):
         if options is None:
             options = {}
         if not HAS_DELTALAKE:
@@ -26,7 +36,7 @@ class DeltaIterable(BaseFileIterable):
         """Reset iterable"""
         super().reset()
         self.pos = 0
-        if self.mode == 'r':
+        if self.mode == "r":
             # Delta Lake requires a path to the delta table directory
             if self.filename:
                 self.delta_table = deltalake.DeltaTable(self.filename)
@@ -46,11 +56,59 @@ class DeltaIterable(BaseFileIterable):
 
     @staticmethod
     def id() -> str:
-        return 'delta'
+        return "delta"
 
     @staticmethod
     def is_flatonly() -> bool:
         return True
+
+    @staticmethod
+    def has_tables() -> bool:
+        """Indicates if this format supports multiple tables.
+
+        Returns True only if using a catalog (not a single table directory).
+        For single table directories, returns False.
+        """
+        # Delta Lake typically works with single table directories
+        # Catalog support would require additional configuration
+        # For now, return False as most usage is single table
+        return False
+
+    def list_tables(self, filename: str | None = None) -> list[str] | None:
+        """List available table names in the Delta Lake catalog or directory.
+
+        Can be called as:
+        - Instance method: `iterable.list_tables()` - uses instance's path
+        - With filename: `iterable.list_tables(filename)` - opens catalog/directory temporarily
+
+        Args:
+            filename: Optional catalog path or table directory. If None, uses instance's filename.
+
+        Returns:
+            list[str] | None: List of table names if catalog-based, None if single table directory.
+        """
+        if not HAS_DELTALAKE:
+            return None
+
+        # Delta Lake typically uses single table directories
+        # Catalog support (Unity Catalog, Hive Metastore) would require additional setup
+        # For now, return None as most usage is single table directories
+        target_path = filename if filename is not None else (self.filename if hasattr(self, "filename") else None)
+        if target_path is None:
+            return None
+
+        # Check if path is a catalog or single table
+        # This is a simplified check - actual catalog detection would require catalog configuration
+        try:
+            # If it's a directory with _delta_log, it's a single table
+            if os.path.isdir(target_path) and os.path.exists(os.path.join(target_path, "_delta_log")):
+                return None  # Single table directory
+
+            # Could be a catalog path - but would need catalog configuration
+            # For now, assume single table
+            return None
+        except Exception:
+            return None
 
     @staticmethod
     def has_totals():
@@ -59,7 +117,7 @@ class DeltaIterable(BaseFileIterable):
 
     def totals(self):
         """Returns file totals"""
-        if hasattr(self, 'pyarrow_table'):
+        if hasattr(self, "pyarrow_table"):
             return len(self.pyarrow_table)
         return 0
 
@@ -69,7 +127,7 @@ class DeltaIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num:int = 10) -> list[dict]:
+    def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk Delta records"""
         chunk = []
         for _n in range(0, num):
@@ -79,10 +137,10 @@ class DeltaIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record:dict):
+    def write(self, record: dict):
         """Write single Delta record - not supported"""
         raise NotImplementedError("Delta Lake writing is not yet supported")
 
-    def write_bulk(self, records:list[dict]):
+    def write_bulk(self, records: list[dict]):
         """Write bulk Delta records - not supported"""
         raise NotImplementedError("Delta Lake writing is not yet supported")

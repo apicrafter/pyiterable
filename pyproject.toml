@@ -61,6 +61,9 @@ mvt = ["mapbox-vector-tile>=1.2.0"]
 topojson = ["topojson>=1.5.0"]
 feed = ["feedparser>=6.0.0"]
 dxf = ["ezdxf>=1.0.0"]
+html = ["beautifulsoup4>=4.11.0"]
+arff = ["liac-arff>=2.5.0"]
+json = ["ijson>=3.2.0"]
 
 
 # Convenience group
@@ -98,6 +101,9 @@ all = [
     "topojson>=1.5.0",
     "feedparser>=6.0.0",
     "ezdxf>=1.0.0",
+    "beautifulsoup4>=4.11.0",
+    "liac-arff>=2.5.0",
+    "ijson>=3.2.0",
 ]
 
 dev = [

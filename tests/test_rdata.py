@@ -8,14 +8,15 @@ from iterable.datatypes import RDataIterable
 # This test will be skipped if pyreadr is not available
 # or if fixture file doesn't exist
 
-FIXTURE_FILE = 'fixtures/2cols6rows.rdata'
+FIXTURE_FILE = "fixtures/2cols6rows.rdata"
+
 
 @pytest.mark.skipif(not os.path.exists(FIXTURE_FILE), reason="RData fixture file not found")
 class TestRData:
     def test_id(self):
         try:
             datatype_id = RDataIterable.id()
-            assert datatype_id == 'rdata'
+            assert datatype_id == "rdata"
         except ImportError:
             pytest.skip("RData support requires pyreadr package")
 
@@ -28,7 +29,7 @@ class TestRData:
 
     def test_openclose(self):
         try:
-            iterable = RDataIterable(FIXTURE_FILE)        
+            iterable = RDataIterable(FIXTURE_FILE)
             iterable.close()
         except ImportError:
             pytest.skip("RData support requires pyreadr package")

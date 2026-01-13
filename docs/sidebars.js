@@ -47,6 +47,7 @@ const sidebars = {
         'api/engines',
         'api/base-iterable',
         'api/capabilities',
+        'api/exceptions',
       ],
     },
     {

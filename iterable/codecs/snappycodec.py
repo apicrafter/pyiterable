@@ -12,7 +12,9 @@ except ImportError:
 
 
 class SnappyCodec(BaseCodec):
-    def __init__(self, filename: str, compression_level: int = None, mode: str = 'r', open_it: bool = False, options: dict = None):
+    def __init__(
+        self, filename: str, compression_level: int = None, mode: str = "r", open_it: bool = False, options: dict = None
+    ):
         """
         Snappy compression codec.
         Note: Snappy doesn't support compression levels (fixed algorithm).
@@ -24,15 +26,21 @@ class SnappyCodec(BaseCodec):
 
     def open(self) -> typing.IO:
         if snappy is None:
-            raise ImportError("python-snappy library is required for Snappy compression. Install it with: pip install python-snappy")
-        
-        if 'r' in self.mode:
+            raise ImportError(
+                "python-snappy library is required for Snappy compression. Install it with: pip install python-snappy"
+            )
+
+        if "r" in self.mode:
             # Reading: read entire file, decompress, provide as BytesIO
             # Only read if buffer doesn't exist or is closed
-            if not hasattr(self, '_buffer') or self._buffer is None or (hasattr(self._buffer, 'closed') and self._buffer.closed):
-                with open(self.filename, 'rb') as f:
+            if (
+                not hasattr(self, "_buffer")
+                or self._buffer is None
+                or (hasattr(self._buffer, "closed") and self._buffer.closed)
+            ):
+                with open(self.filename, "rb") as f:
                     compressed_data = f.read()
-                
+
                 if compressed_data:
                     # Try streaming decompression first, fall back to simple decompress
                     try:
@@ -46,27 +54,31 @@ class SnappyCodec(BaseCodec):
                         # Fall back to simple decompress if StreamDecompressor not available
                         decompressed_data = snappy.decompress(compressed_data)
                 else:
-                    decompressed_data = b''
-                
+                    decompressed_data = b""
+
                 self._buffer = io.BytesIO(decompressed_data)
             # Reset buffer position if it exists
-            elif hasattr(self._buffer, 'seek'):
+            elif hasattr(self._buffer, "seek"):
                 self._buffer.seek(0)
-            
+
             self._fileobj = self._buffer
         else:
             # Writing: buffer data, compress on close
-            if not hasattr(self, '_buffer') or self._buffer is None or (hasattr(self._buffer, 'closed') and self._buffer.closed):
+            if (
+                not hasattr(self, "_buffer")
+                or self._buffer is None
+                or (hasattr(self._buffer, "closed") and self._buffer.closed)
+            ):
                 self._buffer = io.BytesIO()
             self._fileobj = self._buffer
-        
+
         return self._fileobj
 
     def close(self):
-        if hasattr(self, '_fileobj') and self._fileobj:
-            if 'w' in self.mode or 'a' in self.mode:
+        if hasattr(self, "_fileobj") and self._fileobj:
+            if "w" in self.mode or "a" in self.mode:
                 # Compress and write buffered data
-                if hasattr(self, '_buffer') and self._buffer:
+                if hasattr(self, "_buffer") and self._buffer:
                     try:
                         # Check if buffer is still open
                         try:
@@ -74,7 +86,7 @@ class SnappyCodec(BaseCodec):
                         except ValueError:
                             # Buffer already closed
                             data = None
-                        
+
                         if data:
                             # Try streaming compression first, fall back to simple compress
                             try:
@@ -83,14 +95,14 @@ class SnappyCodec(BaseCodec):
                             except (AttributeError, TypeError):
                                 # Fall back to simple compress if StreamCompressor not available
                                 compressed_data = snappy.compress(data)
-                            
-                            with open(self.filename, 'wb') as f:
+
+                            with open(self.filename, "wb") as f:
                                 f.write(compressed_data)
                     except (ValueError, OSError, AttributeError):
                         # Buffer already closed or other I/O error
                         pass
                     finally:
-                        if hasattr(self, '_buffer') and self._buffer:
+                        if hasattr(self, "_buffer") and self._buffer:
                             try:
                                 # Only close if not already closed
                                 if not self._buffer.closed:
@@ -109,8 +121,8 @@ class SnappyCodec(BaseCodec):
     def fileobj(self):
         """Return file object"""
         # If fileobj is None but buffer exists and is open, return buffer
-        if self._fileobj is None and hasattr(self, '_buffer') and self._buffer:
-            if not (hasattr(self._buffer, 'closed') and self._buffer.closed):
+        if self._fileobj is None and hasattr(self, "_buffer") and self._buffer:
+            if not (hasattr(self._buffer, "closed") and self._buffer.closed):
                 self._fileobj = self._buffer
                 return self._fileobj
             else:
@@ -118,13 +130,13 @@ class SnappyCodec(BaseCodec):
                 self.open()
                 return self._fileobj
         return self._fileobj
-    
+
     def reset(self):
         """Reset file position"""
-        if hasattr(self, '_buffer') and self._buffer:
-            if 'r' in self.mode:
+        if hasattr(self, "_buffer") and self._buffer:
+            if "r" in self.mode:
                 # Check if buffer is closed, if so reopen
-                if hasattr(self._buffer, 'closed') and self._buffer.closed:
+                if hasattr(self._buffer, "closed") and self._buffer.closed:
                     # Reopen the buffer
                     self.open()
                 else:
@@ -132,7 +144,12 @@ class SnappyCodec(BaseCodec):
                     self._fileobj = self._buffer
             else:
                 # For writing, we need to reopen
-                if hasattr(self, '_buffer') and self._buffer and hasattr(self._buffer, 'closed') and self._buffer.closed:
+                if (
+                    hasattr(self, "_buffer")
+                    and self._buffer
+                    and hasattr(self._buffer, "closed")
+                    and self._buffer.closed
+                ):
                     self.open()
                 else:
                     self.close()
@@ -140,8 +157,8 @@ class SnappyCodec(BaseCodec):
 
     @staticmethod
     def id():
-        return 'snappy'
+        return "snappy"
 
     @staticmethod
     def fileexts() -> list[str]:
-        return ['snappy', 'sz']
+        return ["snappy", "sz"]
