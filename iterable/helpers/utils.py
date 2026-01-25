@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import typing
 from collections import OrderedDict
 from itertools import repeat, takewhile
@@ -166,7 +167,7 @@ def guess_int_size(value: int):
     return "uint32"
 
 
-def guess_datatype(s: str, qd: Object) -> dict:
+def guess_datatype(s: str, qd: typing.Any) -> dict:
     """Guesses type of data by string provided
     :param s
     :param qd
@@ -199,7 +200,9 @@ def guess_datatype(s: str, qd: Object) -> dict:
             is_date = False
             res = qd.match(s)
             if res:
-                attrs = {"base": "date", "pat": res["pattern"]}
+                # Extract pattern string from regex object if possible
+                pattern_str = getattr(qd, "pattern", str(qd))
+                attrs = {"base": "date", "pat": pattern_str}
                 is_date = True
             if not is_date:
                 if len(s.strip()) == 0:
@@ -217,11 +220,11 @@ def count_file_newlines(filename: str = None, stream: typing.IO = None):
                 break
             yield b
 
-    if fname:
-        with open(fname, "rb") as f:
-            count = sum(buf.count(b"\n") for buf in _make_gen(f.raw.read))
+    if filename:
+        with open(filename, "rb") as f:
+            count = sum(buf.count(b"\n") for buf in _make_gen(f.read))
     else:
-        sum(stream.count(b"\n") for buf in _make_gen(f.raw.read))
+        count = sum(buf.count(b"\n") for buf in _make_gen(stream.read))
     return count
 
 
@@ -263,7 +266,7 @@ def is_flat_object(item: object) -> bool:
         if isinstance(v, tuple) or isinstance(v, list):
             return False
         elif isinstance(v, dict):
-            if not _is_flat(v):
+            if not is_flat_object(v):
                 return False
     return True
 
@@ -297,11 +300,11 @@ def get_dict_value_deep(adict: dict, key: str, prefix: list = None, as_array: bo
             if as_array:
                 result = []
                 for v in adict:
-                    if prefix[0] in v.keys():
+                    if isinstance(v, dict) and prefix[0] in v.keys():
                         result.append(v[prefix[0]])
                 return result
             else:
-                if len(adict) > 0 and prefix[0] in adict[0].keys():
+                if len(adict) > 0 and isinstance(adict[0], dict) and prefix[0] in adict[0].keys():
                     return adict[0][prefix[0]]
         return None
     else:
@@ -312,12 +315,14 @@ def get_dict_value_deep(adict: dict, key: str, prefix: list = None, as_array: bo
             if as_array:
                 result = []
                 for v in adict:
-                    res = get_dict_value_deep(v[prefix[0]], key, prefix=prefix[1:], as_array=as_array)
-                    if res:
-                        result.extend(res)
+                    if isinstance(v, dict) and prefix[0] in v.keys():
+                        res = get_dict_value_deep(v[prefix[0]], key, prefix=prefix[1:], as_array=as_array)
+                        if res:
+                            result.extend(res if isinstance(res, list) else [res])
                 return result
             else:
-                return get_dict_value_deep(adict[0][prefix[0]], key, prefix=prefix[1:], as_array=as_array)
+                if len(adict) > 0 and isinstance(adict[0], dict) and prefix[0] in adict[0].keys():
+                    return get_dict_value_deep(adict[0][prefix[0]], key, prefix=prefix[1:], as_array=as_array)
         return None
 
 

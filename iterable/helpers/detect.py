@@ -163,6 +163,8 @@ DATATYPE_REGISTRY: dict[str, tuple[str, str]] = {
     "html": ("iterable.datatypes.html", "HTMLIterable"),
     "htm": ("iterable.datatypes.html", "HTMLIterable"),
     "arff": ("iterable.datatypes.arff", "ARFFIterable"),
+    "vortex": ("iterable.datatypes.vortex", "VortexIterable"),
+    "vtx": ("iterable.datatypes.vortex", "VortexIterable"),
 }
 
 CODEC_REGISTRY: dict[str, tuple[str, str]] = {
@@ -328,6 +330,8 @@ FLAT_TYPES = [
     "html",
     "htm",
     "arff",
+    "vortex",
+    "vtx",
 ]
 
 ENGINES = ["internal", "duckdb"]
@@ -381,6 +385,10 @@ def detect_file_type_from_content(fileobj, peek_size: int = 8192) -> str | None:
         # ORC
         if peek.startswith(b"ORC"):
             return "orc"
+
+        # Vortex
+        if peek.startswith(b"VTXF"):
+            return "vortex"
 
         # ZIP-based formats (XLSX, DOCX, etc.)
         if peek.startswith(b"PK\x03\x04"):

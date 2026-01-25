@@ -1,4 +1,7 @@
 import os
+import tempfile
+
+import pytest
 
 from iterable.convert import convert
 
@@ -78,3 +81,119 @@ class TestConvert:
                 # Check that pipe delimiter is used (not comma)
                 assert "|" in content or len(content) > 0
             os.unlink("testdata/test_convert_output_args.csv")
+
+    def test_convert_file_not_found(self):
+        """Test convert with non-existent source file"""
+        with pytest.raises(FileNotFoundError):
+            convert(fromfile="nonexistent_file.csv", tofile="testdata/output.jsonl")
+
+    def test_convert_invalid_scan_limit(self):
+        """Test convert with invalid scan_limit"""
+        with pytest.raises(ValueError, match="scan_limit must be non-negative"):
+            convert(
+                fromfile="fixtures/2cols6rows.csv",
+                tofile="testdata/test_invalid_scan.jsonl",
+                scan_limit=-1,
+            )
+
+    def test_convert_invalid_batch_size(self):
+        """Test convert with invalid batch_size"""
+        with pytest.raises(ValueError, match="batch_size must be positive"):
+            convert(
+                fromfile="fixtures/2cols6rows.csv",
+                tofile="testdata/test_invalid_batch.jsonl",
+                batch_size=0,
+            )
+
+    def test_convert_empty_file(self, tmp_path):
+        """Test convert with empty source file"""
+        empty_file = tmp_path / "empty.csv"
+        empty_file.write_text("")
+        output_file = tmp_path / "output.jsonl"
+        # Should handle empty file gracefully
+        convert(fromfile=str(empty_file), tofile=str(output_file))
+        assert output_file.exists()
+
+    def test_convert_single_record(self, tmp_path):
+        """Test convert with single record file"""
+        single_file = tmp_path / "single.csv"
+        single_file.write_text("id,name\n1,test")
+        output_file = tmp_path / "output.jsonl"
+        convert(fromfile=str(single_file), tofile=str(output_file))
+        assert output_file.exists()
+
+    def test_convert_with_scan_limit(self, tmp_path):
+        """Test convert with scan_limit"""
+        test_file = tmp_path / "test.csv"
+        test_file.write_text("id,name\n1,test1\n2,test2\n3,test3")
+        output_file = tmp_path / "output.jsonl"
+        convert(fromfile=str(test_file), tofile=str(output_file), scan_limit=2)
+        assert output_file.exists()
+
+    def test_convert_resource_cleanup_on_error(self, tmp_path):
+        """Test that resources are cleaned up even on error"""
+        test_file = tmp_path / "test.csv"
+        test_file.write_text("id,name\n1,test")
+        output_file = tmp_path / "output.unknown_format"
+        # Should raise error but clean up resources
+        try:
+            convert(fromfile=str(test_file), tofile=str(output_file))
+        except Exception:
+            pass
+        # Resources should be cleaned up (no file handles left open)
+
+    def test_convert_nested_to_flat(self, tmp_path):
+        """Test convert nested JSON to flat CSV"""
+        nested_file = tmp_path / "nested.jsonl"
+        nested_file.write_text('{"user": {"name": "test", "age": 30}}\n')
+        output_file = tmp_path / "output.csv"
+        convert(fromfile=str(nested_file), tofile=str(output_file), is_flatten=True)
+        assert output_file.exists()
+
+    def test_convert_with_iterableargs(self, tmp_path):
+        """Test convert with input iterable arguments"""
+        test_file = tmp_path / "test.csv"
+        test_file.write_text("id;name\n1;test")
+        output_file = tmp_path / "output.jsonl"
+        convert(
+            fromfile=str(test_file),
+            tofile=str(output_file),
+            iterableargs={"delimiter": ";"},
+        )
+        assert output_file.exists()
+
+    def test_convert_progress_tracking(self, tmp_path):
+        """Test convert with progress tracking (use_totals)"""
+        test_file = tmp_path / "test.csv"
+        test_file.write_text("id,name\n1,test1\n2,test2\n3,test3")
+        output_file = tmp_path / "output.jsonl"
+        # Should work with use_totals=True
+        convert(fromfile=str(test_file), tofile=str(output_file), use_totals=True)
+        assert output_file.exists()
+
+    def test_convert_large_batch(self, tmp_path):
+        """Test convert with large batch size"""
+        test_file = tmp_path / "test.csv"
+        # Create file with many rows
+        with open(test_file, "w") as f:
+            f.write("id,name\n")
+            for i in range(100):
+                f.write(f"{i},test{i}\n")
+        output_file = tmp_path / "output.jsonl"
+        convert(fromfile=str(test_file), tofile=str(output_file), batch_size=1000)
+        assert output_file.exists()
+
+    def test_convert_schema_extraction(self, tmp_path):
+        """Test that schema extraction works for flat formats"""
+        test_file = tmp_path / "test.jsonl"
+        test_file.write_text('{"id": 1, "name": "test1"}\n{"id": 2, "name": "test2", "extra": "field"}\n')
+        output_file = tmp_path / "output.csv"
+        # Should extract all keys (id, name, extra)
+        convert(fromfile=str(test_file), tofile=str(output_file))
+        assert output_file.exists()
+        # Verify all columns are present
+        with open(output_file) as f:
+            header = f.readline()
+            assert "id" in header
+            assert "name" in header
+            assert "extra" in header

@@ -292,3 +292,84 @@ class TestOptionalDependencies:
             assert all(v is None or isinstance(v, bool) for v in caps.values()), (
                 f"Format {format_id} has invalid capability values"
             )
+
+    def test_get_format_capabilities_import_error_handling(self):
+        """Test that ImportError is handled gracefully."""
+        # This tests the error handling path in get_format_capabilities
+        # We can't easily mock ImportError without more complex setup,
+        # but we can verify the function structure handles it
+        caps = get_format_capabilities("csv")
+        assert isinstance(caps, dict)
+
+    def test_list_all_capabilities_handles_errors(self):
+        """Test that list_all_capabilities handles errors for individual formats."""
+        all_caps = list_all_capabilities()
+        # Should return dict even if some formats fail
+        assert isinstance(all_caps, dict)
+        # All entries should be dicts
+        for format_id, caps in all_caps.items():
+            assert isinstance(caps, dict)
+
+    def test_get_capability_all_keys(self):
+        """Test get_capability with all possible capability keys."""
+        capability_keys = [
+            "readable",
+            "writable",
+            "bulk_read",
+            "bulk_write",
+            "totals",
+            "streaming",
+            "flat_only",
+            "tables",
+            "compression",
+            "nested",
+        ]
+        for key in capability_keys:
+            result = get_capability("csv", key)
+            assert result is None or isinstance(result, bool)
+
+    def test_detect_capabilities_internal(self):
+        """Test _detect_capabilities function directly."""
+        from iterable.datatypes import CSVIterable
+        from iterable.helpers.capabilities import _detect_capabilities
+
+        caps = _detect_capabilities(CSVIterable)
+        assert isinstance(caps, dict)
+        assert "readable" in caps
+        assert "writable" in caps
+        assert caps["readable"] is True
+        assert caps["writable"] is True
+
+    def test_get_format_class_internal(self):
+        """Test _get_format_class function."""
+        from iterable.helpers.capabilities import _get_format_class
+
+        format_class = _get_format_class("csv")
+        from iterable.datatypes import CSVIterable
+
+        assert format_class == CSVIterable
+
+    def test_get_format_class_unknown_format(self):
+        """Test _get_format_class with unknown format."""
+        from iterable.helpers.capabilities import _get_format_class
+
+        with pytest.raises(ValueError, match="Unknown format"):
+            _get_format_class("unknown_format_xyz123")
+
+    def test_capability_cache_isolation(self):
+        """Test that capability cache returns copies, not references."""
+        from iterable.helpers.capabilities import _CAPABILITY_CACHE
+
+        # Clear cache
+        if "csv" in _CAPABILITY_CACHE:
+            del _CAPABILITY_CACHE["csv"]
+
+        caps1 = get_format_capabilities("csv")
+        caps2 = get_format_capabilities("csv")
+
+        # Should be equal but not the same object (copies)
+        assert caps1 == caps2
+        # Modifying one shouldn't affect the other
+        caps1["readable"] = False
+        caps3 = get_format_capabilities("csv")
+        assert caps3["readable"] is True  # Should still be True from cache

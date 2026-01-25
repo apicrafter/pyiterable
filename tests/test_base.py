@@ -355,3 +355,141 @@ class TestBaseFileIterable:
 
         iterable = BaseFileIterable(filename=str(test_file), noopen=True)
         assert iterable.datamode == "text"
+
+    def test_base_iterable_has_tables(self):
+        """Test has_tables returns False by default"""
+        assert BaseIterable.has_tables() is False
+
+    def test_base_iterable_list_tables(self):
+        """Test list_tables returns None by default"""
+        iterable = BaseIterable()
+        assert iterable.list_tables() is None
+        assert iterable.list_tables("test.csv") is None
+
+    def test_base_iterable_is_flat_flatonly(self):
+        """Test is_flat returns True when is_flatonly is True"""
+        # Create a mock class that returns True for is_flatonly
+        class FlatOnlyIterable(BaseIterable):
+            @staticmethod
+            def id():
+                return "flat"
+
+            def reset(self):
+                pass
+
+            @staticmethod
+            def is_flatonly():
+                return True
+
+        iterable = FlatOnlyIterable()
+        assert iterable.is_flat() is True
+
+    def test_base_iterable_is_flat_not_flatonly(self):
+        """Test is_flat returns False when is_flatonly is False"""
+        iterable = BaseIterable()
+        # BaseIterable.is_flatonly() returns False, so is_flat() should return False
+        assert iterable.is_flat() is False
+
+    def test_base_codec_context_manager_with_fileobj(self):
+        """Test BaseCodec context manager with existing fileobj"""
+        fileobj = io.BytesIO(b"test")
+        codec = BaseCodec(fileobj=fileobj)
+        # Should not call open() since fileobj exists
+        with pytest.raises(NotImplementedError):
+            # Will fail on exit when close() is called
+            with codec:
+                pass
+
+    def test_base_codec_textIO_encoding(self):
+        """Test textIO with different encodings"""
+        fileobj = io.BytesIO("test data".encode("utf-8"))
+        codec = BaseCodec(fileobj=fileobj)
+        text_wrapper = codec.textIO(encoding="latin-1")
+        assert isinstance(text_wrapper, io.TextIOWrapper)
+        assert text_wrapper.encoding == "latin-1"
+
+    def test_base_file_iterable_reset_stream_type(self):
+        """Test reset with stream type (should not raise error)"""
+        stream = io.StringIO("test data")
+        iterable = BaseFileIterable(stream=stream, noopen=True)
+        # Reset should not raise error for stream type
+        iterable.reset()
+        # Stream position should be unchanged (streams don't support reset)
+
+    def test_base_file_iterable_close_stream_type(self):
+        """Test close with stream type"""
+        stream = io.StringIO("test")
+        iterable = BaseFileIterable(stream=stream, noopen=True)
+        # Close should not close the stream (it's managed externally)
+        iterable.close()
+        # Stream should still be usable
+        assert stream.read() == "test"
+
+    def test_base_file_iterable_open_write_mode(self, tmp_path):
+        """Test open with write mode"""
+        test_file = tmp_path / "test.txt"
+        iterable = BaseFileIterable(filename=str(test_file), noopen=True, mode="w")
+        iterable.open()
+        assert iterable.fobj is not None
+        assert iterable.fobj.mode == "w"
+        iterable.close()
+
+    def test_base_file_iterable_open_append_mode(self, tmp_path):
+        """Test open with append mode"""
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("existing")
+        iterable = BaseFileIterable(filename=str(test_file), noopen=True, mode="a")
+        iterable.open()
+        assert iterable.fobj is not None
+        assert iterable.fobj.mode == "a"
+        iterable.close()
+
+    def test_base_file_iterable_codec_text_mode(self, tmp_path):
+        """Test BaseFileIterable with codec in text mode"""
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("test data")
+        codec = MockCodec(filename=str(test_file), mode="r", open_it=True)
+        iterable = BaseFileIterable(codec=codec, noopen=False)
+        iterable.datamode = "text"
+        assert iterable.fobj is not None
+        assert isinstance(iterable.fobj, io.TextIOWrapper)
+        iterable.close()
+
+    def test_base_file_iterable_codec_binary_mode(self, tmp_path):
+        """Test BaseFileIterable with codec in binary mode"""
+        test_file = tmp_path / "test.bin"
+        test_file.write_bytes(b"test data")
+        codec = MockCodec(filename=str(test_file), mode="rb", open_it=True)
+        iterable = BaseFileIterable(codec=codec, noopen=False, binary=True)
+        iterable.datamode = "binary"
+        assert iterable.fobj is not None
+        # In binary mode, should not wrap with TextIOWrapper
+        assert not isinstance(iterable.fobj, io.TextIOWrapper)
+        iterable.close()
+
+    def test_base_file_iterable_reset_codec_exception_handling(self, tmp_path):
+        """Test reset handles exceptions when closing codec wrapper"""
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("test")
+        codec = MockCodec(filename=str(test_file), mode="r", open_it=True)
+        iterable = BaseFileIterable(codec=codec, noopen=False)
+        iterable.datamode = "text"
+        # Close the wrapper manually to simulate an error
+        if iterable.fobj:
+            iterable.fobj.close()
+        # Reset should handle the exception gracefully
+        iterable.reset()
+        iterable.close()
+
+    def test_base_file_iterable_close_codec_exception_handling(self, tmp_path):
+        """Test close handles exceptions when closing codec wrapper"""
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("test")
+        codec = MockCodec(filename=str(test_file), mode="r", open_it=True)
+        iterable = BaseFileIterable(codec=codec, noopen=False)
+        iterable.datamode = "text"
+        # Manually close to simulate already closed
+        if iterable.fobj:
+            iterable.fobj.close()
+        # Close should handle the exception gracefully
+        iterable.close()

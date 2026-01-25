@@ -344,16 +344,15 @@ class TestUtils:
         assert result["base"] == "float"
 
     def test_guess_datatype_str_date(self):
-        """Test guess_datatype with string that matches date pattern"""
-        # Note: guess_datatype has a bug where it tries to access res['pattern']
-        # but res is a match object. This test just checks it doesn't crash
-        # and returns a date base type if possible
+        """Test guess_datatype with string that matches date pattern (now fixed)"""
         import re
 
-        re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
-        # The function will raise an error, so we skip this test for now
-        # The actual bug is in utils.py line 196
-        pytest.skip("guess_datatype has a bug with date pattern matching - needs fix in utils.py")
+        from iterable.helpers.utils import guess_datatype
+
+        qd = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+        result = guess_datatype("2023-12-25", qd)
+        assert result["base"] == "date"
+        assert "pat" in result
 
     def test_guess_datatype_str_empty(self):
         """Test guess_datatype with empty string"""
@@ -407,12 +406,11 @@ class TestUtils:
         assert is_flat_object(obj) is False
 
     def test_is_flat_object_with_nested_dict(self):
-        """Test is_flat_object with nested dict"""
-        # Note: is_flat_object has a bug where it calls _is_flat which doesn't exist
-        # The function needs to be fixed to be recursive
-        # The function will raise NameError, so we skip this test for now
-        # The actual bug is in utils.py line 256
-        pytest.skip("is_flat_object has a bug with nested dicts - needs fix in utils.py")
+        """Test is_flat_object with nested dict (now fixed)"""
+        from iterable.helpers.utils import is_flat_object
+
+        obj = {"name": "test", "user": {"age": 30}}
+        assert is_flat_object(obj) is False
 
     def test_detect_delimiter_empty_file(self, tmp_path):
         """Test detect_delimiter with empty file returns default"""
@@ -446,14 +444,172 @@ class TestUtils:
 
     def test_get_dict_value_deep_list_not_dict(self):
         """Test get_dict_value_deep with list of non-dicts"""
-        # Note: get_dict_value_deep has a bug when handling list of non-dicts
-        # It tries to access .keys() on string items
+        # get_dict_value_deep should handle list of non-dicts gracefully
         d = ["item1", "item2"]
-        # This will raise AttributeError, so we test the error handling
+        result = get_dict_value_deep(d, "name")
+        # Should return None for non-dict items
+        assert result is None
+
+    def test_is_flat_object_with_nested_dict(self):
+        """Test is_flat_object with nested dict (now fixed)"""
+        from iterable.helpers.utils import is_flat_object
+
+        obj = {"name": "test", "user": {"age": 30}}
+        assert is_flat_object(obj) is False
+
+    def test_is_flat_object_deeply_nested(self):
+        """Test is_flat_object with deeply nested dict"""
+        from iterable.helpers.utils import is_flat_object
+
+        obj = {"level1": {"level2": {"level3": "value"}}}
+        assert is_flat_object(obj) is False
+
+    def test_count_file_newlines_with_filename(self, tmp_path):
+        """Test count_file_newlines with filename"""
+        from iterable.helpers.utils import count_file_newlines
+
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("line1\nline2\nline3\n")
+        count = count_file_newlines(filename=str(test_file))
+        assert count == 3
+
+    def test_count_file_newlines_with_stream(self, tmp_path):
+        """Test count_file_newlines with stream"""
+        from iterable.helpers.utils import count_file_newlines
+
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("line1\nline2\n")
+        with open(test_file, "rb") as f:
+            count = count_file_newlines(stream=f)
+        assert count == 2
+
+    def test_count_file_newlines_empty_file(self, tmp_path):
+        """Test count_file_newlines with empty file"""
+        from iterable.helpers.utils import count_file_newlines
+
+        empty_file = tmp_path / "empty.txt"
+        empty_file.write_text("")
+        count = count_file_newlines(filename=str(empty_file))
+        assert count == 0
+
+    def test_guess_datatype_str_date_fixed(self):
+        """Test guess_datatype with string that matches date pattern (now fixed)"""
+        import re
+
+        from iterable.helpers.utils import guess_datatype
+
+        qd = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+        result = guess_datatype("2023-12-25", qd)
+        assert result["base"] == "date"
+        assert "pat" in result
+
+    def test_guess_datatype_str_leading_zero(self):
+        """Test guess_datatype with string starting with 0"""
+        import re
+
+        from iterable.helpers.utils import guess_datatype
+
+        qd = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+        result = guess_datatype("0123", qd)
+        assert result["base"] == "numstr"
+
+    def test_detect_encoding_raw_empty_file(self, tmp_path):
+        """Test detect_encoding_raw with empty file"""
+        empty_file = tmp_path / "empty.txt"
+        empty_file.write_text("")
+        result = detect_encoding_raw(filename=str(empty_file))
+        assert "encoding" in result
+
+    def test_detect_encoding_raw_with_limit(self, tmp_path):
+        """Test detect_encoding_raw with custom limit"""
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("test content" * 1000)
+        result = detect_encoding_raw(filename=str(test_file), limit=100)
+        assert "encoding" in result
+
+    def test_detect_delimiter_pipe(self, tmp_path):
+        """Test detect_delimiter with pipe delimiter"""
+        test_file = tmp_path / "test.csv"
+        test_file.write_text("col1|col2|col3\nval1|val2|val3\n")
+        delimiter = detect_delimiter(filename=str(test_file))
+        assert delimiter == "|"
+
+    def test_detect_delimiter_with_threshold(self, tmp_path):
+        """Test detect_delimiter with custom threshold"""
+        test_file = tmp_path / "test.csv"
+        test_file.write_text("col1,col2,col3\nval1,val2,val3\nval4,val5,val6\n")
+        delimiter = detect_delimiter(filename=str(test_file), threshold=0.5)
+        assert delimiter == ","
+
+    def test_get_dict_value_with_ordered_dict(self):
+        """Test get_dict_value with OrderedDict"""
+        from collections import OrderedDict
+
+        d = OrderedDict([("name", "test"), ("value", 42)])
+        result = get_dict_value(d, ["name"])
+        assert result == ["test"]
+
+    def test_get_dict_value_deep_nested_list(self):
+        """Test get_dict_value_deep with nested list in dict"""
+        d = {"items": [{"name": "item1"}, {"name": "item2"}]}
+        result = get_dict_value_deep(d, "items.name", as_array=True)
+        assert isinstance(result, list)
+        assert len(result) == 2
+
+    def test_get_dict_value_deep_nested_missing(self):
+        """Test get_dict_value_deep with missing nested key"""
+        d = {"user": {"profile": {"name": "test"}}}
+        result = get_dict_value_deep(d, "user.profile.missing")
+        assert result is None
+
+    def test_get_dict_value_path_missing_key(self):
+        """Test get_dict_value_path with missing key raises error"""
+        from iterable.helpers.utils import get_dict_value_path
+
+        d = {"name": "test"}
+        with pytest.raises(KeyError):
+            get_dict_value_path(d, "missing")
+
+    def test_strip_dict_fields_empty_fields(self):
+        """Test strip_dict_fields with empty fields list"""
+        record = {"keep": "value1", "remove": "value2"}
+        fields = []
+        result = strip_dict_fields(record, fields)
+        # Should remove all fields
+        assert len(result) == 0
+
+    def test_dict_generator_with_tuple(self):
+        """Test dict_generator with tuple values"""
+        d = {"items": ({"name": "item1"}, {"name": "item2"})}
+        results = list(dict_generator(d))
+        assert any("item1" in str(r) for r in results)
+
+    def test_get_dict_keys_empty_list(self):
+        """Test get_dict_keys with empty list"""
+        keys = get_dict_keys([])
+        assert keys == []
+
+    def test_get_dict_keys_no_limit(self):
+        """Test get_dict_keys with limit=None"""
+        data = [{"key" + str(i): i} for i in range(10)]
+        keys = get_dict_keys(data, limit=None)
+        assert len(keys) == 10
+
+    def test_get_iterable_keys_empty(self):
+        """Test get_iterable_keys with empty iterable"""
+        from iterable.datatypes import JSONLinesIterable
+        import tempfile
+        import os
+
+        # Create empty JSONL file
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
+            f.write("")
+            temp_file = f.name
+
         try:
-            result = get_dict_value_deep(d, "name")
-            # If it doesn't crash, result should be None
-            assert result is None
-        except AttributeError:
-            # Expected error due to bug in utils.py
-            pytest.skip("get_dict_value_deep has a bug with list of non-dicts - needs fix in utils.py")
+            iterable = JSONLinesIterable(temp_file)
+            keys = get_iterable_keys(iterable)
+            iterable.close()
+            assert keys == []
+        finally:
+            os.unlink(temp_file)

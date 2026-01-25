@@ -8,7 +8,7 @@ class TestOpenIterable:
         iterable = open_iterable("fixtures/2cols6rows.csv")
         n = 0
         for row in iterable:
-            assert dict(row).keys() == dict(FIXTURES[n]).keys()
+            assert set(dict(row).keys()) == set(dict(FIXTURES[n]).keys())
             n += 1
         iterable.close()
 

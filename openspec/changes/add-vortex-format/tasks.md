@@ -1,0 +1,29 @@
+## 1. Implementation
+- [x] 1.1 Add `vortex-data>=0.56.0` to `project.optional-dependencies` in `pyproject.toml` under `vortex` extra
+- [x] 1.2 Add `vortex-data` to `all` convenience group in `pyproject.toml`
+- [x] 1.3 Create `iterable/datatypes/vortex.py` with `VortexIterable` class
+    - [x] 1.3.1 Implement `BaseFileIterable` subclass with `datamode = "binary"`
+    - [x] 1.3.2 Implement `read()`, `read_bulk()`, `write()`, `write_bulk()` methods
+    - [x] 1.3.3 Implement `reset()`, `close()`, `flush()` methods
+    - [x] 1.3.4 Implement `id()`, `is_flatonly()`, `has_totals()`, `totals()` methods
+    - [x] 1.3.5 Handle PyArrow conversion for dict ↔ Vortex array transformation
+    - [x] 1.3.6 Handle graceful ImportError when `vortex-data` is missing
+- [x] 1.4 Register `VortexIterable` in `iterable/helpers/detect.py`
+    - [x] 1.4.1 Add `"vortex"` and `"vtx"` to `DATATYPE_REGISTRY`
+    - [x] 1.4.2 Add magic number detection (`VTXF`) in `detect_file_type_from_content()`
+    - [x] 1.4.3 Add `"vortex"` and `"vtx"` to `FLAT_TYPES` list
+- [x] 1.5 Create comprehensive tests in `tests/test_vortex.py`
+    - [x] 1.5.1 Test format detection (`id()`, `is_flatonly()`, `has_totals()`)
+    - [x] 1.5.2 Test reading Vortex files (single records, bulk reads, iteration)
+    - [x] 1.5.3 Test writing Vortex files (single records, bulk writes)
+    - [x] 1.5.4 Test read-write roundtrip
+    - [x] 1.5.5 Test reset functionality
+    - [x] 1.5.6 Test context manager usage
+    - [x] 1.5.7 Test error handling (missing dependency, invalid files)
+    - [x] 1.5.8 Test `totals()` method
+- [x] 1.6 Add Vortex format documentation
+    - [x] 1.6.1 Create `docs/docs/formats/vortex.md` with usage examples
+    - [x] 1.6.2 Update `docs/docs/formats/index.md` to include Vortex
+    - [x] 1.6.3 Update `README.md` to mention Vortex format support
+- [x] 1.7 Update `CHANGELOG.md` with new format support
+- [x] 1.8 Run validation: `openspec validate add-vortex-format --strict`

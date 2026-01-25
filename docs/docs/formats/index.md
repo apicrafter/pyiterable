@@ -16,9 +16,9 @@ Iterable Data supports a wide variety of data formats, from common formats like 
 
 - **Tabular Formats**: CSV, TSV, PSV, SSV, FWF, Excel (XLS/XLSX), ODS, DBF
 - **JSON Formats**: JSON, JSONL/NDJSON, GeoJSON, UBJSON, SMILE
-- **Binary Formats**: Parquet, Avro, ORC, Arrow/Feather, Lance, BSON, MessagePack, CBOR, Pickle
+- **Binary Formats**: Parquet, Avro, ORC, Arrow/Feather, Lance, Vortex, BSON, MessagePack, CBOR, Pickle
 - **Statistical Formats**: SAS, Stata, SPSS, HDF5, RData, RDS, PC-Axis (PX)
-- **Columnar Storage**: Parquet, ORC, Arrow, Lance, Delta Lake, Iceberg, Hudi
+- **Columnar Storage**: Parquet, ORC, Arrow, Lance, Vortex, Delta Lake, Iceberg, Hudi
 - **Serialization Formats**: Protocol Buffers, Cap'n Proto, Thrift, FlatBuffers, FlexBuffers
 - **XML/RDF Formats**: XML, RDF/XML, Turtle, N-Triples, N-Quads
 - **Geospatial Formats**: GeoJSON, KML, GML, Shapefile, GeoPackage, CSVW
@@ -108,6 +108,7 @@ Iterable Data supports a wide variety of data formats, from common formats like 
 | [TXT](/formats/txt) | `.txt`, `.text` | Text | Yes | ✅ | ✅ | - | [Details](/formats/txt) |
 | [UBJSON](/formats/ubjson) | `.ubj`, `.ubjson` | Binary | No | ✅ | ✅ | `py-ubjson` | [Details](/formats/ubjson) |
 | [VCF](/formats/vcf) | `.vcf`, `.vcard` | Text | No | ✅ | ❌ | `vobject` or `vcard` | [Details](/formats/vcf) |
+| [Vortex](/formats/vortex) | `.vortex`, `.vtx` | Binary | Yes | ✅ | ✅ | `vortex-data` | [Details](/formats/vortex) |
 | [WARC](/formats/warc) | `.warc`, `.arc` | Binary | No | ✅ | ❌ | `warcio` | [Details](/formats/warc) |
 | [XLS](/formats/xls) | `.xls` | Binary | Yes | ✅ | ❌ | `xlrd` | [Details](/formats/xls) |
 | [XLSX](/formats/xlsx) | `.xlsx` | Binary | Yes | ✅ | ✅ | `openpyxl` | [Details](/formats/xlsx) |

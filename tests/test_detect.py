@@ -4,12 +4,14 @@ from iterable.codecs import BZIP2Codec, GZIPCodec, LZMACodec
 
 # Optional codecs - may not be available
 try:
-    from iterable.codecs import BrotliCodec  # noqa: F401
+    from iterable.codecs import BrotliCodec
+  # noqa: F401
 except (ImportError, NameError):
     BrotliCodec = None
 
 try:
-    from iterable.codecs import ZSTDCodec  # noqa: F401
+    from iterable.codecs import ZSTDCodec
+  # noqa: F401
 except (ImportError, NameError):
     ZSTDCodec = None
 from iterable.datatypes import (
@@ -21,47 +23,56 @@ from iterable.datatypes import (
 
 # Optional datatypes - may not be available
 try:
-    from iterable.datatypes import AVROIterable  # noqa: F401
+    from iterable.datatypes import AVROIterable
+  # noqa: F401
 except (ImportError, NameError):
     AVROIterable = None
 
 try:
-    from iterable.datatypes import BSONIterable  # noqa: F401
+    from iterable.datatypes import BSONIterable
+  # noqa: F401
 except (ImportError, NameError):
     BSONIterable = None
 
 try:
-    from iterable.datatypes import DBFIterable  # noqa: F401
+    from iterable.datatypes import DBFIterable
+  # noqa: F401
 except (ImportError, NameError):
     DBFIterable = None
 
 try:
-    from iterable.datatypes import DuckDBIterable  # noqa: F401
+    from iterable.datatypes import DuckDBIterable
+  # noqa: F401
 except (ImportError, NameError):
     DuckDBIterable = None
 
 try:
-    from iterable.datatypes import ORCIterable  # noqa: F401
+    from iterable.datatypes import ORCIterable
+  # noqa: F401
 except (ImportError, NameError):
     ORCIterable = None
 
 try:
-    from iterable.datatypes import ParquetIterable  # noqa: F401
+    from iterable.datatypes import ParquetIterable
+  # noqa: F401
 except (ImportError, NameError):
     ParquetIterable = None
 
 try:
-    from iterable.datatypes import XLSIterable  # noqa: F401
+    from iterable.datatypes import XLSIterable
+  # noqa: F401
 except (ImportError, NameError):
     XLSIterable = None
 
 try:
-    from iterable.datatypes import XLSXIterable  # noqa: F401
+    from iterable.datatypes import XLSXIterable
+  # noqa: F401
 except (ImportError, NameError):
     XLSXIterable = None
 
 try:
-    from iterable.datatypes import XMLIterable  # noqa: F401
+    from iterable.datatypes import XMLIterable
+  # noqa: F401
 except (ImportError, NameError):
     XMLIterable = None
 from iterable.helpers.detect import detect_encoding_any, detect_file_type
@@ -86,7 +97,7 @@ class TestDetectors:
         assert ";" == detect_delimiter(filename="fixtures/ru_utf8_semicolon.csv")
         assert "\t" == detect_delimiter(filename="fixtures/ru_utf8_tab.csv")
 
-    def test_filetype_csv_utf8(e):
+    def test_filetype_csv_utf8(self):
         result = detect_file_type("fixtures/9_25.24.28.712_2014.csv")
         assert result["success"]
         assert result["datatype"] == CSVIterable
@@ -405,3 +416,116 @@ class TestDetectors:
 
         assert is_flat(filename="test.csv.gz") is True
         assert is_flat(filename="test.json.gz") is False
+
+    def test_open_iterable_basic(self):
+        """Test open_iterable with basic file"""
+        from iterable.helpers.detect import open_iterable
+
+        iterable = open_iterable("fixtures/2cols6rows.csv")
+        assert iterable is not None
+        iterable.close()
+
+    def test_open_iterable_with_mode(self):
+        """Test open_iterable with write mode"""
+        import os
+
+        from iterable.helpers.detect import open_iterable
+
+        os.makedirs("testdata", exist_ok=True)
+        iterable = open_iterable("testdata/test_open_write.csv", mode="w")
+        assert iterable is not None
+        iterable.close()
+        if os.path.exists("testdata/test_open_write.csv"):
+            os.unlink("testdata/test_open_write.csv")
+
+    def test_open_iterable_with_iterableargs(self):
+        """Test open_iterable with iterableargs"""
+        from iterable.helpers.detect import open_iterable
+
+        iterable = open_iterable("fixtures/ru_utf8_semicolon.csv", iterableargs={"delimiter": ";"})
+        assert iterable is not None
+        row = iterable.read()
+        assert row is not None
+        iterable.close()
+
+    def test_open_iterable_unknown_format(self):
+        """Test open_iterable with unknown format"""
+        from iterable.helpers.detect import open_iterable
+
+        with pytest.raises((ValueError, ImportError)):
+            open_iterable("test.unknown_format_xyz")
+
+    def test_detect_file_type_from_content(self, tmp_path):
+        """Test detect_file_type_from_content with various formats"""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        # Test JSON detection
+        json_file = tmp_path / "test.json"
+        json_file.write_text('{"name": "test"}')
+        with open(json_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result == "json"
+
+        # Test CSV detection
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("id,name\n1,test")
+        with open(csv_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result in ["csv", "tsv"]  # May detect as CSV or TSV
+
+    def test_detect_file_type_empty_filename(self):
+        """Test detect_file_type with empty filename"""
+        from iterable.helpers.detect import detect_file_type
+
+        with pytest.raises(ValueError, match="Filename cannot be empty"):
+            detect_file_type("")
+
+    def test_detect_file_type_with_fileobj(self, tmp_path):
+        """Test detect_file_type with fileobj"""
+        from iterable.helpers.detect import detect_file_type
+
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("id,name\n1,test")
+        with open(csv_file, "rb") as f:
+            result = detect_file_type(str(csv_file), fileobj=f)
+        assert result["success"]
+        assert result["datatype"] == CSVIterable
+
+    def test_load_symbol_error_handling(self):
+        """Test _load_symbol error handling"""
+        from iterable.helpers.detect import _load_symbol
+
+        # Test with invalid module
+        with pytest.raises(ImportError):
+            _load_symbol("nonexistent.module", "NonExistentClass")
+
+    def test_datatype_class(self):
+        """Test _datatype_class function"""
+        from iterable.helpers.detect import _datatype_class
+
+        csv_class = _datatype_class("csv")
+        assert csv_class == CSVIterable
+
+    def test_codec_class(self):
+        """Test _codec_class function"""
+        from iterable.helpers.detect import _codec_class
+
+        gzip_class = _codec_class("gz")
+        assert gzip_class == GZIPCodec
+
+    def test_detect_compression_unknown(self):
+        """Test detect_compression with unknown format"""
+        from iterable.helpers.detect import detect_compression
+
+        result = detect_compression("test.unknown")
+        assert result["success"] is False
+        assert result["compression"] is None
+
+    def test_detect_encoding_any_with_limit(self, tmp_path):
+        """Test detect_encoding_any with custom limit"""
+        from iterable.helpers.detect import detect_encoding_any
+
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("test content" * 1000)
+        result = detect_encoding_any(str(test_file), limit=100)
+        assert "encoding" in result

@@ -398,3 +398,59 @@ class TestPipeline:
         destination.close()
         if os.path.exists(output_file):
             os.unlink(output_file)
+
+    def test_pipeline_no_destination(self):
+        """Test pipeline with no destination (read-only processing)"""
+        source = CSVIterable("fixtures/2cols6rows.csv")
+        processed_count = [0]
+
+        def process_func(record, state):
+            processed_count[0] += 1
+            return record
+
+        p = Pipeline(source=source, destination=None, process_func=process_func)
+        stats = p.run()
+
+        assert stats["rec_count"] == len(FIXTURES)
+        assert processed_count[0] == len(FIXTURES)
+        source.close()
+
+    def test_pipeline_batch_size_one(self):
+        """Test pipeline with batch_size=1 (no batching)"""
+        source = CSVIterable("fixtures/2cols6rows.csv")
+        output_file = "testdata/test_pipeline_batch1.jsonl"
+        os.makedirs("testdata", exist_ok=True)
+        destination = JSONLinesIterable(output_file, mode="w")
+
+        def process_func(record, state):
+            return record
+
+        p = Pipeline(source=source, destination=destination, process_func=process_func, batch_size=1)
+        stats = p.run()
+
+        assert stats["rec_count"] == len(FIXTURES)
+        source.close()
+        destination.close()
+        if os.path.exists(output_file):
+            os.unlink(output_file)
+
+    def test_pipeline_reset_iterables_false(self):
+        """Test pipeline with reset_iterables=False"""
+        source = CSVIterable("fixtures/2cols6rows.csv")
+        output_file = "testdata/test_pipeline_no_reset.jsonl"
+        os.makedirs("testdata", exist_ok=True)
+        destination = JSONLinesIterable(output_file, mode="w")
+
+        def process_func(record, state):
+            return record
+
+        p = Pipeline(
+            source=source, destination=destination, process_func=process_func, reset_iterables=False
+        )
+        stats = p.run()
+
+        assert stats["rec_count"] >= 0  # May be 0 if already consumed
+        source.close()
+        destination.close()
+        if os.path.exists(output_file):
+            os.unlink(output_file)

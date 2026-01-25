@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Vortex Format Support**: Added support for reading and writing Vortex columnar data files
+  - **Vortex Format** (`iterable/datatypes/vortex.py`) - Modern columnar format with fast random access
+    - Supports reading and writing Vortex files (`.vortex`, `.vtx` extensions)
+    - Automatic format detection by extension and magic number (`VTXF`)
+    - Uses `vortex-data` library for core operations
+    - Integrates with PyArrow for data conversion (dict ↔ Vortex arrays)
+    - Supports bulk operations and totals counting
+    - Requires `vortex-data>=0.56.0` package (install with `pip install iterabledata[vortex]`)
+    - **Note**: `vortex-data` requires Python ≥3.11, but the library gracefully handles this version constraint
+
 ## [1.0.10] - 2026-01-13
 
 ### Added

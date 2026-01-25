@@ -64,6 +64,7 @@ dxf = ["ezdxf>=1.0.0"]
 html = ["beautifulsoup4>=4.11.0"]
 arff = ["liac-arff>=2.5.0"]
 json = ["ijson>=3.2.0"]
+vortex = ["vortex-data>=0.56.0"]
 
 
 # Convenience group
@@ -104,6 +105,7 @@ all = [
     "beautifulsoup4>=4.11.0",
     "liac-arff>=2.5.0",
     "ijson>=3.2.0",
+    "vortex-data>=0.56.0",
 ]
 
 dev = [
@@ -161,7 +163,7 @@ ignore = []
 [tool.pytest.ini_options]
 addopts = "--doctest-modules --verbose --cov=iterable --cov-report=term-missing --cov-report=html --cov-report=xml"
 testpaths = ["tests"]
-norecursedirs = ["examples", ".git", ".venv", "__pycache__", "*.egg", "build", "dist"]
+norecursedirs = ["examples", ".git", ".venv", "__pycache__", "*.egg", "build", "dist", "node_modules", "docs"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

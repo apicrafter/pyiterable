@@ -49,6 +49,7 @@ This library simplifies data processing and conversion between formats while pre
 - **ORC** - Optimized Row Columnar format
 - **Arrow/Feather** - Apache Arrow columnar format
 - **Lance** - Modern columnar format optimized for ML and vector search
+- **Vortex** - Modern columnar format with fast random access
 - **Delta Lake** - Delta Lake format
 - **Iceberg** - Apache Iceberg format
 - **Hudi** - Apache Hudi format

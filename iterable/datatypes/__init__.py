@@ -376,6 +376,11 @@ except ImportError:
     pass
 
 try:
+    from .vortex import VortexIterable
+except ImportError:
+    pass
+
+try:
     from .zipxml import ZIPXMLSource
 except ImportError:
     pass
@@ -464,6 +469,7 @@ __all__ = [
     "TurtleIterable",
     "UBJSONIterable",
     "VCFIterable",
+    "VortexIterable",
     "WARCIterable",
     "XLSIterable",
     "XLSXIterable",

@@ -7,6 +7,8 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 # Get the tests directory
 TESTS_DIR = Path(__file__).parent.absolute()
 
@@ -22,3 +24,11 @@ if str(PROJECT_ROOT) not in sys.path:
 # This ensures 'fixtures/...' paths work correctly
 if os.getcwd() != str(TESTS_DIR):
     os.chdir(TESTS_DIR)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def ensure_testdata_dir():
+    """Ensure testdata directory exists for all tests."""
+    testdata_dir = TESTS_DIR / "testdata"
+    testdata_dir.mkdir(exist_ok=True)
+    return testdata_dir
