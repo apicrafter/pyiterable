@@ -11,12 +11,19 @@ This library simplifies data processing and conversion between formats while pre
 - **Format Capability Reporting**: Programmatically query format capabilities (read/write/bulk/totals/streaming/tables)
 - **Support for Compression**: Works seamlessly with compressed files
 - **Preserves Nested Data**: Handles complex nested structures as Python dictionaries
-- **DuckDB Integration**: Optional DuckDB engine for high-performance queries
+- **DuckDB Integration**: Optional DuckDB engine for high-performance queries with pushdown optimizations
 - **Pipeline Processing**: Built-in pipeline support for data transformation
 - **Encoding Detection**: Automatic encoding and delimiter detection for text files
 - **Bulk Operations**: Efficient batch reading and writing
 - **Table Listing**: Discover available tables, sheets, and datasets in multi-table formats
 - **Context Manager Support**: Use `with` statements for automatic resource cleanup
+- **DataFrame Bridges**: Convert iterable data to Pandas, Polars, and Dask DataFrames with one-liner methods
+- **Cloud Storage Support**: Direct access to S3, GCS, and Azure Blob Storage via URI schemes
+- **Atomic Writes**: Production-safe file writing with temporary files and atomic renames
+- **Bulk File Conversion**: Convert multiple files at once using glob patterns or directories
+- **Progress Tracking and Metrics**: Built-in progress bars, callbacks, and structured metrics objects
+- **Error Handling Controls**: Configurable error policies and structured error logging
+- **Type Hints and Type Safety**: Complete type annotations with typed helper functions for dataclasses and Pydantic models
 
 ## Supported File Types
 
@@ -307,7 +314,7 @@ source = open_iterable('data.csv', iterableargs={
 
 ### Error Handling
 
-IterableData provides a comprehensive exception hierarchy for better error handling:
+IterableData provides a comprehensive exception hierarchy and configurable error handling:
 
 ```python
 from iterable.helpers.detect import open_iterable
@@ -318,6 +325,7 @@ from iterable.exceptions import (
     CodecError
 )
 
+# Basic exception handling
 try:
     with open_iterable('data.unknown') as source:
         for row in source:
@@ -338,6 +346,33 @@ except CodecError as e:
 except Exception as e:
     print(f"Unexpected error: {e}")
 ```
+
+**Configurable Error Policies**: Control how malformed records are handled:
+
+```python
+# Skip malformed records and continue processing
+with open_iterable(
+    'data.csv',
+    iterableargs={'on_error': 'skip', 'error_log': 'errors.log'}
+) as src:
+    for row in src:
+        process(row)  # Only processes valid rows
+
+# Warn on errors but continue processing
+with open_iterable(
+    'data.jsonl',
+    iterableargs={'on_error': 'warn', 'error_log': 'errors.log'}
+) as src:
+    for row in src:
+        process(row)  # Warnings logged, processing continues
+
+# Default: raise exceptions immediately (existing behavior)
+with open_iterable('data.csv', iterableargs={'on_error': 'raise'}) as src:
+    for row in src:
+        process(row)
+```
+
+**Error Logging**: Structured JSON logs with context (filename, row number, byte offset, error message, original line).
 
 See [Exception Hierarchy documentation](docs/docs/api/exceptions.md) for complete exception reference.
 
@@ -395,6 +430,103 @@ convert(
 )
 ```
 
+### Atomic Writes for Production Safety
+
+Use atomic writes to ensure output files are never left in a partially written state:
+
+```python
+from iterable.convert.core import convert
+from iterable.pipeline.core import pipeline
+
+# Convert with atomic writes (production-safe)
+result = convert('input.csv', 'output.parquet', atomic=True)
+# Output file only appears when conversion completes successfully
+
+# Atomic writes in pipelines
+pipeline(
+    source=source,
+    destination=destination,
+    process_func=transform_func,
+    atomic=True  # Ensures destination file is only created on success
+)
+```
+
+**Benefits**: Prevents data corruption from crashes, interruptions, or mid-process failures. Original files are preserved on failure.
+
+### Bulk File Conversion
+
+Convert multiple files at once using glob patterns, directories, or file lists:
+
+```python
+from iterable.convert.core import bulk_convert
+
+# Convert all CSV files matching glob pattern
+result = bulk_convert('data/raw/*.csv.gz', 'data/processed/', to_ext='parquet')
+
+# Convert with custom filename pattern
+result = bulk_convert('data/*.csv', 'output/', pattern='{name}.parquet')
+
+# Convert entire directory
+result = bulk_convert('data/raw/', 'data/processed/', to_ext='parquet')
+
+# Access results
+print(f"Converted {result.successful_files}/{result.total_files} files")
+print(f"Total rows: {result.total_rows_out}")
+print(f"Throughput: {result.throughput:.0f} rows/second")
+
+# Check individual file results
+for file_result in result.file_results:
+    if file_result.success:
+        print(f"✓ {file_result.source_file}: {file_result.result.rows_out} rows")
+    else:
+        print(f"✗ {file_result.source_file}: {file_result.error}")
+```
+
+**Features**: Error resilience (continues if one file fails), aggregated metrics, flexible output naming with placeholders (`{name}`, `{stem}`, `{ext}`).
+
+### Progress Tracking and Metrics
+
+Track conversion and pipeline progress with callbacks, progress bars, and structured metrics:
+
+```python
+from iterable.convert.core import convert
+from iterable.pipeline.core import pipeline
+
+# Progress callback for conversions
+def progress_cb(stats):
+    print(f"Progress: {stats['rows_read']} rows read, "
+          f"{stats['rows_written']} rows written, "
+          f"{stats.get('elapsed', 0):.2f}s elapsed")
+
+# Convert with progress tracking
+result = convert(
+    'input.csv',
+    'output.parquet',
+    progress=progress_cb,
+    show_progress=True  # Also shows tqdm progress bar
+)
+
+# Access conversion metrics
+print(f"Converted {result.rows_out} rows in {result.elapsed_seconds:.2f}s")
+print(f"Read {result.bytes_read} bytes, wrote {result.bytes_written} bytes")
+
+# Pipeline with progress and metrics
+result = pipeline(
+    source=source,
+    destination=destination,
+    process_func=transform_func,
+    progress=progress_cb  # Progress callback
+)
+
+# Access pipeline metrics (supports both attribute and dict access)
+print(f"Processed {result.rows_processed} rows")
+print(f"Throughput: {result.throughput:.0f} rows/second")
+print(f"Exceptions: {result.exceptions}")
+# Backward compatible: result['rec_count'] also works
+```
+
+**Features**: Real-time progress callbacks, automatic progress bars with `tqdm`, structured metrics objects (`ConversionResult`, `PipelineResult`).
+
 ### Using Pipeline for Data Processing
 
 ```python
@@ -423,15 +555,19 @@ def final_callback(stats, state):
     print(f"Total records: {stats['rec_count']}")
     print(f"Total time: {stats['duration']:.2f}s")
 
-pipeline(
+result = pipeline(
     source=source,
     destination=destination,
     process_func=transform_record,
     trigger_func=progress_callback,
     trigger_on=1000,
     final_func=final_callback,
-    start_state={}
+    start_state={},
+    atomic=True  # Use atomic writes for production safety
 )
+
+# Access pipeline metrics
+print(f"Throughput: {result.throughput:.0f} rows/second")
 
 source.close()
 destination.close()
@@ -460,27 +596,101 @@ reader.close()
 writer.close()
 ```
 
-### Using DuckDB Engine
+### Cloud Storage Support
+
+Read and write data directly from cloud object storage (S3, GCS, Azure):
 
 ```python
 from iterable.helpers.detect import open_iterable
 
-# Use DuckDB engine for CSV, JSON, JSONL files
-# Supported formats: csv, jsonl, ndjson, json
-# Supported codecs: gz, zstd, zst
-source = open_iterable(
-    'data.csv.gz',
-    engine='duckdb'
-)
+# Read from S3
+with open_iterable('s3://my-bucket/data/events.csv') as source:
+    for row in source:
+        print(row)
 
-# DuckDB engine supports totals
-total = source.totals()
-print(f"Total records: {total}")
+# Read compressed file from GCS
+with open_iterable('gs://my-bucket/data/events.jsonl.gz') as source:
+    for row in source:
+        process(row)
 
+# Write to Azure Blob Storage
+with open_iterable(
+    'az://my-container/output/results.jsonl',
+    mode='w',
+    iterableargs={'storage_options': {'connection_string': '...'}}
+) as dest:
+    dest.write({'name': 'Alice', 'age': 30})
+    dest.write({'name': 'Bob', 'age': 25})
+```
+
+**Supported Providers**:
+- Amazon S3: `s3://` and `s3a://` schemes
+- Google Cloud Storage: `gs://` and `gcs://` schemes
+- Azure Blob Storage: `az://`, `abfs://`, and `abfss://` schemes
+
+**Installation**: `pip install iterabledata[cloud]`
+
+**Note**: DuckDB engine does not support cloud storage URIs; use `engine='internal'` (default).
+
+### Using DuckDB Engine with Pushdown Optimizations
+
+The DuckDB engine provides high-performance querying with advanced optimizations:
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Basic DuckDB usage
+source = open_iterable('data.csv.gz', engine='duckdb')
+total = source.totals()  # Fast counting
 for row in source:
     print(row)
 source.close()
+
+# Column projection pushdown (only read specified columns)
+with open_iterable(
+    'data.csv',
+    engine='duckdb',
+    iterableargs={'columns': ['name', 'age']}  # Reduces I/O and memory
+) as src:
+    for row in src:
+        process(row)
+
+# Filter pushdown (filter at database level)
+with open_iterable(
+    'data.csv',
+    engine='duckdb',
+    iterableargs={'filter': "age > 18 AND status = 'active'"}
+) as src:
+    for row in src:
+        process(row)
+
+# Combined column projection and filtering
+with open_iterable(
+    'data.parquet',
+    engine='duckdb',
+    iterableargs={
+        'columns': ['name', 'age', 'email'],
+        'filter': 'age > 18'
+    }
+) as src:
+    for row in src:
+        process(row)
+
+# Direct SQL query support
+with open_iterable(
+    'data.parquet',
+    engine='duckdb',
+    iterableargs={
+        'query': 'SELECT name, age FROM read_parquet(\'data.parquet\') WHERE age > 18 ORDER BY age DESC LIMIT 100'
+    }
+) as src:
+    for row in src:
+        process(row)
 ```
+
+**Supported Formats**: CSV, JSONL, NDJSON, JSON, Parquet  
+**Supported Codecs**: GZIP, ZStandard (.zst)  
+**Benefits**: Reduced I/O, lower memory usage, faster processing through database-level optimizations
 
 ### Bulk Operations
 
@@ -541,6 +751,97 @@ for item in xml_file:
 xml_file.close()
 ```
 
+### DataFrame Bridges
+
+Convert iterable data to Pandas, Polars, or Dask DataFrames:
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Convert to Pandas DataFrame
+with open_iterable('data.csv.gz') as source:
+    df = source.to_pandas()
+    print(df.head())
+
+# Chunked processing for large files
+with open_iterable('large_data.csv') as source:
+    for df_chunk in source.to_pandas(chunksize=100_000):
+        # Process each chunk
+        result = df_chunk.groupby('category').sum()
+        process_chunk(result)
+
+# Convert to Polars DataFrame
+with open_iterable('data.csv.gz') as source:
+    df = source.to_polars()
+    print(df.head())
+
+# Convert to Dask DataFrame (single file)
+with open_iterable('data.csv.gz') as source:
+    ddf = source.to_dask()
+    result = ddf.groupby('category').sum().compute()
+
+# Multi-file Dask DataFrame (automatic format detection)
+from iterable.helpers.bridges import to_dask
+
+ddf = to_dask(['file1.csv', 'file2.jsonl', 'file3.parquet'])
+result = ddf.groupby('category').sum().compute()
+```
+
+**Note**: DataFrame bridges require optional dependencies. Install with:
+```bash
+pip install iterabledata[dataframes]  # All DataFrame libraries
+# Or individually:
+pip install pandas
+pip install polars
+pip install "dask[dataframe]"
+```
+
+### Type Hints and Type Safety
+
+IterableData includes complete type annotations and typed helper functions for modern Python development:
+
+```python
+from iterable.helpers.detect import open_iterable
+from iterable.helpers.typed import as_dataclasses, as_pydantic
+from dataclasses import dataclass
+from pydantic import BaseModel
+
+# Type aliases for better code readability
+from iterable.types import Row, IterableArgs, CodecArgs
+
+# Convert to dataclasses for type safety
+@dataclass
+class Person:
+    name: str
+    age: int
+    email: str | None = None
+
+with open_iterable('people.csv') as source:
+    for person in as_dataclasses(source, Person):
+        # Full IDE autocomplete and type checking
+        print(person.name, person.age)
+
+# Convert to Pydantic models with validation
+class PersonModel(BaseModel):
+    name: str
+    age: int
+    email: str | None = None
+
+with open_iterable('people.jsonl') as source:
+    for person in as_pydantic(source, PersonModel, validate=True):
+        # Automatic schema validation
+        print(person.name, person.age)
+        # Access as Pydantic model with all features
+```
+
+**Benefits**:
+- Complete type annotations across the public API
+- `py.typed` marker file enables mypy, pyright, and other type checkers
+- Typed helpers provide IDE autocomplete and type safety
+- Pydantic validation catches schema issues early
+
+**Installation**: `pip install iterabledata[pydantic]` for Pydantic support
+
 ### Advanced: Converting Compressed XML to Parquet
 
 ```python
@@ -584,11 +885,17 @@ writer.close()
 Opens a file and returns an iterable object.
 
 **Parameters:**
-- `filename` (str): Path to the file
+- `filename` (str): Path to the file (supports local files and cloud storage URIs: `s3://`, `gs://`, `az://`)
 - `mode` (str): File mode ('r' for read, 'w' for write)
 - `engine` (str): Processing engine ('internal' or 'duckdb')
 - `codecargs` (dict): Arguments for codec initialization
 - `iterableargs` (dict): Arguments for iterable initialization
+  - `columns` (list[str]): For DuckDB engine, only read specified columns (pushdown optimization)
+  - `filter` (str | callable): For DuckDB engine, filter rows at database level (SQL string or Python callable)
+  - `query` (str): For DuckDB engine, execute custom SQL query (read-only)
+  - `on_error` (str): Error policy ('raise', 'skip', or 'warn')
+  - `error_log` (str | file-like): Path or file object for structured error logging
+  - `storage_options` (dict): Cloud storage authentication options
 
 **Returns:** Iterable object for the detected file type
 
@@ -598,29 +905,136 @@ Detects file type and compression codec from filename.
 
 **Returns:** Dictionary with `success`, `datatype`, and `codec` keys
 
-#### `convert(fromfile, tofile, iterableargs={}, scan_limit=1000, batch_size=50000, silent=True, is_flatten=False)`
+#### `convert(fromfile, tofile, iterableargs={}, toiterableargs={}, scan_limit=1000, batch_size=50000, silent=True, is_flatten=False, use_totals=False, progress=None, show_progress=False, atomic=False) -> ConversionResult`
 
 Converts data between formats.
 
 **Parameters:**
 - `fromfile` (str): Source file path
 - `tofile` (str): Destination file path
-- `iterableargs` (dict): Options for iterable
+- `iterableargs` (dict): Options for reading source file
+- `toiterableargs` (dict): Options for writing destination file
 - `scan_limit` (int): Number of records to scan for schema detection
 - `batch_size` (int): Batch size for bulk operations
 - `silent` (bool): Suppress progress output
 - `is_flatten` (bool): Flatten nested structures
+- `use_totals` (bool): Use total count for progress tracking (if available)
+- `progress` (callable): Optional callback function receiving progress stats dictionary
+- `show_progress` (bool): Display progress bar using tqdm (if available)
+- `atomic` (bool): Write to temporary file and atomically rename on success
+
+**Returns:** `ConversionResult` object with:
+- `rows_in` (int): Total rows read
+- `rows_out` (int): Total rows written
+- `elapsed_seconds` (float): Conversion time
+- `bytes_read` (int | None): Bytes read (if available)
+- `bytes_written` (int | None): Bytes written (if available)
+- `errors` (list[Exception]): List of errors encountered
+
+#### `bulk_convert(source, destination, pattern=None, to_ext=None, **kwargs) -> BulkConversionResult`
+
+Convert multiple files at once using glob patterns, directories, or file lists.
+
+**Parameters:**
+- `source` (str): Glob pattern, directory path, or file path
+- `destination` (str): Output directory or filename pattern
+- `pattern` (str): Filename pattern with placeholders (`{name}`, `{stem}`, `{ext}`)
+- `to_ext` (str): Replace file extension (e.g., `'parquet'`)
+- `**kwargs`: All parameters from `convert()` function
+
+**Returns:** `BulkConversionResult` object with:
+- `total_files` (int): Total files processed
+- `successful_files` (int): Files successfully converted
+- `failed_files` (int): Files that failed
+- `total_rows_in` (int): Total rows read across all files
+- `total_rows_out` (int): Total rows written across all files
+- `total_elapsed_seconds` (float): Total conversion time
+- `file_results` (list[FileConversionResult]): Per-file results
+- `errors` (list[Exception]): All errors encountered
+- `throughput` (float | None): Rows per second
+
+#### `pipeline(source, destination, process_func, trigger_func=None, trigger_on=1000, final_func=None, reset_iterables=True, skip_nulls=True, start_state=None, debug=False, batch_size=1000, progress=None, atomic=False) -> PipelineResult`
+
+Execute a data processing pipeline.
+
+**Parameters:**
+- `source` (BaseIterable): Source iterable to read from
+- `destination` (BaseIterable | None): Destination iterable to write to
+- `process_func` (callable): Function to process each record
+- `trigger_func` (callable | None): Function called periodically during processing
+- `trigger_on` (int): Number of records between trigger function calls
+- `final_func` (callable | None): Function called after processing completes
+- `reset_iterables` (bool): Reset iterables before processing
+- `skip_nulls` (bool): Skip None results from process_func
+- `start_state` (dict | None): Initial state dictionary
+- `debug` (bool): Raise exceptions instead of catching them
+- `batch_size` (int): Number of records to batch before writing
+- `progress` (callable | None): Optional callback function for progress updates
+- `atomic` (bool): Use atomic writes if destination is a file
+
+**Returns:** `PipelineResult` object with:
+- `rows_processed` (int): Total rows processed
+- `elapsed_seconds` (float): Processing time
+- `throughput` (float | None): Rows per second
+- `exceptions` (int): Number of exceptions encountered
+- `nulls` (int): Number of null results
+- Supports both attribute access (`result.rows_processed`) and dictionary access (`result['rec_count']`) for backward compatibility
 
 ### Iterable Methods
 
 All iterable objects support:
 
-- `read()` - Read single record
-- `read_bulk(num)` - Read multiple records
+- `read(skip_empty=True) -> Row` - Read single record
+- `read_bulk(num=DEFAULT_BULK_NUMBER) -> list[Row]` - Read multiple records
 - `write(record)` - Write single record
 - `write_bulk(records)` - Write multiple records
 - `reset()` - Reset iterator to beginning
 - `close()` - Close file handles
+- `to_pandas(chunksize=None)` - Convert to pandas DataFrame (optional chunked processing)
+- `to_polars(chunksize=None)` - Convert to Polars DataFrame (optional chunked processing)
+- `to_dask(chunksize=1000000)` - Convert to Dask DataFrame
+- `list_tables(filename=None) -> list[str] | None` - List available tables/sheets/datasets
+- `has_tables() -> bool` - Check if format supports multiple tables
+
+### Helper Functions
+
+#### `as_dataclasses(iterable, dataclass_type, skip_empty=True) -> Iterator[T]`
+
+Convert dict-based rows from an iterable into dataclass instances.
+
+**Parameters:**
+- `iterable` (BaseIterable): The iterable to read rows from
+- `dataclass_type` (type[T]): The dataclass type to convert rows to
+- `skip_empty` (bool): Whether to skip empty rows
+
+**Returns:** Iterator of dataclass instances
+
+#### `as_pydantic(iterable, model_type, skip_empty=True, validate=True) -> Iterator[T]`
+
+Convert dict-based rows from an iterable into Pydantic model instances.
+
+**Parameters:**
+- `iterable` (BaseIterable): The iterable to read rows from
+- `model_type` (type[T]): The Pydantic model type to convert rows to
+- `skip_empty` (bool): Whether to skip empty rows
+- `validate` (bool): Whether to validate rows against the model schema
+
+**Returns:** Iterator of Pydantic model instances
+
+**Raises:** `ImportError` if pydantic is not installed
+
+#### `to_dask(files, chunksize=1000000, **iterableargs) -> DaskDataFrame`
+
+Convert multiple files to a unified Dask DataFrame with automatic format detection.
+
+**Parameters:**
+- `files` (str | list[str]): Single file path or list of file paths
+- `chunksize` (int): Number of rows per partition
+- `**iterableargs`: Additional arguments to pass to `open_iterable()` for each file
+
+**Returns:** Dask DataFrame containing data from all files
+
+**Raises:** `ImportError` if dask or pandas is not installed
 
 ## Engines
 
@@ -697,7 +1111,17 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
-### Version 1.0.9 (Unreleased)
+### Version 1.0.11 (2026-01-25)
+- **Atomic Writes**: Production-safe file writing with temporary files and atomic renames
+- **Bulk File Conversion**: Convert multiple files at once using glob patterns, directories, or file lists
+- **Observability Features**: Progress tracking, metrics objects, and progress bars for conversions and pipelines
+- **Cloud Storage Support**: Direct access to S3, GCS, and Azure Blob Storage via URI schemes
+- **DuckDB Engine Pushdown Optimizations**: Column projection, filter pushdown, and direct SQL query support
+- **Error Handling Controls**: Configurable error policies (`on_error`) and structured error logging (`error_log`)
+- **Type Hints and Typed Helpers**: Complete type annotations with `as_dataclasses()` and `as_pydantic()` helper functions
+- **Vortex Format Support**: Added support for reading and writing Vortex columnar data files
+
+### Version 1.0.11 (2026-01-25)
 - **Enhanced Format Detection**: Added content-based format detection using magic numbers and heuristics for files without extensions, streams, and files with incorrect extensions
 - **Exception Hierarchy**: Added comprehensive exception hierarchy (`IterableDataError`, `FormatError`, `CodecError`, etc.) for better error handling
 - **Format Capability Reporting**: Added programmatic API to query format capabilities (`get_format_capabilities()`, `list_all_capabilities()`, `get_capability()`)
