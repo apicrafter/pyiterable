@@ -100,20 +100,47 @@ class FormatParseError(FormatError):
     Error code: FORMAT_PARSE_FAILED
     """
 
-    def __init__(self, format_id: str, message: str, position: int = None):
+    def __init__(
+        self,
+        format_id: str,
+        message: str,
+        position: int = None,
+        filename: str = None,
+        row_number: int = None,
+        byte_offset: int = None,
+        original_line: str = None,
+    ):
         """Initialize format parse error.
 
         Args:
             format_id: Format identifier
             message: Error message describing the parse failure
-            position: Optional position in file where error occurred
+            position: Optional position in file where error occurred (deprecated, use byte_offset)
+            filename: Optional filename where error occurred
+            row_number: Optional row number (1-indexed, header excluded)
+            byte_offset: Optional byte offset in file where error occurred
+            original_line: Optional original line content that failed to parse (for text formats)
         """
+        # Build error message with available context
         full_message = f"Failed to parse {format_id} format"
-        if position is not None:
-            full_message += f" at position {position}"
+        
+        # Use byte_offset if available, otherwise fall back to position for backward compatibility
+        offset = byte_offset if byte_offset is not None else position
+        
+        if filename:
+            full_message += f" at {filename}"
+        if row_number is not None:
+            full_message += f":{row_number}"
+        if offset is not None:
+            full_message += f" (byte {offset})"
         full_message += f": {message}"
+        
         super().__init__(full_message, format_id=format_id, error_code="FORMAT_PARSE_FAILED")
-        self.position = position
+        self.position = position  # Keep for backward compatibility
+        self.filename = filename
+        self.row_number = row_number
+        self.byte_offset = byte_offset
+        self.original_line = original_line
 
 
 class CodecError(IterableDataError):
@@ -205,16 +232,30 @@ class ReadError(IterableDataError):
     Raised when an error occurs during data reading operations.
     """
 
-    def __init__(self, message: str, filename: str = None, error_code: str = None):
+    def __init__(
+        self,
+        message: str,
+        filename: str = None,
+        error_code: str = None,
+        row_number: int = None,
+        byte_offset: int = None,
+        original_line: str = None,
+    ):
         """Initialize read error.
 
         Args:
             message: Human-readable error message
             filename: Optional filename being read
             error_code: Optional error code for programmatic handling
+            row_number: Optional row number (1-indexed, header excluded)
+            byte_offset: Optional byte offset in file where error occurred
+            original_line: Optional original line content (for text formats)
         """
         super().__init__(message, error_code)
         self.filename = filename
+        self.row_number = row_number
+        self.byte_offset = byte_offset
+        self.original_line = original_line
 
 
 class WriteError(IterableDataError):

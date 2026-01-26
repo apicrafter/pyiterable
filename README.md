@@ -19,6 +19,7 @@ This library simplifies data processing and conversion between formats while pre
 - **Context Manager Support**: Use `with` statements for automatic resource cleanup
 - **DataFrame Bridges**: Convert iterable data to Pandas, Polars, and Dask DataFrames with one-liner methods
 - **Cloud Storage Support**: Direct access to S3, GCS, and Azure Blob Storage via URI schemes
+- **Database Engine Support**: Read-only access to SQL and NoSQL databases (PostgreSQL, MySQL, MongoDB, Elasticsearch, etc.) as iterable data sources
 - **Atomic Writes**: Production-safe file writing with temporary files and atomic renames
 - **Bulk File Conversion**: Convert multiple files at once using glob patterns or directories
 - **Progress Tracking and Metrics**: Built-in progress bars, callbacks, and structured metrics objects
@@ -188,6 +189,29 @@ cd pyiterable
 pip install .
 ```
 
+### Optional Dependencies
+
+IterableData supports optional extras for additional features:
+
+```bash
+# AI-powered documentation generation
+pip install iterabledata[ai]
+
+# Database ingestion (PostgreSQL, MongoDB, MySQL, Elasticsearch, etc.)
+pip install iterabledata[db]
+
+# All optional dependencies
+pip install iterabledata[all]
+```
+
+**AI Features** (`[ai]`): Enables AI-powered documentation generation using OpenAI, OpenRouter, Ollama, LMStudio, or Perplexity.
+
+**Database Engines** (`[db]`): Enables read-only database access as iterable data sources. Supports PostgreSQL (available), MySQL/MariaDB, Microsoft SQL Server, SQLite, MongoDB, and Elasticsearch/OpenSearch (planned). Includes convenience groups:
+- `[db-sql]`: SQL databases only (PostgreSQL, MySQL, MSSQL)
+- `[db-nosql]`: NoSQL databases only (MongoDB, Elasticsearch)
+
+See the [API documentation](docs/docs/api/) for details on these features.
+
 ## Quick Start
 
 ### Basic Reading
@@ -275,6 +299,42 @@ xlsx_file = open_iterable('data.xlsx')
 for row in xlsx_file:
     print(row)
 xlsx_file.close()
+```
+
+### Reading from Databases
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Read from PostgreSQL database
+with open_iterable(
+    'postgresql://user:password@localhost:5432/mydb',
+    engine='postgres',
+    iterableargs={'query': 'users'}
+) as source:
+    for row in source:
+        print(row)
+
+# Read specific columns with filtering
+with open_iterable(
+    'postgresql://localhost/mydb',
+    engine='postgres',
+    iterableargs={
+        'query': 'users',
+        'columns': ['id', 'name', 'email'],
+        'filter': 'active = TRUE'
+    }
+) as source:
+    for row in source:
+        print(row)
+
+# Convert database to file
+from iterable.convert import convert
+convert(
+    fromfile='postgresql://localhost/mydb',
+    tofile='users.parquet',
+    iterableargs={'engine': 'postgres', 'query': 'users'}
+)
 ```
 
 ### Format Detection and Encoding

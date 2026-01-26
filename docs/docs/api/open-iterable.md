@@ -46,6 +46,8 @@ File mode:
 Processing engine:
 - `'internal'` - Internal Python engine (default, supports all formats)
 - `'duckdb'` - DuckDB engine (faster for CSV/JSONL, limited format support)
+- `'postgres'` or `'postgresql'` - PostgreSQL database engine (read-only)
+- Other database engines: `'mysql'`, `'mssql'`, `'sqlite'`, `'mongo'`, `'elasticsearch'` (see [Database Engines](/api/database-engines) for details)
 
 ### `codecargs` (dict, optional)
 
@@ -60,6 +62,23 @@ Format-specific arguments. Common options:
 - `page` - Sheet/page number or name for Excel files
 - `keys` - Column names for files without headers
 - `autodetect` - Automatically detect delimiter (CSV files)
+
+**DuckDB Engine-specific options** (only when `engine='duckdb'`):
+- `columns` - List of column names to read (projection pushdown). Example: `['name', 'age']`
+- `filter` - Filter condition as SQL string or Python callable. Example: `"age > 18"` or `lambda row: row['age'] > 18`
+- `query` - Direct SQL query string. When provided, `columns` and `filter` are ignored. Example: `"SELECT name FROM read_csv_auto('file.csv') WHERE age > 18"`
+
+**Database Engine-specific options** (when using database engines like `engine='postgres'`):
+- `query` - SQL query string or table name (required). Example: `"users"` or `"SELECT * FROM users WHERE active = TRUE"`
+- `schema` - Schema name for table references. Example: `"public"`
+- `columns` - List of column names for projection. Example: `['id', 'name', 'email']`
+- `filter` - WHERE clause fragment. Example: `"active = TRUE AND age > 18"`
+- `batch_size` - Number of rows per batch (default: 10000). Example: `5000`
+- `read_only` - Use read-only transaction (default: `True`)
+- `server_side_cursor` - Use server-side cursor for streaming (default: `True`)
+- `connect_args` - Additional connection arguments. Example: `{"sslmode": "require"}`
+
+See [Database Engines](/api/database-engines) for detailed documentation on database-specific parameters.
 
 ## Returns
 
@@ -123,6 +142,47 @@ for row in source:
     print(row)
 source.close()
 ```
+
+### Using Database Engines
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Read from PostgreSQL database
+with open_iterable(
+    'postgresql://user:password@localhost:5432/mydb',
+    engine='postgres',
+    iterableargs={'query': 'users'}
+) as source:
+    for row in source:
+        print(row)
+
+# Read specific columns with filtering
+with open_iterable(
+    'postgresql://localhost/mydb',
+    engine='postgres',
+    iterableargs={
+        'query': 'users',
+        'columns': ['id', 'name', 'email'],
+        'filter': 'active = TRUE'
+    }
+) as source:
+    for row in source:
+        print(row)
+
+# Use custom SQL query
+with open_iterable(
+    'postgresql://localhost/mydb',
+    engine='postgres',
+    iterableargs={
+        'query': 'SELECT id, name FROM users WHERE age > 18 ORDER BY name LIMIT 100'
+    }
+) as source:
+    for row in source:
+        print(row)
+```
+
+See [Database Engines](/api/database-engines) for comprehensive database engine documentation.
 
 ## Supported Formats
 
@@ -261,3 +321,4 @@ except FileNotFoundError:
 - [Basic Usage](/getting-started/basic-usage)
 - [BaseIterable Methods](/api/base-iterable)
 - [Exception Hierarchy](/api/exceptions) - Comprehensive exception reference
+- [Database Engines](/api/database-engines) - Database engine documentation

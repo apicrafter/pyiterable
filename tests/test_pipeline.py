@@ -454,3 +454,112 @@ class TestPipeline:
         destination.close()
         if os.path.exists(output_file):
             os.unlink(output_file)
+
+    def test_pipeline_atomic_write_success(self):
+        """Test atomic write on successful pipeline execution"""
+        source = CSVIterable("fixtures/2cols6rows.csv")
+        output_file = "testdata/test_pipeline_atomic.jsonl"
+        temp_file = "testdata/test_pipeline_atomic.jsonl.tmp"
+        os.makedirs("testdata", exist_ok=True)
+        destination = JSONLinesIterable(output_file, mode="w")
+
+        def process_func(record, state):
+            return record
+
+        p = Pipeline(source=source, destination=destination, process_func=process_func, atomic=True)
+        stats = p.run()
+
+        assert stats["rec_count"] == len(FIXTURES)
+        assert os.path.exists(output_file)
+        assert not os.path.exists(temp_file)
+
+        source.close()
+        destination.close()
+        if os.path.exists(output_file):
+            os.unlink(output_file)
+
+    def test_pipeline_atomic_write_preserves_original_on_failure(self):
+        """Test that atomic write preserves original file on pipeline failure"""
+        source = CSVIterable("fixtures/2cols6rows.csv")
+        output_file = "testdata/test_pipeline_atomic_fail.jsonl"
+        temp_file = "testdata/test_pipeline_atomic_fail.jsonl.tmp"
+        os.makedirs("testdata", exist_ok=True)
+        destination = JSONLinesIterable(output_file, mode="w")
+
+        # Create existing output file
+        with open(output_file, "w") as f:
+            f.write('{"original": "content"}\n')
+
+        def process_func(record, state):
+            # Raise error after first record to simulate failure
+            if state.get("count", 0) > 0:
+                raise ValueError("Simulated error")
+            state["count"] = state.get("count", 0) + 1
+            return record
+
+        p = Pipeline(source=source, destination=destination, process_func=process_func, atomic=True)
+
+        try:
+            p.run()
+        except ValueError:
+            pass  # Expected error
+
+        # Verify original file is preserved and temp file is cleaned up
+        assert os.path.exists(output_file)
+        with open(output_file) as f:
+            content = f.read()
+            assert "original" in content
+        assert not os.path.exists(temp_file)
+
+        source.close()
+        destination.close()
+        if os.path.exists(output_file):
+            os.unlink(output_file)
+
+    def test_pipeline_atomic_write_backward_compatibility(self):
+        """Test that atomic=False (default) works as before"""
+        source = CSVIterable("fixtures/2cols6rows.csv")
+        output_file = "testdata/test_pipeline_non_atomic.jsonl"
+        temp_file = "testdata/test_pipeline_non_atomic.jsonl.tmp"
+        os.makedirs("testdata", exist_ok=True)
+        destination = JSONLinesIterable(output_file, mode="w")
+
+        def process_func(record, state):
+            return record
+
+        p = Pipeline(source=source, destination=destination, process_func=process_func, atomic=False)
+        stats = p.run()
+
+        assert stats["rec_count"] == len(FIXTURES)
+        assert os.path.exists(output_file)
+        assert not os.path.exists(temp_file)
+
+        source.close()
+        destination.close()
+        if os.path.exists(output_file):
+            os.unlink(output_file)
+
+    def test_pipeline_wrapper_atomic_write(self):
+        """Test pipeline() wrapper function with atomic writes"""
+        source = CSVIterable("fixtures/2cols6rows.csv")
+        output_file = "testdata/test_pipeline_wrapper_atomic.jsonl"
+        temp_file = "testdata/test_pipeline_wrapper_atomic.jsonl.tmp"
+        os.makedirs("testdata", exist_ok=True)
+        destination = JSONLinesIterable(output_file, mode="w")
+
+        processed_count = [0]
+
+        def process_func(record, state):
+            processed_count[0] += 1
+            return record
+
+        pipeline(source=source, destination=destination, process_func=process_func, atomic=True)
+
+        assert processed_count[0] == len(FIXTURES)
+        assert os.path.exists(output_file)
+        assert not os.path.exists(temp_file)
+
+        source.close()
+        destination.close()
+        if os.path.exists(output_file):
+            os.unlink(output_file)

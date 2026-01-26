@@ -6,6 +6,7 @@ from typing import Literal, TypedDict
 import chardet
 
 from ..base import BaseCodec, BaseIterable
+from ..types import CodecArgs, IterableArgs
 
 
 def _load_symbol(module_path: str, symbol: str):
@@ -487,7 +488,7 @@ def detect_file_type(filename: str, fileobj=None) -> FileTypeResult:
         raise ValueError("Filename cannot be empty")
 
     result: FileTypeResult = {"filename": filename, "success": False, "codec": None, "datatype": None}
-    
+
     # First, try filename-based detection
     parts = filename.lower().rsplit(".", 2)
     if len(parts) == 2:
@@ -502,14 +503,14 @@ def detect_file_type(filename: str, fileobj=None) -> FileTypeResult:
         elif parts[-1] in DATATYPE_REGISTRY:
             result["datatype"] = _datatype_class(parts[-1])
             result["success"] = True
-    
+
     # If filename detection failed and we have a file object, try content-based detection
     if not result["success"] and fileobj is not None:
         detected_format = detect_file_type_from_content(fileobj)
         if detected_format and detected_format in DATATYPE_REGISTRY:
             result["datatype"] = _datatype_class(detected_format)
             result["success"] = True
-    
+
     return result
 
 
@@ -624,12 +625,59 @@ def detect_encoding_any(filename: str, limit: int = 1000000) -> dict:
                 pass
 
 
+# Cloud storage URI schemes supported
+CLOUD_STORAGE_SCHEMES = {
+    "s3": "s3fs",  # Amazon S3
+    "s3a": "s3fs",  # Amazon S3 (alternative)
+    "gs": "gcsfs",  # Google Cloud Storage
+    "gcs": "gcsfs",  # Google Cloud Storage (alternative)
+    "az": "adlfs",  # Azure Blob Storage
+    "abfs": "adlfs",  # Azure Blob File System
+    "abfss": "adlfs",  # Azure Blob File System (secure)
+}
+
+
+def _is_cloud_storage_uri(filename: str) -> bool:
+    """Check if filename is a cloud storage URI.
+
+    Args:
+        filename: File path or URI to check
+
+    Returns:
+        True if filename is a cloud storage URI, False otherwise
+    """
+    if not filename or not isinstance(filename, str):
+        return False
+    # Check if it starts with a known cloud storage scheme
+    for scheme in CLOUD_STORAGE_SCHEMES.keys():
+        if filename.startswith(f"{scheme}://"):
+            return True
+    return False
+
+
+def _get_cloud_backend(filename: str) -> str | None:
+    """Get the required backend package for a cloud storage URI.
+
+    Args:
+        filename: Cloud storage URI
+
+    Returns:
+        Backend package name (e.g., 's3fs', 'gcsfs', 'adlfs') or None if not a cloud URI
+    """
+    if not _is_cloud_storage_uri(filename):
+        return None
+    for scheme, backend in CLOUD_STORAGE_SCHEMES.items():
+        if filename.startswith(f"{scheme}://"):
+            return backend
+    return None
+
+
 def open_iterable(
     filename: str,
     mode: Literal["r", "w", "rb", "wb"] = "r",
-    engine: Literal["internal", "duckdb"] = "internal",
-    codecargs: dict | None = None,
-    iterableargs: dict | None = None,
+    engine: str = "internal",
+    codecargs: CodecArgs | None = None,
+    iterableargs: IterableArgs | None = None,
 ) -> BaseIterable:
     """Opens file and returns iterable object.
 
@@ -659,42 +707,125 @@ def open_iterable(
     if not filename:
         raise ValueError("Filename cannot be empty")
 
+    # Check if this is a database engine
+    try:
+        from ..db import get_driver, is_database_engine
+        from ..db.iterable import DatabaseIterable
+
+        if is_database_engine(engine):
+            # This is a database engine - handle it separately
+            driver_class = get_driver(engine)
+            if driver_class is None:
+                raise ValueError(f"Database engine '{engine}' is not available. Install the required driver.")
+
+            # Create driver instance
+            # For databases, filename is the connection string/URL
+            driver = driver_class(source=filename, **iterableargs)
+
+            # Wrap driver in DatabaseIterable
+            return DatabaseIterable(driver)
+
+    except ImportError:
+        # Database module not available - continue with file-based logic
+        pass
+
     if engine not in ["internal", "duckdb"]:
-        raise ValueError(f"Engine must be 'internal' or 'duckdb', got '{engine}'")
+        raise ValueError(f"Engine must be 'internal', 'duckdb', or a registered database engine, got '{engine}'")
 
     # Normalize mode: 'rb' -> 'r', 'wb' -> 'w' for text-based formats
     normalized_mode = "r" if mode in ["r", "rb"] else "w"
-
-    # Check file existence for read mode
-    if normalized_mode == "r" and not os.path.exists(filename):
-        raise FileNotFoundError(
-            f"File not found: '{filename}'. Please check that the file exists and the path is correct."
-        )
 
     if codecargs is None:
         codecargs = {}
     if iterableargs is None:
         iterableargs = {}
 
+    # Check if this is a cloud storage URI
+    is_cloud_uri = _is_cloud_storage_uri(filename)
+    cloud_stream = None
+    storage_options = iterableargs.get("storage_options", {})
+
+    # Handle cloud storage URIs
+    if is_cloud_uri:
+        try:
+            import fsspec
+        except ImportError:
+            raise ImportError("Cloud storage support requires 'fsspec'. Install it with: pip install fsspec") from None
+
+        # Check for specific backend if needed
+        backend = _get_cloud_backend(filename)
+        if backend:
+            try:
+                __import__(backend)
+            except ImportError:
+                raise ImportError(
+                    f"Cloud storage URI '{filename}' requires '{backend}'. Install it with: pip install {backend}"
+                ) from None
+
+        # Open cloud storage file via fsspec
+        try:
+            # Determine binary mode for fsspec
+            fsspec_mode = "rb" if mode in ["r", "rb"] else "wb"
+            cloud_stream = fsspec.open(filename, mode=fsspec_mode, **storage_options)
+            # Open the file-like object
+            cloud_stream = cloud_stream.open()
+        except Exception as e:
+            if "NoCredentialsError" in str(type(e).__name__) or "credentials" in str(e).lower():
+                raise RuntimeError(
+                    f"Authentication failed for cloud storage URI '{filename}'. "
+                    f"Please configure credentials via environment variables or storage_options. "
+                    f"Error: {str(e)}"
+                ) from e
+            elif "NoSuchKey" in str(type(e).__name__) or "not found" in str(e).lower():
+                raise FileNotFoundError(
+                    f"File not found in cloud storage: '{filename}'. "
+                    f"Please check that the file exists and the path is correct."
+                ) from e
+            else:
+                raise RuntimeError(f"Failed to open cloud storage URI '{filename}': {str(e)}") from e
+
+    # Check file existence for read mode (only for local files)
+    elif normalized_mode == "r" and not os.path.exists(filename):
+        raise FileNotFoundError(
+            f"File not found: '{filename}'. Please check that the file exists and the path is correct."
+        )
+
     # Try filename-based detection first
     result = detect_file_type(filename)
-    
+
     # If filename detection failed, try content-based detection
     if not result["success"] and normalized_mode == "r":
         try:
-            with open(filename, "rb") as f:
-                result = detect_file_type(filename, fileobj=f)
+            if is_cloud_uri and cloud_stream is not None:
+                # For cloud storage, use the already-opened stream
+                # Note: we need to read from the stream, but also need to reset it
+                # For now, we'll try to detect from the stream if possible
+                # Some cloud backends may not support seek, so we'll be careful
+                try:
+                    if hasattr(cloud_stream, "seekable") and cloud_stream.seekable():
+                        pos = cloud_stream.tell()
+                        result = detect_file_type(filename, fileobj=cloud_stream)
+                        cloud_stream.seek(pos)
+                    else:
+                        # Can't seek, skip content-based detection for cloud
+                        pass
+                except Exception:
+                    # If seeking fails, skip content-based detection
+                    pass
+            else:
+                with open(filename, "rb") as f:
+                    result = detect_file_type(filename, fileobj=f)
         except OSError:
             # Can't read file, fall through to error
             pass
 
     if not result["success"]:
         from ..exceptions import FormatDetectionError
-        
+
         raise FormatDetectionError(
             filename=filename,
             reason=f"Could not detect file type from filename or content. "
-            f"Supported formats: {', '.join(sorted(set(DATATYPE_REGISTRY.keys())))}"
+            f"Supported formats: {', '.join(sorted(set(DATATYPE_REGISTRY.keys())))}",
         )
 
     # Extract file type from filename for DuckDB validation
@@ -727,7 +858,22 @@ def open_iterable(
     datatype_name = result["datatype"].__name__ if result["datatype"] else "unknown"
 
     try:
-        if result["codec"] is not None and engine != "duckdb":
+        # If we have a cloud storage stream, pass it appropriately
+        if is_cloud_uri and cloud_stream is not None:
+            if result["codec"] is not None and engine != "duckdb":
+                # For codecs with cloud storage, pass the stream as fileobj
+                # Codecs support fileobj parameter in their __init__
+                codec = result["codec"](filename=filename, fileobj=cloud_stream, mode=mode, options=codecargs)
+                iterable = result["datatype"](codec=codec, mode=normalized_mode, options=iterableargs)
+            elif engine == "duckdb":
+                # DuckDB engine does not support cloud storage directly
+                raise ValueError(
+                    "DuckDB engine does not support cloud storage URIs. Use engine='internal' for cloud storage files."
+                )
+            else:
+                # Pass the stream directly to the datatype
+                iterable = result["datatype"](stream=cloud_stream, mode=normalized_mode, options=iterableargs)
+        elif result["codec"] is not None and engine != "duckdb":
             codec = result["codec"](filename=filename, mode=mode, options=codecargs)
             iterable = result["datatype"](codec=codec, mode=normalized_mode, options=iterableargs)
         elif engine == "duckdb":

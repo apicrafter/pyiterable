@@ -1,26 +1,52 @@
 import logging
+import os
 import time
 from collections.abc import Callable
+from typing import Any
 
-from ..base import BaseIterable
+from ..base import BaseFileIterable, BaseIterable
+from ..types import PipelineResult, Row
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_PROGRESS_INTERVAL = 1000  # Call progress callback every N rows
 
 
 def pipeline(
     source: BaseIterable,
-    destination: BaseIterable,
-    process_func: Callable[[dict, dict], dict],
-    trigger_func: Callable[[dict, dict], None] = None,
+    destination: BaseIterable | None,
+    process_func: Callable[[Row, dict[str, Any]], Row | None],
+    trigger_func: Callable[[dict[str, Any], dict[str, Any]], None] | None = None,
     trigger_on: int = 1000,
-    final_func: Callable[[dict, dict], None] = None,
+    final_func: Callable[[dict[str, Any], dict[str, Any]], None] | None = None,
     reset_iterables: bool = True,
     skip_nulls: bool = True,
-    start_state: dict = None,
+    start_state: dict[str, Any] | None = None,
     debug: bool = False,
     batch_size: int = 1000,
-):
-    """Wrapper over Pipeline class to simplify data processing pipelines execution"""
+    progress: Callable[[dict[str, Any]], None] | None = None,
+    atomic: bool = False,
+) -> PipelineResult:
+    """Wrapper over Pipeline class to simplify data processing pipelines execution.
+
+    Args:
+        source: Source iterable to read data from
+        destination: Destination iterable to write data to (can be None)
+        process_func: Function to process each record
+        trigger_func: Optional function called periodically during processing
+        trigger_on: Number of records between trigger function calls
+        final_func: Optional function called after processing completes
+        reset_iterables: If True, reset iterables before processing
+        skip_nulls: If True, skip None results from process_func
+        start_state: Initial state dictionary passed to process_func
+        debug: If True, raise exceptions instead of catching them
+        batch_size: Number of records to batch before writing
+        progress: Optional callback function for progress updates
+        atomic: If True and destination is a file, use atomic writes. Default: False.
+
+    Returns:
+        PipelineResult: Object containing pipeline execution metrics.
+    """
     if start_state is None:
         start_state = {}
     runner = Pipeline(
@@ -34,8 +60,10 @@ def pipeline(
         skip_nulls=skip_nulls,
         start_state=start_state,
         batch_size=batch_size,
+        progress=progress,
+        atomic=atomic,
     )
-    runner.run(debug)
+    return runner.run(debug)
 
 
 class Pipeline:
@@ -44,16 +72,18 @@ class Pipeline:
     def __init__(
         self,
         source: BaseIterable,
-        destination: BaseIterable = None,
-        process_func: Callable[[dict, dict], dict] = None,
-        trigger_func: Callable[[dict, dict], None] = None,
+        destination: BaseIterable | None = None,
+        process_func: Callable[[Row, dict[str, Any]], Row | None] | None = None,
+        trigger_func: Callable[[dict[str, Any], dict[str, Any]], None] | None = None,
         trigger_on: int = 1000,
-        final_func: Callable[[dict, dict], None] = None,
+        final_func: Callable[[dict[str, Any], dict[str, Any]], None] | None = None,
         reset_iterables: bool = True,
         skip_nulls: bool = True,
-        start_state: dict = None,
+        start_state: dict[str, Any] | None = None,
         batch_size: int = 1000,
-    ):
+        progress: Callable[[dict[str, Any]], None] | None = None,
+        atomic: bool = False,
+    ) -> None:
         if start_state is None:
             start_state = {}
         self.source = source
@@ -66,17 +96,60 @@ class Pipeline:
         self.skip_nulls = skip_nulls
         self.start_state = start_state
         self.batch_size = batch_size
+        self.progress = progress
+        self.atomic = atomic
+        self._original_destination_filename: str | None = None
+        self._temp_file: str | None = None
 
-    def run(self, debug: bool = False):
+    def run(self, debug: bool = False) -> PipelineResult:
         """Execute pipeline"""
-        stats = {"rec_count": 0, "nulls": 0, "exceptions": 0, "time_start": time.time()}
+        time_start = time.time()
+        stats: dict[str, Any] = {"rec_count": 0, "nulls": 0, "exceptions": 0, "time_start": time_start}
         state = self.start_state
-        if self.reset_iterables:
-            self.source.reset()
-            if self.destination is not None:
-                self.destination.reset()
 
-        batch: list[dict] = []
+        # Setup atomic writes if enabled and destination is a file
+        if self.atomic and self.destination is not None:
+            if isinstance(self.destination, BaseFileIterable) and hasattr(self.destination, "stype"):
+                # Check if destination is a file (not a stream or codec)
+                if self.destination.stype == 20:  # ITERABLE_TYPE_FILE
+                    if hasattr(self.destination, "filename") and self.destination.filename:
+                        self._original_destination_filename = self.destination.filename
+                        # Generate temporary filename
+                        self._temp_file = os.path.join(
+                            os.path.dirname(self._original_destination_filename) or ".",
+                            os.path.basename(self._original_destination_filename) + ".tmp",
+                        )
+                        # Clean up any existing temp file
+                        if os.path.exists(self._temp_file):
+                            try:
+                                os.remove(self._temp_file)
+                            except Exception as e:
+                                logger.warning(f"Failed to remove existing temporary file '{self._temp_file}': {e}")
+                        # Update destination filename to temp file
+                        self.destination.filename = self._temp_file
+                        # Reopen with new filename if already opened
+                        if hasattr(self.destination, "fobj") and self.destination.fobj is not None:
+                            try:
+                                self.destination.close()
+                            except Exception:
+                                pass
+                            self.destination.open()
+
+        if self.reset_iterables:
+            # Reset source (database sources don't support reset - handle gracefully)
+            try:
+                self.source.reset()
+            except NotImplementedError:
+                # Database sources don't support reset - this is expected
+                logger.debug("Source does not support reset (likely a database source)")
+            if self.destination is not None:
+                try:
+                    self.destination.reset()
+                except NotImplementedError:
+                    # Database destinations don't support reset - this is expected
+                    logger.debug("Destination does not support reset (likely a database destination)")
+
+        batch: list[Row] = []
         can_bulk_write = (
             self.destination is not None
             and hasattr(self.destination, "write_bulk")
@@ -101,41 +174,110 @@ class Pipeline:
                     self.destination.write(item)
             batch = []
 
-        for record in self.source:
-            try:
-                result = self.process_func(record, state)
-                if result is None:
-                    if not self.skip_nulls:
-                        stats["nulls"] += 1
-                        if self.destination is not None:
-                            # Preserve existing behavior (even though many destinations expect dicts).
-                            flush_batch()
-                            self.destination.write(result)
-                else:
-                    if self.destination is not None:
-                        if can_bulk_write:
-                            batch.append(result)
-                            if len(batch) >= self.batch_size:
-                                flush_batch()
-                        else:
-                            self.destination.write(result)
-            except Exception as e:
-                logger.error(f"Error processing record #{stats['rec_count'] + 1}: {e}", exc_info=debug)
-                stats["exceptions"] += 1
-                if debug:
-                    raise
-            stats["rec_count"] += 1
-            if stats["rec_count"] % self.trigger_on == 0 and self.trigger_func is not None:
+        def invoke_progress_callback():
+            """Invoke progress callback if provided."""
+            if self.progress is not None:
+                elapsed = time.time() - time_start
+                throughput = stats["rec_count"] / elapsed if elapsed > 0 else None
                 try:
-                    flush_batch()
-                    self.trigger_func(stats, state)
+                    self.progress(
+                        {
+                            "rows_processed": stats["rec_count"],
+                            "elapsed": elapsed,
+                            "throughput": throughput,
+                            "rec_count": stats["rec_count"],
+                            "exceptions": stats["exceptions"],
+                            "nulls": stats["nulls"],
+                        }
+                    )
                 except Exception as e:
-                    logger.error(f"Error in trigger function at record #{stats['rec_count']}: {e}", exc_info=debug)
+                    logger.warning(f"Error in progress callback: {e}")
+
+        try:
+            for record in self.source:
+                try:
+                    result = self.process_func(record, state)
+                    if result is None:
+                        if not self.skip_nulls:
+                            stats["nulls"] += 1
+                            if self.destination is not None:
+                                # Preserve existing behavior (even though many destinations expect dicts).
+                                flush_batch()
+                                self.destination.write(result)
+                    else:
+                        if self.destination is not None:
+                            if can_bulk_write:
+                                batch.append(result)
+                                if len(batch) >= self.batch_size:
+                                    flush_batch()
+                            else:
+                                self.destination.write(result)
+                except Exception as e:
+                    logger.error(f"Error processing record #{stats['rec_count'] + 1}: {e}", exc_info=debug)
+                    stats["exceptions"] += 1
                     if debug:
                         raise
-        flush_batch()
-        stats["time_end"] = time.time()
-        stats["duration"] = stats["time_end"] - stats["time_start"]
+                stats["rec_count"] += 1
+
+                # Invoke progress callback periodically
+                if stats["rec_count"] % DEFAULT_PROGRESS_INTERVAL == 0:
+                    invoke_progress_callback()
+
+                if stats["rec_count"] % self.trigger_on == 0 and self.trigger_func is not None:
+                    try:
+                        flush_batch()
+                        self.trigger_func(stats, state)
+                    except Exception as e:
+                        logger.error(f"Error in trigger function at record #{stats['rec_count']}: {e}", exc_info=debug)
+                        if debug:
+                            raise
+        except Exception:
+            # Clean up temporary file on error if atomic writes are enabled
+            if self.atomic and self._temp_file is not None and os.path.exists(self._temp_file):
+                try:
+                    os.remove(self._temp_file)
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to clean up temporary file '{self._temp_file}': {cleanup_error}")
+            raise
+        finally:
+            flush_batch()
+
+            # Final progress callback
+            invoke_progress_callback()
+
+        time_end = time.time()
+        stats["time_end"] = time_end
+        stats["duration"] = time_end - time_start
+
+        # Perform atomic rename if atomic writes are enabled (only on success)
+        if self.atomic and self._temp_file is not None and self._original_destination_filename is not None:
+            try:
+                if os.path.exists(self._temp_file):
+                    # Import atomic write helper from convert module
+                    from ..convert.core import _atomic_write
+
+                    _atomic_write(self._original_destination_filename, self._temp_file)
+            except Exception as e:
+                logger.error(f"Failed to atomically rename temporary file: {e}")
+                # Clean up temp file on error
+                try:
+                    if os.path.exists(self._temp_file):
+                        os.remove(self._temp_file)
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to clean up temporary file '{self._temp_file}': {cleanup_error}")
+                raise
+
         if self.final_func is not None:
             self.final_func(stats, state)
-        return stats
+
+        # Return PipelineResult for structured access, but maintain dict compatibility
+        return PipelineResult(
+            rows_processed=stats["rec_count"],
+            elapsed_seconds=stats["duration"],
+            exceptions=stats["exceptions"],
+            nulls=stats["nulls"],
+            rec_count=stats["rec_count"],
+            time_start=time_start,
+            time_end=time_end,
+            duration=stats["duration"],
+        )

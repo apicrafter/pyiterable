@@ -19,7 +19,7 @@ The DuckDB engine provides:
 ## Supported Formats
 
 The DuckDB engine supports:
-- **Formats**: CSV, JSONL, NDJSON, JSON
+- **Formats**: CSV, JSONL, NDJSON, JSON, Parquet
 - **Compression**: GZIP (`.gz`), ZStandard (`.zst`, `.zstd`)
 
 ## Basic Usage
@@ -55,6 +55,92 @@ with open_iterable('data.jsonl.zst', engine='duckdb') as source:
     print(f"Total records: {total}")
 # File automatically closed
 ```
+
+## Column Projection Pushdown
+
+Only read the columns you need to reduce I/O and memory usage:
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Only read 'name' and 'email' columns from a large CSV
+with open_iterable('users.csv', engine='duckdb',
+                   iterableargs={'columns': ['name', 'email']}) as source:
+    for row in source:
+        print(f"{row['name']}: {row['email']}")
+        # 'id', 'age', and other columns are never read from disk
+```
+
+This is especially powerful for wide tables with many columns where you only need a few.
+
+## Filter Pushdown
+
+Filter rows at the database level before reading them into Python:
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# SQL string filter - very fast, filters at DuckDB level
+with open_iterable('users.csv', engine='duckdb',
+                   iterableargs={'filter': "age > 18 AND status = 'active'"}) as source:
+    for row in source:
+        print(row)  # Only active users over 18
+
+# Python callable filter (falls back to Python-side if not translatable)
+with open_iterable('users.csv', engine='duckdb',
+                   iterableargs={'filter': lambda row: row['age'] > 18}) as source:
+    for row in source:
+        print(row)
+```
+
+## Combined Pushdown
+
+Combine column projection and filtering for maximum efficiency:
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Read only 'name' and 'age', filtered by age > 18
+with open_iterable('users.csv', engine='duckdb',
+                   iterableargs={
+                       'columns': ['name', 'age'],
+                       'filter': 'age > 18'
+                   }) as source:
+    for row in source:
+        print(f"{row['name']} is {row['age']} years old")
+```
+
+This generates SQL like: `SELECT name, age FROM read_csv_auto('users.csv') WHERE age > 18`
+
+## Direct SQL Queries
+
+Execute full SQL queries while maintaining the iterator interface:
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Complex query with ORDER BY and LIMIT
+with open_iterable('sales.parquet', engine='duckdb',
+                   iterableargs={
+                       'query': '''
+                           SELECT product, SUM(amount) as total
+                           FROM read_parquet('sales.parquet')
+                           WHERE date >= '2024-01-01'
+                           GROUP BY product
+                           ORDER BY total DESC
+                           LIMIT 10
+                       '''
+                   }) as source:
+    for row in source:
+        print(f"{row['product']}: ${row['total']}")
+
+# Note: When 'query' is provided, 'columns' and 'filter' are ignored
+```
+
+**Important**: In custom queries, reference files using DuckDB's read functions:
+- CSV: `read_csv_auto('file.csv')`
+- JSONL/JSON: `read_json_auto('file.jsonl')`
+- Parquet: `read_parquet('file.parquet')`
 
 ## Working with Compressed Files
 
@@ -176,10 +262,11 @@ with open_iterable('wikipedia.jsonl.zst', engine='duckdb') as source:
 
 ## Limitations
 
-- Only supports CSV, JSONL, NDJSON, and JSON formats
+- Only supports CSV, JSONL, NDJSON, JSON, and Parquet formats
 - Only supports GZIP and ZStandard compression
 - Requires DuckDB to be installed separately
 - Not suitable for streaming very large files (use internal engine)
+- Python callable filters may fall back to Python-side filtering (slower than SQL filters)
 
 ## Related Topics
 

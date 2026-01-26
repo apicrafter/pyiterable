@@ -7,6 +7,7 @@ from csv import DictReader, DictWriter
 import chardet
 
 from ..base import BaseCodec, BaseFileIterable
+from ..exceptions import FormatParseError
 from ..helpers.utils import rowincount
 
 DEFAULT_ENCODING = "utf8"
@@ -122,6 +123,10 @@ class CSVIterable(BaseFileIterable):
 
         #            self.reader = reader(self.fobj, delimiter=self.delimiter, quotechar=self.quotechar)
         self.pos = 0
+        # Reset line tracking for error context
+        self._current_line = None
+        self._current_line_number = 0
+        self._current_byte_offset = 0
 
     @staticmethod
     def id() -> str:
@@ -133,21 +138,88 @@ class CSVIterable(BaseFileIterable):
 
     def read(self, skip_empty: bool = True):
         """Read single CSV record"""
-        row = next(self.reader)
-        if skip_empty and len(row) == 0:
-            return self.read(skip_empty)
-        self.pos += 1
-        return row
+        while True:
+            try:
+                # Try to get the raw line before parsing
+                # DictReader doesn't expose the raw line, so we need to track it
+                # For now, we'll track line number and try to get byte offset
+                if hasattr(self.fobj, "tell"):
+                    try:
+                        self._current_byte_offset = self.fobj.tell()
+                    except (OSError, AttributeError):
+                        pass
+                
+                row = next(self.reader)
+                self._current_line_number = self.reader.line_num
+                
+                # Try to get the original line if possible
+                # Note: DictReader doesn't expose raw lines, so we'll set it to None
+                # Format-specific implementations can override this
+                self._current_line = None
+                
+                if skip_empty and len(row) == 0:
+                    continue
+                
+                self.pos += 1
+                return row
+            except StopIteration:
+                raise
+            except Exception as e:
+                # Handle parse errors according to error policy
+                error = FormatParseError(
+                    format_id="csv",
+                    message=str(e),
+                    filename=self.filename,
+                    row_number=self._current_line_number if self._current_line_number > 0 else self.pos + 1,
+                    byte_offset=self._current_byte_offset if self._current_byte_offset > 0 else None,
+                    original_line=self._current_line,
+                )
+                self._handle_error(
+                    error,
+                    row_number=self._current_line_number if self._current_line_number > 0 else self.pos + 1,
+                    byte_offset=self._current_byte_offset if self._current_byte_offset > 0 else None,
+                    original_line=self._current_line,
+                )
+                # If we get here, error was handled (skip/warn), continue to next record
+                continue
 
     def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk CSV records efficiently"""
         chunk = []
         for _n in range(0, num):
             try:
-                chunk.append(next(self.reader))
+                if hasattr(self.fobj, "tell"):
+                    try:
+                        self._current_byte_offset = self.fobj.tell()
+                    except (OSError, AttributeError):
+                        pass
+                
+                row = next(self.reader)
+                self._current_line_number = self.reader.line_num
+                self._current_line = None
+                
+                chunk.append(row)
                 self.pos += 1
             except StopIteration:
                 break
+            except Exception as e:
+                # Handle parse errors according to error policy
+                error = FormatParseError(
+                    format_id="csv",
+                    message=str(e),
+                    filename=self.filename,
+                    row_number=self._current_line_number if self._current_line_number > 0 else self.pos + 1,
+                    byte_offset=self._current_byte_offset if self._current_byte_offset > 0 else None,
+                    original_line=self._current_line,
+                )
+                self._handle_error(
+                    error,
+                    row_number=self._current_line_number if self._current_line_number > 0 else self.pos + 1,
+                    byte_offset=self._current_byte_offset if self._current_byte_offset > 0 else None,
+                    original_line=self._current_line,
+                )
+                # If we get here, error was handled (skip/warn), continue to next record
+                continue
         return chunk
 
     def is_streaming(self) -> bool:

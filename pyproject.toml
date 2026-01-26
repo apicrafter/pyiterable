@@ -65,6 +65,38 @@ html = ["beautifulsoup4>=4.11.0"]
 arff = ["liac-arff>=2.5.0"]
 json = ["ijson>=3.2.0"]
 vortex = ["vortex-data>=0.56.0"]
+pydantic = ["pydantic>=2.0.0"]
+dataframes = ["pandas>=1.5.0", "polars>=0.19.0", "dask[dataframe]>=2023.1.0"]
+cloud = ["fsspec>=2023.1.0", "s3fs>=2023.1.0", "gcsfs>=2023.1.0", "adlfs>=2023.1.0"]
+# AI-powered documentation
+ai = ["openai>=1.0.0", "requests>=2.28.0"]
+# Database engines (read-only support)
+db = [
+    "psycopg2-binary>=2.9.0",  # PostgreSQL
+    "pymongo>=4.0.0",  # MongoDB
+    "elasticsearch>=8.0.0",  # Elasticsearch/OpenSearch
+    "pymysql>=1.0.0",  # MySQL/MariaDB
+    "pyodbc>=4.0.0",  # Microsoft SQL Server
+]
+# SQL databases only
+db-sql = [
+    "psycopg2-binary>=2.9.0",  # PostgreSQL
+    "pymysql>=1.0.0",  # MySQL/MariaDB
+    "pyodbc>=4.0.0",  # Microsoft SQL Server
+]
+# NoSQL databases only
+db-nosql = [
+    "pymongo>=4.0.0",  # MongoDB
+    "elasticsearch>=8.0.0",  # Elasticsearch/OpenSearch
+]
+# Database ingestion (write support - existing)
+db-ingest = [
+    "psycopg[binary]>=3.0.0",  # PostgreSQL (psycopg3 for ingestion)
+    "pymongo>=4.0.0",  # MongoDB
+    "mysql-connector-python>=8.0.0",  # MySQL
+    "elasticsearch>=8.0.0",  # Elasticsearch
+    "duckdb>=0.9.0",  # DuckDB (also in duckdb extra)
+]
 
 
 # Convenience group
@@ -106,6 +138,26 @@ all = [
     "liac-arff>=2.5.0",
     "ijson>=3.2.0",
     "vortex-data>=0.56.0",
+    "pydantic>=2.0.0",
+    "pandas>=1.5.0",
+    "polars>=0.19.0",
+    "dask[dataframe]>=2023.1.0",
+    "fsspec>=2023.1.0",
+    "s3fs>=2023.1.0",
+    "gcsfs>=2023.1.0",
+    "adlfs>=2023.1.0",
+    # AI and database extras
+    "openai>=1.0.0",
+    "requests>=2.28.0",
+    # Database engines (read-only)
+    "psycopg2-binary>=2.9.0",
+    "pymongo>=4.0.0",
+    "elasticsearch>=8.0.0",
+    "pymysql>=1.0.0",
+    "pyodbc>=4.0.0",
+    # Database ingestion (write support)
+    "psycopg[binary]>=3.0.0",
+    "mysql-connector-python>=8.0.0",
 ]
 
 dev = [
@@ -151,6 +203,9 @@ readme = {file = ["README.md"], content-type = "text/markdown"}
 
 [tool.setuptools.packages.find]
 exclude = ["tests", "tests.*"]
+
+[tool.setuptools.package-data]
+iterable = ["py.typed"]
 
 [tool.ruff]
 line-length = 120

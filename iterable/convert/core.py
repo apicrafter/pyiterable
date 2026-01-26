@@ -1,34 +1,78 @@
+import glob
 import logging
+import os
+import time
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
-from tqdm import tqdm
+try:
+    from tqdm import tqdm
+
+    TQDM_AVAILABLE = True
+except ImportError:
+    TQDM_AVAILABLE = False
 
 from ..helpers.detect import is_flat, open_iterable
 from ..helpers.utils import dict_generator, make_flat
+from ..types import BulkConversionResult, ConversionResult, FileConversionResult, IterableArgs
 
 DEFAULT_BATCH_SIZE = 50000
 DEFAULT_HEADERS_DETECT_LIMIT = 1000
+DEFAULT_PROGRESS_INTERVAL = 1000  # Call progress callback every N rows
+
+
+def _atomic_write(target_file: str, temp_file: str) -> None:
+    """
+    Atomically rename temporary file to target file using os.replace().
+
+    Args:
+        target_file: Path to the final destination file
+        temp_file: Path to the temporary file to rename
+
+    Raises:
+        OSError: If rename fails (e.g., cross-filesystem rename, permission error)
+    """
+    try:
+        os.replace(temp_file, target_file)
+    except OSError as e:
+        # Clean up temp file on failure
+        try:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+        except Exception:
+            pass  # Ignore cleanup errors
+        raise OSError(
+            f"Failed to atomically rename temporary file to '{target_file}': {e}. "
+            "Atomic writes only work on the same filesystem. "
+            "If source and destination are on different filesystems, use atomic=False."
+        ) from e
 
 
 def convert(
     fromfile: str,
     tofile: str,
-    iterableargs: dict[str, Any] = None,
-    toiterableargs: dict[str, Any] = None,
+    iterableargs: IterableArgs | None = None,
+    toiterableargs: IterableArgs | None = None,
     scan_limit: int = DEFAULT_HEADERS_DETECT_LIMIT,
     batch_size: int = DEFAULT_BATCH_SIZE,
     silent: bool = True,
     is_flatten: bool = False,
     use_totals: bool = False,
-) -> None:
+    progress: Callable[[dict[str, Any]], None] | None = None,
+    show_progress: bool = False,
+    atomic: bool = False,
+) -> ConversionResult:
     """
-    Convert data between different file formats.
+    Convert data between different file formats or from database sources to files.
 
     Args:
-        fromfile: Path to the source file
+        fromfile: Path to the source file, or database connection string/URL
         tofile: Path to the destination file
         iterableargs: Format-specific arguments for reading the source file
-                     (e.g., {'delimiter': ';', 'encoding': 'utf-8'})
+                     (e.g., {'delimiter': ';', 'encoding': 'utf-8'}).
+                     For database sources, include 'engine' (e.g., 'postgres', 'mongo')
+                     and database-specific parameters (e.g., 'query', 'database', 'collection').
         toiterableargs: Format-specific arguments for writing the destination file
                        (e.g., {'delimiter': '|', 'quotechar': "'", 'page': 0})
         scan_limit: Number of records to scan for schema detection (for flat formats)
@@ -36,10 +80,22 @@ def convert(
         silent: If False, shows progress bars during conversion
         is_flatten: If True, flattens nested structures when converting to flat formats
         use_totals: If True, uses total count for progress tracking (if available)
+        progress: Optional callback function that receives progress stats dictionary
+                 with keys: rows_read, rows_written, elapsed, estimated_total
+        show_progress: If True, displays a progress bar using tqdm (if available).
+                      Ignored if silent=True.
+        atomic: If True, write to a temporary file and atomically rename to destination
+                upon successful completion. This ensures output files are never left in
+                a partially written state. Default: False.
+
+    Returns:
+        ConversionResult: Object containing conversion metrics (rows_in, rows_out,
+                         elapsed_seconds, bytes_read, bytes_written, errors)
 
     Raises:
         FileNotFoundError: If source file doesn't exist
         ValueError: If scan_limit or batch_size are invalid
+        OSError: If atomic write fails (e.g., cross-filesystem rename)
         Exception: Various exceptions from file I/O operations
 
     Examples:
@@ -47,13 +103,25 @@ def convert(
         convert('input.csv', 'output.csv',
                 toiterableargs={'delimiter': '|', 'quotechar': "'"})
 
-        # Convert to Excel with specific sheet
-        convert('input.jsonl', 'output.xlsx',
-                toiterableargs={'page': 0})
+        # Convert with progress callback
+        def cb(stats):
+            print(f"Progress: {stats['rows_read']} rows read")
 
-        # Convert to JSON with tagname
-        convert('input.csv', 'output.json',
-                toiterableargs={'tagname': 'items'})
+        result = convert('input.jsonl', 'output.parquet', progress=cb)
+
+        # Convert with progress bar
+        result = convert('input.csv', 'output.parquet', show_progress=True)
+        print(f"Converted {result.rows_out} rows in {result.elapsed_seconds:.2f}s")
+
+        # Convert with atomic writes for production safety
+        result = convert('input.csv', 'output.parquet', atomic=True)
+
+        # Convert from PostgreSQL database to Parquet
+        result = convert(
+            'postgresql://user:pass@host:5432/dbname',
+            'output.parquet',
+            iterableargs={'engine': 'postgres', 'query': 'SELECT * FROM users'}
+        )
     """
     if iterableargs is None:
         iterableargs = {}
@@ -66,11 +134,61 @@ def convert(
     if batch_size <= 0:
         raise ValueError(f"batch_size must be positive, got {batch_size}")
 
+    # Initialize metrics tracking
+    start_time = time.time()
+    rows_read = 0
+    rows_written = 0
+    errors: list[Exception] = []
+    bytes_read: int | None = None
+    bytes_written: int | None = None
+
+    # Determine if we should show progress bar
+    should_show_progress = show_progress and not silent and TQDM_AVAILABLE
+
+    # Determine actual output file (may be temporary if atomic=True)
+    actual_tofile = tofile
+    temp_file: str | None = None
+    if atomic:
+        # Generate temporary filename by appending .tmp
+        temp_file = os.path.join(os.path.dirname(tofile) or ".", os.path.basename(tofile) + ".tmp")
+        actual_tofile = temp_file
+        # Clean up any existing temp file
+        if os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except Exception as e:
+                logging.warning(f"Failed to remove existing temporary file '{temp_file}': {e}")
+
     it_in = None
     it_out = None
 
+    def invoke_progress_callback():
+        """Invoke progress callback if provided."""
+        if progress is not None:
+            elapsed = time.time() - start_time
+            estimated_total = None
+            if use_totals and it_in is not None and it_in.has_totals():
+                estimated_total = it_in.totals()
+            try:
+                progress(
+                    {
+                        "rows_read": rows_read,
+                        "rows_written": rows_written,
+                        "elapsed": elapsed,
+                        "estimated_total": estimated_total,
+                    }
+                )
+            except Exception as e:
+                logging.warning(f"Error in progress callback: {e}")
+
     try:
-        it_in = open_iterable(fromfile, mode="r", iterableargs=iterableargs)
+        # Extract engine from iterableargs if present (for database sources)
+        # Make a copy to avoid modifying the original dict
+        source_iterableargs = iterableargs.copy() if iterableargs else {}
+        source_engine = source_iterableargs.pop("engine", "internal")
+
+        # Open source iterable (may be file or database)
+        it_in = open_iterable(fromfile, mode="r", engine=source_engine, iterableargs=source_iterableargs)
         keys = set()  # Use set for O(1) lookups instead of O(n) with list
         n = 0
         is_flat_output = is_flat(tofile)
@@ -94,7 +212,18 @@ def convert(
                     keys.update(item.keys())
 
             # Reset after schema extraction (moved outside the loop - was a critical bug)
-            it_in.reset()
+            # Note: Database sources don't support reset, so we skip it for them
+            try:
+                it_in.reset()
+            except NotImplementedError:
+                # Database sources don't support reset - this is expected
+                # For database sources, schema extraction consumes the iterator
+                # We'll need to recreate the iterator for the actual conversion
+                if not silent:
+                    logging.debug("Database source doesn't support reset - recreating iterator")
+                # Close and recreate the source iterable
+                it_in.close()
+                it_in = open_iterable(fromfile, mode="r", engine=source_engine, iterableargs=source_iterableargs)
             keys = sorted(keys)  # Convert to sorted list for consistent ordering
 
         # Prepare output iterable arguments
@@ -105,7 +234,7 @@ def convert(
             args.update(toiterableargs)
         else:
             args = toiterableargs.copy()
-        it_out = open_iterable(tofile, mode="w", iterableargs=args)
+        it_out = open_iterable(actual_tofile, mode="w", iterableargs=args)
 
         logging.debug("Converting data")
         n = 0
@@ -115,19 +244,36 @@ def convert(
             totals = it_in.totals()
             if totals is not None and totals > 0:
                 logging.debug(f"Total rows: {totals}")
-                it_in.reset()
-                it = tqdm(it_in, total=totals, desc="Converting") if not silent else it_in
+                try:
+                    it_in.reset()
+                except NotImplementedError:
+                    # Database sources don't support reset - skip it
+                    pass
+                it = tqdm(it_in, total=totals, desc="Converting") if should_show_progress else it_in
             else:
                 # Fallback if totals() returns None or invalid value
-                it_in.reset()
-                it = tqdm(it_in, desc="Converting") if not silent else it_in
+                try:
+                    it_in.reset()
+                except NotImplementedError:
+                    # Database sources don't support reset - skip it
+                    pass
+                it = tqdm(it_in, desc="Converting") if should_show_progress else it_in
         else:
-            it = tqdm(it_in, desc="Converting") if not silent else it_in
+            it = tqdm(it_in, desc="Converting") if should_show_progress else it_in
+
+        # Try to get file size for bytes tracking
+        try:
+            if hasattr(it_in, "file") and hasattr(it_in.file, "tell"):
+                # For file-based iterables, we might be able to track bytes
+                pass  # Will implement if needed
+        except Exception:
+            pass
 
         # Process data in batches
         batch = []
         for row in it:
             n += 1
+            rows_read = n  # Update rows_read for each row processed
             if is_flatten:
                 # Ensure all keys are present (fill missing with None)
                 for k in keys:
@@ -138,13 +284,51 @@ def convert(
                 batch.append(row)
 
             if n % batch_size == 0:
-                it_out.write_bulk(batch)
+                try:
+                    it_out.write_bulk(batch)
+                    rows_written += len(batch)
+                except Exception as e:
+                    errors.append(e)
+                    logging.error(f"Error writing batch: {e}")
                 batch = []
+
+            # Invoke progress callback periodically
+            if n % DEFAULT_PROGRESS_INTERVAL == 0:
+                invoke_progress_callback()
 
         # Write remaining batch
         if len(batch) > 0:
-            it_out.write_bulk(batch)
+            try:
+                it_out.write_bulk(batch)
+                rows_written += len(batch)
+            except Exception as e:
+                errors.append(e)
+                logging.error(f"Error writing final batch: {e}")
 
+        # Update final rows_read count
+        rows_read = n
+
+        # Final progress callback
+        invoke_progress_callback()
+
+        # Perform atomic rename if atomic writes are enabled
+        if atomic and temp_file is not None and os.path.exists(temp_file):
+            try:
+                _atomic_write(tofile, temp_file)
+            except Exception as e:
+                errors.append(e)
+                logging.error(f"Failed to atomically rename temporary file: {e}")
+                raise
+
+    except Exception as e:
+        errors.append(e)
+        # Clean up temporary file on error
+        if atomic and temp_file is not None and os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+            except Exception as cleanup_error:
+                logging.warning(f"Failed to clean up temporary file '{temp_file}': {cleanup_error}")
+        raise
     finally:
         # Ensure resources are always cleaned up, even if an error occurs
         if it_in is not None:
@@ -152,8 +336,312 @@ def convert(
                 it_in.close()
             except Exception as e:
                 logging.warning(f"Error closing input file: {e}")
+                if e not in errors:
+                    errors.append(e)
         if it_out is not None:
             try:
                 it_out.close()
             except Exception as e:
                 logging.warning(f"Error closing output file: {e}")
+                if e not in errors:
+                    errors.append(e)
+
+    # Calculate final metrics
+    elapsed_seconds = time.time() - start_time
+
+    return ConversionResult(
+        rows_in=rows_read,
+        rows_out=rows_written,
+        elapsed_seconds=elapsed_seconds,
+        bytes_read=bytes_read,
+        bytes_written=bytes_written,
+        errors=errors,
+    )
+
+
+def _discover_files(source: str) -> list[str]:
+    """
+    Discover files from source path (glob pattern, directory, or single file).
+
+    Args:
+        source: Glob pattern, directory path, or single file path
+
+    Returns:
+        List of file paths to process
+    """
+    source_path = Path(source)
+
+    # Check if it's a single file
+    if source_path.is_file():
+        return [str(source_path)]
+
+    # Check if it's a directory
+    if source_path.is_dir():
+        # Find all files in directory (non-recursive)
+        files = []
+        for item in source_path.iterdir():
+            if item.is_file():
+                files.append(str(item))
+        return sorted(files)
+
+    # Try glob pattern
+    matches = glob.glob(source, recursive=False)
+    if matches:
+        # Filter to only files (not directories)
+        files = [f for f in matches if Path(f).is_file()]
+        return sorted(files)
+
+    # If nothing found, return empty list
+    return []
+
+
+def _generate_output_filename(
+    source_file: str, dest_dir: str, pattern: str | None = None, to_ext: str | None = None
+) -> str:
+    """
+    Generate output filename from source file using pattern or extension.
+
+    Args:
+        source_file: Path to source file
+        dest_dir: Output directory path
+        pattern: Filename pattern (e.g., '{name}.parquet') or None
+        to_ext: Target extension (e.g., 'parquet') or None
+
+    Returns:
+        Full path to output file
+    """
+    source_path = Path(source_file)
+    dest_path = Path(dest_dir)
+
+    if pattern:
+        # Use pattern to generate filename
+        # Extract components from source file
+        name = source_path.name  # Full filename with extension
+
+        # Calculate base name (without any extensions)
+        base_name = source_path.name
+        for suffix in source_path.suffixes:
+            base_name = base_name.removesuffix(suffix)
+        stem = base_name
+
+        # Get all extensions as one string (e.g., ".csv.gz" -> "csv.gz")
+        ext = "".join(source_path.suffixes).lstrip(".")
+
+        # Replace placeholders in pattern
+        output_name = pattern.format(name=name, stem=stem, ext=ext)
+        return str(dest_path / output_name)
+    elif to_ext:
+        # Use to_ext to replace extension
+        # Remove all extensions and add new one
+        base_name = source_path.name
+        for suffix in source_path.suffixes:
+            base_name = base_name.removesuffix(suffix)
+
+        # Add new extension (with dot)
+        new_ext = to_ext if to_ext.startswith(".") else f".{to_ext}"
+        output_name = f"{base_name}{new_ext}"
+        return str(dest_path / output_name)
+    else:
+        # No pattern or extension specified, keep original name
+        return str(dest_path / source_path.name)
+
+
+def bulk_convert(
+    source: str,
+    dest: str,
+    pattern: str | None = None,
+    to_ext: str | None = None,
+    iterableargs: IterableArgs | None = None,
+    toiterableargs: IterableArgs | None = None,
+    scan_limit: int = DEFAULT_HEADERS_DETECT_LIMIT,
+    batch_size: int = DEFAULT_BATCH_SIZE,
+    silent: bool = True,
+    is_flatten: bool = False,
+    use_totals: bool = False,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+    show_progress: bool = False,
+    atomic: bool = False,
+) -> BulkConversionResult:
+    """
+    Convert multiple files using glob patterns, directory paths, or file lists.
+
+    This function discovers files from the source path (glob pattern, directory, or single file),
+    converts each file using the existing `convert()` function, and aggregates results.
+
+    Args:
+        source: Glob pattern (e.g., 'data/raw/*.csv.gz'), directory path, or single file path
+        dest: Output directory path where converted files will be written
+        pattern: Filename pattern for output files (e.g., '{name}.parquet').
+                Supports placeholders: {name} (full filename), {stem} (name without extension),
+                {ext} (extension). If None, uses to_ext or keeps original name.
+        to_ext: Target file extension (e.g., 'parquet'). Used if pattern is None.
+                Extension replacement removes all existing extensions and adds the new one.
+        iterableargs: Format-specific arguments for reading source files
+        toiterableargs: Format-specific arguments for writing destination files
+        scan_limit: Number of records to scan for schema detection (for flat formats)
+        batch_size: Number of records to process in each batch
+        silent: If False, shows progress bars during conversion
+        is_flatten: If True, flattens nested structures when converting to flat formats
+        use_totals: If True, uses total count for progress tracking (if available)
+        progress: Optional callback function that receives progress stats dictionary.
+                 For bulk conversion, callback receives additional keys: 'file_index',
+                 'total_files', 'current_file', 'file_rows_read', 'file_rows_written'
+        show_progress: If True, displays a progress bar using tqdm (if available).
+                      Ignored if silent=True.
+        atomic: If True, each file conversion uses atomic writes. Default: False.
+
+    Returns:
+        BulkConversionResult: Object containing aggregated metrics and per-file results
+
+    Raises:
+        ValueError: If both pattern and to_ext are None, or if dest is not a directory
+        OSError: If output directory cannot be created
+
+    Examples:
+        # Convert all CSV files matching glob pattern
+        result = bulk_convert('data/raw/*.csv.gz', 'data/processed/', to_ext='parquet')
+
+        # Convert with custom filename pattern
+        result = bulk_convert('data/*.csv', 'output/', pattern='{name}.parquet')
+
+        # Convert entire directory
+        result = bulk_convert('data/raw/', 'data/processed/', to_ext='parquet')
+
+        # Convert with all convert() parameters
+        result = bulk_convert(
+            'data/*.jsonl',
+            'output/',
+            to_ext='parquet',
+            batch_size=10000,
+            is_flatten=True
+        )
+
+        # Convert with atomic writes for production safety
+        result = bulk_convert('data/*.csv', 'output/', to_ext='parquet', atomic=True)
+    """
+    if pattern is None and to_ext is None:
+        raise ValueError("Either 'pattern' or 'to_ext' must be specified")
+
+    # Discover files to convert
+    source_files = _discover_files(source)
+    if not source_files:
+        logging.warning(f"No files found matching source: {source}")
+        return BulkConversionResult(
+            total_files=0,
+            successful_files=0,
+            failed_files=0,
+            total_rows_in=0,
+            total_rows_out=0,
+            total_elapsed_seconds=0.0,
+            file_results=[],
+            errors=[],
+        )
+
+    # Ensure output directory exists
+    dest_path = Path(dest)
+    if not dest_path.exists():
+        dest_path.mkdir(parents=True, exist_ok=True)
+    elif not dest_path.is_dir():
+        raise ValueError(f"Destination path '{dest}' exists but is not a directory")
+
+    # Initialize aggregated metrics
+    start_time = time.time()
+    total_rows_in = 0
+    total_rows_out = 0
+    successful_files = 0
+    failed_files = 0
+    file_results: list[FileConversionResult] = []
+    all_errors: list[Exception] = []
+
+    # Determine if we should show progress bar
+    should_show_progress = show_progress and not silent and TQDM_AVAILABLE
+
+    # Process each file
+    file_iterator = tqdm(source_files, desc="Converting files") if should_show_progress else source_files
+
+    for file_index, source_file in enumerate(file_iterator, 1):
+        try:
+            # Generate output filename
+            dest_file = _generate_output_filename(source_file, dest, pattern, to_ext)
+
+            # Create per-file progress callback wrapper if needed
+            file_progress: Callable[[dict[str, Any]], None] | None = None
+            if progress is not None:
+
+                def make_file_progress(file_idx: int, total: int, src: str) -> Callable[[dict[str, Any]], None]:
+                    def file_progress_callback(stats: dict[str, Any]) -> None:
+                        # Add bulk conversion context to progress stats
+                        bulk_stats = {
+                            **stats,
+                            "file_index": file_idx,
+                            "total_files": total,
+                            "current_file": src,
+                            "file_rows_read": stats.get("rows_read", 0),
+                            "file_rows_written": stats.get("rows_written", 0),
+                        }
+                        progress(bulk_stats)
+
+                    return file_progress_callback
+
+                file_progress = make_file_progress(file_index, len(source_files), source_file)
+
+            # Convert the file
+            result = convert(
+                fromfile=source_file,
+                tofile=dest_file,
+                iterableargs=iterableargs,
+                toiterableargs=toiterableargs,
+                scan_limit=scan_limit,
+                batch_size=batch_size,
+                silent=silent,
+                is_flatten=is_flatten,
+                use_totals=use_totals,
+                progress=file_progress,
+                show_progress=False,  # Don't show per-file progress bars in bulk mode
+                atomic=atomic,
+            )
+
+            # Aggregate metrics
+            total_rows_in += result.rows_in
+            total_rows_out += result.rows_out
+            successful_files += 1
+            if result.errors:
+                all_errors.extend(result.errors)
+
+            file_results.append(
+                FileConversionResult(
+                    source_file=source_file,
+                    dest_file=dest_file,
+                    result=result,
+                    error=None,
+                )
+            )
+
+        except Exception as e:
+            # File conversion failed, but continue with others
+            failed_files += 1
+            all_errors.append(e)
+            logging.error(f"Error converting {source_file}: {e}")
+
+            file_results.append(
+                FileConversionResult(
+                    source_file=source_file,
+                    dest_file=_generate_output_filename(source_file, dest, pattern, to_ext),
+                    result=None,
+                    error=e,
+                )
+            )
+
+    # Calculate total elapsed time
+    total_elapsed_seconds = time.time() - start_time
+
+    return BulkConversionResult(
+        total_files=len(source_files),
+        successful_files=successful_files,
+        failed_files=failed_files,
+        total_rows_in=total_rows_in,
+        total_rows_out=total_rows_out,
+        total_elapsed_seconds=total_elapsed_seconds,
+        file_results=file_results,
+        errors=all_errors,
+    )

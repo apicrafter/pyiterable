@@ -22,6 +22,10 @@ from .exceptions import (
 )
 from .helpers.detect import open_iterable
 from .helpers.typed import as_dataclasses, as_pydantic
+from .ai import doc as ai
+from .ingest import to_db as ingest
+from .ops import filter, inspect, schema, stats, transform
+from .validate import iterable as validate
 from .types import CodecArgs, IterableArgs, Row
 
 open_it = open_iterable
@@ -34,6 +38,14 @@ __all__ = [
     "CodecArgs",
     "as_dataclasses",
     "as_pydantic",
+    "ai",
+    "filter",
+    "inspect",
+    "ingest",
+    "schema",
+    "stats",
+    "transform",
+    "validate",
     "IterableDataError",
     "FormatError",
     "FormatNotSupportedError",

@@ -1,0 +1,73 @@
+## ADDED Requirements
+
+### Requirement: Bulk File Conversion
+The system SHALL provide a `bulk_convert()` function that converts multiple files using glob patterns, directory paths, or file lists, reusing the existing `convert()` function internally.
+
+#### Scenario: Convert files matching glob pattern
+- **WHEN** user calls `bulk_convert('data/raw/*.csv.gz', 'data/processed/', to_ext='parquet')`
+- **THEN** system expands glob pattern to find all matching files
+- **AND** converts each file to Parquet format
+- **AND** writes output files to `data/processed/` directory
+- **AND** generates output filenames by replacing extension (e.g., `file.csv.gz` → `file.parquet`)
+- **AND** returns aggregated results with per-file conversion status
+
+#### Scenario: Convert files with custom filename pattern
+- **WHEN** user calls `bulk_convert('data/*.csv', 'output/', pattern='{name}.parquet')`
+- **THEN** system converts each CSV file to Parquet
+- **AND** uses pattern to generate output filenames (e.g., `data.csv` → `data.parquet`)
+- **AND** supports `{name}`, `{stem}`, `{ext}` placeholders in pattern
+- **AND** writes all output files to specified directory
+
+#### Scenario: Convert entire directory
+- **WHEN** user calls `bulk_convert('data/raw/', 'data/processed/', to_ext='parquet')`
+- **THEN** system discovers all files in source directory
+- **AND** converts each file to target format
+- **AND** optionally preserves directory structure in output
+- **AND** creates output directory if it doesn't exist
+
+#### Scenario: Convert with all convert() parameters
+- **WHEN** user calls `bulk_convert()` with `batch_size`, `iterableargs`, `is_flatten`, etc.
+- **THEN** system passes all parameters to underlying `convert()` calls
+- **AND** each file conversion uses specified parameters
+- **AND** parameters apply consistently across all files
+
+#### Scenario: Error handling during bulk conversion
+- **WHEN** one file fails during bulk conversion
+- **THEN** system continues processing remaining files
+- **AND** collects error information for failed file
+- **AND** includes error details in aggregated results
+- **AND** returns results for both successful and failed conversions
+
+#### Scenario: Aggregated results from bulk conversion
+- **WHEN** bulk conversion completes
+- **THEN** system returns `BulkConversionResult` object
+- **AND** result includes total number of files processed
+- **AND** result includes total rows converted across all files
+- **AND** result includes total elapsed time
+- **AND** result includes per-file conversion results
+- **AND** result includes list of any errors encountered
+
+#### Scenario: Progress tracking for bulk conversion
+- **WHEN** user provides progress callback to `bulk_convert()`
+- **THEN** system invokes callback with progress updates
+- **AND** callback receives information about current file being processed
+- **AND** callback receives overall progress across all files
+- **AND** callback receives aggregated statistics
+
+#### Scenario: Output directory creation
+- **WHEN** user specifies output directory that doesn't exist
+- **THEN** system creates output directory and any necessary parent directories
+- **AND** raises appropriate error if directory creation fails
+- **AND** proceeds with conversion after directory creation
+
+#### Scenario: Filename pattern with compression
+- **WHEN** user converts compressed files with pattern like `{name}.parquet.zst`
+- **THEN** system correctly handles compression extension in pattern
+- **AND** generates output filenames with compression extension
+- **AND** writes compressed output files
+
+#### Scenario: Empty glob pattern or directory
+- **WHEN** user provides glob pattern or directory with no matching files
+- **THEN** system returns empty results without error
+- **AND** result indicates zero files processed
+- **AND** no output files are created

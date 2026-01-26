@@ -5,6 +5,7 @@ import typing
 from json import dumps, loads
 
 from ..base import BaseCodec, BaseFileIterable
+from ..exceptions import FormatParseError
 from ..helpers.utils import rowincount
 
 
@@ -26,7 +27,9 @@ class JSONLinesIterable(BaseFileIterable):
             options = {}
         self.pos = 0
         super().__init__(filename, stream, codec=codec, binary=False, mode=mode, encoding=encoding, options=options)
-        pass
+        # Track line number and byte offset for error context
+        self._current_line_number = 0
+        self._current_byte_offset = 0
 
     @staticmethod
     def id() -> str:
@@ -48,32 +51,103 @@ class JSONLinesIterable(BaseFileIterable):
         else:
             fobj = self.fobj
         return rowincount(self.filename, fobj)
+    
+    def reset(self):
+        """Reset iterator and line tracking"""
+        super().reset()
+        self._current_line_number = 0
+        self._current_byte_offset = 0
 
     def read(self, skip_empty: bool = False) -> dict:
         """Read single JSON lines record"""
-        line = next(self.fobj)
-        if skip_empty and len(line) == 0:
-            return self.read(skip_empty)
-        self.pos += 1
-        if line:
-            return loads(line)
-        return None
+        while True:
+            try:
+                # Get byte offset before reading
+                if hasattr(self.fobj, "tell"):
+                    try:
+                        self._current_byte_offset = self.fobj.tell()
+                    except (OSError, AttributeError):
+                        pass
+                
+                line = next(self.fobj)
+                self._current_line_number += 1
+                
+                if skip_empty and len(line.strip()) == 0:
+                    continue
+                
+                original_line = line.rstrip("\n\r")
+                
+                if line:
+                    try:
+                        result = loads(line)
+                        self.pos += 1
+                        return result
+                    except (ValueError, TypeError, SyntaxError) as e:
+                        # JSON parse error
+                        error = FormatParseError(
+                            format_id="jsonl",
+                            message=str(e),
+                            filename=self.filename,
+                            row_number=self._current_line_number,
+                            byte_offset=self._current_byte_offset if self._current_byte_offset > 0 else None,
+                            original_line=original_line,
+                        )
+                        self._handle_error(
+                            error,
+                            row_number=self._current_line_number,
+                            byte_offset=self._current_byte_offset if self._current_byte_offset > 0 else None,
+                            original_line=original_line,
+                        )
+                        # If we get here, error was handled (skip/warn), continue to next record
+                        continue
+                return None
+            except StopIteration:
+                raise
 
     def read_bulk(self, num: int = 10) -> list[dict]:
         """Read bulk JSON lines records efficiently"""
         chunk = []
         for _n in range(0, num):
-            line = self.fobj.readline()
-            if not line:
+            try:
+                # Get byte offset before reading
+                if hasattr(self.fobj, "tell"):
+                    try:
+                        self._current_byte_offset = self.fobj.tell()
+                    except (OSError, AttributeError):
+                        pass
+                
+                line = self.fobj.readline()
+                if not line:
+                    break
+                
+                self._current_line_number += 1
+                original_line = line.rstrip("\n\r")
+                line = line.strip()
+                
+                if line:
+                    try:
+                        chunk.append(loads(line))
+                        self.pos += 1
+                    except (ValueError, TypeError, SyntaxError) as e:
+                        # JSON parse error
+                        error = FormatParseError(
+                            format_id="jsonl",
+                            message=str(e),
+                            filename=self.filename,
+                            row_number=self._current_line_number,
+                            byte_offset=self._current_byte_offset if self._current_byte_offset > 0 else None,
+                            original_line=original_line,
+                        )
+                        self._handle_error(
+                            error,
+                            row_number=self._current_line_number,
+                            byte_offset=self._current_byte_offset if self._current_byte_offset > 0 else None,
+                            original_line=original_line,
+                        )
+                        # If we get here, error was handled (skip/warn), continue to next record
+                        continue
+            except StopIteration:
                 break
-            line = line.strip()
-            if line:
-                try:
-                    chunk.append(loads(line))
-                    self.pos += 1
-                except (ValueError, TypeError):
-                    # Skip invalid JSON lines
-                    continue
         return chunk
 
     def is_streaming(self) -> bool:

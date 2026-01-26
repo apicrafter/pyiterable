@@ -44,7 +44,7 @@ with open_iterable('data.csv.gz') as source:
 
 ## DuckDB Engine
 
-The DuckDB engine provides high-performance querying capabilities using the DuckDB database engine.
+The DuckDB engine provides high-performance querying capabilities using the DuckDB database engine with advanced pushdown optimizations.
 
 ### Features
 
@@ -52,10 +52,13 @@ The DuckDB engine provides high-performance querying capabilities using the Duck
 - ⚡ Efficient row counting
 - ⚡ SQL-like operations
 - ⚡ Supports compressed files
+- ⚡ **Column projection pushdown** - Only read needed columns
+- ⚡ **Filter pushdown** - Filter at the database level
+- ⚡ **Direct SQL queries** - Full SQL power with iterator interface
 
 ### Supported Formats
 
-- **Formats**: CSV, JSONL, NDJSON, JSON
+- **Formats**: CSV, JSONL, NDJSON, JSON, Parquet
 - **Compression**: GZIP (`.gz`), ZStandard (`.zst`, `.zstd`)
 
 ### Installation
@@ -66,7 +69,7 @@ DuckDB is an optional dependency:
 pip install duckdb
 ```
 
-### Usage
+### Basic Usage
 
 ```python
 from iterable.helpers.detect import open_iterable
@@ -83,20 +86,97 @@ with open_iterable('data.csv.gz', engine='duckdb') as source:
 # File automatically closed
 ```
 
+### Column Projection Pushdown
+
+Only read specific columns to reduce I/O and memory usage:
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Only read 'name' and 'age' columns
+with open_iterable('data.csv', engine='duckdb', 
+                   iterableargs={'columns': ['name', 'age']}) as source:
+    for row in source:
+        print(row)  # Only contains 'name' and 'age' keys
+```
+
+### Filter Pushdown
+
+Filter rows at the database level for maximum performance:
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# SQL string filter
+with open_iterable('data.csv', engine='duckdb',
+                   iterableargs={'filter': "age > 18 AND status = 'active'"}) as source:
+    for row in source:
+        print(row)  # Only rows matching the condition
+
+# Python callable filter (falls back to Python-side filtering if not translatable)
+with open_iterable('data.csv', engine='duckdb',
+                   iterableargs={'filter': lambda row: row['age'] > 18}) as source:
+    for row in source:
+        print(row)
+```
+
+### Combined Pushdown
+
+Combine column projection and filtering for maximum efficiency:
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Read only 'name' and 'age' columns, filtered by age > 18
+with open_iterable('data.csv', engine='duckdb',
+                   iterableargs={
+                       'columns': ['name', 'age'],
+                       'filter': 'age > 18'
+                   }) as source:
+    for row in source:
+        print(row)  # Only 'name' and 'age', only rows where age > 18
+```
+
+### Direct SQL Queries
+
+Execute full SQL queries while maintaining the iterator interface:
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Custom SQL query with ORDER BY and LIMIT
+with open_iterable('data.parquet', engine='duckdb',
+                   iterableargs={
+                       'query': 'SELECT name, age FROM read_parquet(\'data.parquet\') WHERE age > 18 ORDER BY age DESC LIMIT 100'
+                   }) as source:
+    for row in source:
+        print(row)
+
+# Note: When 'query' is provided, 'columns' and 'filter' parameters are ignored
+```
+
+**Important**: When using custom queries, you must reference files using DuckDB's read functions:
+- CSV: `read_csv_auto('file.csv')`
+- JSONL/JSON: `read_json_auto('file.jsonl')`
+- Parquet: `read_parquet('file.parquet')`
+
 ### When to Use
 
 - ✅ Large files (100MB+)
 - ✅ Need fast row counting
-- ✅ Working with CSV or JSONL files
+- ✅ Working with CSV, JSONL, JSON, or Parquet files
 - ✅ Files compressed with GZIP or ZStandard
 - ✅ Need SQL-like querying capabilities
+- ✅ Want to reduce I/O by reading only needed columns
+- ✅ Need to filter large datasets efficiently
 
 ### Limitations
 
-- ❌ Only supports CSV, JSONL, NDJSON, and JSON formats
+- ❌ Only supports CSV, JSONL, NDJSON, JSON, and Parquet formats
 - ❌ Only supports GZIP and ZStandard compression
 - ❌ Requires DuckDB to be installed
 - ❌ Not suitable for very large streaming files
+- ❌ Python callable filters fall back to Python-side filtering (may be slower)
 
 ## Direct DuckDB Queries
 
@@ -184,8 +264,147 @@ except Exception as e:
 - **Format support**: Use internal engine for unsupported formats
 - **Compression**: DuckDB engine works best with GZIP and ZStandard
 
+## Database Engines
+
+Database engines provide read-only access to SQL and NoSQL databases as iterable data sources. They enable streaming, memory-efficient access to database tables and queries.
+
+### Features
+
+- ✅ **Streaming access**: Large result sets streamed in batches
+- ✅ **Unified interface**: Works with `open_iterable()`, `convert()`, and `pipeline()`
+- ✅ **Read-only safety**: All operations are read-only by default
+- ✅ **Memory efficient**: Server-side cursors and batch processing
+- ✅ **Multiple databases**: PostgreSQL (available), MySQL, MSSQL, SQLite, MongoDB, Elasticsearch (planned)
+
+### Supported Databases
+
+- **PostgreSQL**: ✅ Available (requires `psycopg2-binary`)
+- **MySQL/MariaDB**: 🚧 Planned
+- **Microsoft SQL Server**: 🚧 Planned
+- **SQLite**: 🚧 Planned
+- **MongoDB**: 🚧 Planned
+- **Elasticsearch/OpenSearch**: 🚧 Planned
+
+### Installation
+
+Install database dependencies:
+
+```bash
+# All database engines
+pip install iterabledata[db]
+
+# SQL databases only
+pip install iterabledata[db-sql]
+
+# NoSQL databases only
+pip install iterabledata[db-nosql]
+
+# Specific database (PostgreSQL)
+pip install psycopg2-binary
+```
+
+### Basic Usage
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Read from PostgreSQL database
+with open_iterable(
+    'postgresql://user:password@localhost:5432/mydb',
+    engine='postgres',
+    iterableargs={'query': 'users'}
+) as source:
+    for row in source:
+        print(row)
+```
+
+### When to Use Database Engines
+
+**Use Database Engines when:**
+- ✅ Reading data from SQL or NoSQL databases
+- ✅ Need streaming access to large database tables
+- ✅ Want to use database sources with `convert()` and `pipeline()`
+- ✅ Need memory-efficient processing of large result sets
+- ✅ Working with ETL/analytical workloads (read-only is safe)
+
+**Use File Engines (internal/duckdb) when:**
+- ✅ Working with file-based data sources
+- ✅ Need write operations
+- ✅ Working with formats not supported by database engines
+- ✅ Processing local files
+
+### Database vs File Engines
+
+| Feature | File Engines | Database Engines |
+|---------|--------------|------------------|
+| Data Source | Files | Databases |
+| Write Support | ✅ Yes | ❌ Read-only (write planned) |
+| Streaming | ✅ Yes | ✅ Yes (server-side cursors) |
+| Format Support | 80+ formats | SQL/NoSQL databases |
+| Memory Efficiency | Good | Excellent (batched) |
+| Query Capabilities | Limited | Full SQL/NoSQL queries |
+| Reset Support | ✅ Yes | ❌ No (queries can't be reset) |
+
+### Examples
+
+#### PostgreSQL
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Read table
+with open_iterable(
+    'postgresql://localhost/mydb',
+    engine='postgres',
+    iterableargs={'query': 'users'}
+) as source:
+    for row in source:
+        print(row)
+
+# Read with filtering
+with open_iterable(
+    'postgresql://localhost/mydb',
+    engine='postgres',
+    iterableargs={
+        'query': 'users',
+        'columns': ['id', 'name', 'email'],
+        'filter': 'active = TRUE'
+    }
+) as source:
+    for row in source:
+        print(row)
+```
+
+### Limitations
+
+- **Read-only**: Write operations (INSERT, UPDATE, DELETE) are not yet supported
+- **No reset**: Database queries cannot be reset after iteration starts
+- **Driver dependencies**: Each database requires its own driver package
+
+### Error Handling
+
+```python
+from iterable.helpers.detect import open_iterable
+
+try:
+    with open_iterable(
+        'postgresql://localhost/mydb',
+        engine='postgres',
+        iterableargs={'query': 'users'}
+    ) as source:
+        for row in source:
+            process(row)
+except ImportError:
+    print("Database driver not installed. Install with: pip install psycopg2-binary")
+except ConnectionError as e:
+    print(f"Connection failed: {e}")
+```
+
+See [Database Engines](/api/database-engines) for comprehensive documentation.
+
 ## Related Topics
 
 - [DuckDB Integration Use Case](/use-cases/duckdb-integration)
 - [open_iterable()](/api/open-iterable) - Opening files with engines
+- [Database Engines](/api/database-engines) - Database engine documentation
 - [Supported Formats](/formats/)

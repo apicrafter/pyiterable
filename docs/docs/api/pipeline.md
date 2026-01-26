@@ -21,15 +21,18 @@ pipeline(
     reset_iterables: bool = True,
     skip_nulls: bool = True,
     start_state: dict = {},
-    debug: bool = False
-) -> None
+    debug: bool = False,
+    batch_size: int = 1000,
+    progress: Callable[[dict], None] = None,
+    atomic: bool = False
+) -> PipelineResult
 ```
 
 ## Parameters
 
 ### `source` (BaseIterable, required)
 
-Input iterable object (from `open_iterable()`).
+Input iterable object (from `open_iterable()`). Can be a file-based source or a database source (e.g., PostgreSQL, MySQL, MongoDB).
 
 ### `destination` (BaseIterable, optional)
 
@@ -81,6 +84,46 @@ Initial state dictionary passed to all callback functions. Default: `{}`.
 ### `debug` (bool, optional)
 
 Enable debug mode for additional logging. Default: `False`.
+
+### `batch_size` (int, optional)
+
+Number of records to batch before writing to destination. Default: `1000`.
+
+### `progress` (Callable, optional)
+
+Optional callback function that receives progress updates during pipeline execution. The callback receives a dictionary with:
+- `rows_processed`: Number of rows processed
+- `elapsed`: Elapsed time in seconds
+- `throughput`: Rows per second (if calculable)
+- `rec_count`: Total record count (same as rows_processed)
+- `exceptions`: Number of exceptions encountered
+- `nulls`: Number of null results
+
+### `atomic` (bool, optional)
+
+If `True` and destination is a file, writes to a temporary file and atomically renames it to the destination upon successful completion. This ensures output files are never left in a partially written state, which is important for production environments. If the pipeline fails or is interrupted, the original destination file (if it existed) remains unchanged and the temporary file is cleaned up.
+
+**Note**: Atomic writes only work when destination is a file-based iterable and only on the same filesystem. If destination is a stream or in-memory object, atomic writes are skipped. Default: `False`.
+
+The callback is invoked periodically during execution (every 1000 rows by default).
+
+## Return Value
+
+Returns a `PipelineResult` object containing pipeline execution metrics. The result supports both attribute access and dictionary-style access for backward compatibility:
+
+- `rows_processed`: Total number of rows processed
+- `elapsed_seconds`: Total elapsed time in seconds
+- `exceptions`: Number of exceptions encountered
+- `nulls`: Number of null results
+- `rec_count`: Total record count (alias for rows_processed)
+- `time_start`: Start time timestamp
+- `time_end`: End time timestamp
+- `duration`: Duration in seconds (alias for elapsed_seconds)
+- `throughput`: Rows per second (property)
+
+You can access metrics using either:
+- Attribute access: `result.rows_processed`
+- Dictionary access: `result["rec_count"]` (for backward compatibility)
 
 ## Statistics Dictionary
 
@@ -142,6 +185,100 @@ with open_iterable('input.parquet') as source:
             final_func=final_callback
         )
 # Files automatically closed
+```
+
+### Pipeline with Progress Callback
+
+```python
+from iterable.helpers.detect import open_iterable
+from iterable.pipeline.core import pipeline
+
+def progress_callback(stats):
+    print(f"Progress: {stats['rows_processed']} rows, "
+          f"{stats['elapsed']:.2f}s, "
+          f"{stats.get('throughput', 0):.0f} rows/sec")
+
+with open_iterable('input.csv') as source:
+    with open_iterable('output.jsonl', mode='w') as destination:
+        def transform_record(record, state):
+            return record
+        
+        result = pipeline(
+            source=source,
+            destination=destination,
+            process_func=transform_record,
+            progress=progress_callback
+        )
+        
+        # Access metrics
+        print(f"Processed {result.rows_processed} rows")
+        print(f"Throughput: {result.throughput:.0f} rows/second")
+# Files automatically closed
+```
+
+### Accessing Pipeline Metrics
+
+```python
+from iterable.helpers.detect import open_iterable
+from iterable.pipeline.core import pipeline
+
+with open_iterable('input.jsonl') as source:
+    with open_iterable('output.csv', mode='w') as destination:
+        def transform_record(record, state):
+            return record
+        
+        result = pipeline(
+            source=source,
+            destination=destination,
+            process_func=transform_record
+        )
+        
+        # Access metrics using attributes
+        print(f"Rows processed: {result.rows_processed}")
+        print(f"Time elapsed: {result.elapsed_seconds:.2f}s")
+        print(f"Exceptions: {result.exceptions}")
+        
+        # Or use dictionary-style access (backward compatible)
+        print(f"Record count: {result['rec_count']}")
+        print(f"Duration: {result['duration']:.2f}s")
+        
+        # Calculate throughput
+        if result.throughput:
+            print(f"Throughput: {result.throughput:.0f} rows/second")
+# Files automatically closed
+```
+
+### Pipeline with Database Source
+
+```python
+from iterable.helpers.detect import open_iterable
+from iterable.pipeline.core import pipeline
+
+# Process data from PostgreSQL database
+source = open_iterable(
+    'postgresql://user:password@localhost:5432/mydb',
+    engine='postgres',
+    iterableargs={'query': 'users', 'filter': 'active = TRUE'}
+)
+
+with open_iterable('output.jsonl', mode='w') as destination:
+    def transform_record(record, state):
+        # Transform database row
+        return {
+            'id': record['id'],
+            'name': record['name'],
+            'email': record['email']
+        }
+    
+    result = pipeline(
+        source=source,
+        destination=destination,
+        process_func=transform_record,
+        reset_iterables=False  # Database sources don't support reset
+    )
+    
+    print(f"Processed {result.rows_processed} rows from database")
+source.close()  # Close database connection
 ```
 
 ### Pipeline with State
@@ -266,4 +403,5 @@ except Exception as e:
 
 - [Data Pipelines Use Case](/use-cases/data-pipelines)
 - [open_iterable()](/api/open-iterable) - Opening files
+- [Database Engines](/api/database-engines) - Database source support
 - [BaseIterable Methods](/api/base-iterable)

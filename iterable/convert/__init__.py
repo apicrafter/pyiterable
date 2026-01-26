@@ -1,3 +1,3 @@
-from .core import convert
+from .core import bulk_convert, convert
 
-__all__ = ["convert"]
+__all__ = ["convert", "bulk_convert"]
