@@ -8,7 +8,9 @@ description: Recommended patterns and practices for using Iterable Data effectiv
 
 This guide covers recommended patterns and practices for using Iterable Data effectively in production code.
 
-## File Handling
+## Resource Management
+
+IterableData manages various resources including file handles, codecs, compression streams, and database connections. Proper resource management is critical to prevent leaks and ensure reliable operation.
 
 ### Use Context Managers
 
@@ -21,7 +23,7 @@ from iterable.helpers.detect import open_iterable
 with open_iterable('data.csv') as source:
     for row in source:
         process(row)
-# File automatically closed
+# File automatically closed, codecs cleaned up
 ```
 
 **❌ Avoid**: Manual file management without proper cleanup.
@@ -34,32 +36,198 @@ for row in source:
 # Easy to forget close() - resource leak!
 ```
 
-### Handle Errors Properly
+### Resource Cleanup Patterns
 
-**✅ Recommended**: Always wrap file operations in try/except blocks.
+IterableData automatically manages resources based on the source type:
+
+#### File-Based Sources
+
+File handles are automatically closed when:
+- Exiting a context manager (`with` statement)
+- Calling `close()` explicitly
+- An exception occurs within a context manager
 
 ```python
 from iterable.helpers.detect import open_iterable
+
+# Context manager ensures cleanup even on exceptions
+try:
+    with open_iterable('data.csv') as source:
+        for row in source:
+            process(row)
+            if error_condition:
+                raise ValueError("Processing error")
+except ValueError:
+    pass
+# File is still closed even though exception occurred
+```
+
+#### Codec-Based Sources (Compressed Files)
+
+For compressed files (`.gz`, `.bz2`, `.xz`, `.zst`, etc.), IterableData manages:
+1. **Text wrapper** (if text mode): Flushed and closed first
+2. **Codec stream**: Closed to finalize compression/decompression
+3. **Underlying file**: Closed automatically
+
+```python
+# Compressed file - all layers cleaned up automatically
+with open_iterable('data.csv.gz') as source:
+    for row in source:
+        process(row)
+# Text wrapper, codec, and file all properly closed
+```
+
+#### Stream-Based Sources
+
+External streams (e.g., `sys.stdin`, network streams) are **not closed** by IterableData, as they're managed externally:
+
+```python
+import sys
+from iterable.helpers.detect import open_iterable
+
+# Stream is not closed - managed externally
+with open_iterable(stream=sys.stdin) as source:
+    for row in source:
+        process(row)
+# sys.stdin remains open and usable
+```
+
+### Reset Operations and Seekability
+
+The `reset()` method requires seekable streams. Non-seekable streams (e.g., network streams, stdin) will raise `ReadError` with error code `STREAM_NOT_SEEKABLE`:
+
+```python
+from iterable.helpers.detect import open_iterable
+from iterable.exceptions import ReadError
+
+try:
+    with open_iterable('data.csv') as source:
+        source.read()
+        source.reset()  # Requires seekable stream
+except ReadError as e:
+    if e.error_code == "STREAM_NOT_SEEKABLE":
+        print("Cannot reset: stream is not seekable")
+        # Alternative: Reopen the file
+        source = open_iterable('data.csv')
+```
+
+**Best Practice**: Check if reset is needed before calling it, or handle the exception gracefully.
+
+### Multiple Close Calls
+
+The `close()` method is **idempotent** - calling it multiple times is safe:
+
+```python
+source = open_iterable('data.csv')
+source.close()
+source.close()  # Safe - no error raised
+source.close()  # Still safe
+```
+
+### Nested Context Managers
+
+You can safely nest context managers for multiple files:
+
+```python
+with open_iterable('input.csv') as source:
+    with open_iterable('output.jsonl', mode='w') as dest:
+        for row in source:
+            dest.write(row)
+    # dest closed here
+# source closed here
+```
+
+### Resource Cleanup on Exceptions
+
+Resources are **always** cleaned up, even when exceptions occur:
+
+```python
+try:
+    with open_iterable('data.csv') as source:
+        for row in source:
+            if should_fail:
+                raise RuntimeError("Processing failed")
+            process(row)
+except RuntimeError:
+    # File is still properly closed
+    pass
+```
+
+### Error Log Files
+
+If error logging is enabled, error log files are also automatically cleaned up:
+
+```python
+with open_iterable('data.csv', iterableargs={
+    'error_log': 'errors.jsonl'
+}) as source:
+    for row in source:
+        process(row)
+# Error log file is closed automatically
+```
+
+### Handle Errors Properly
+
+**✅ Recommended**: Always wrap file operations in try/except blocks and use specific exception types.
+
+```python
+from iterable.helpers.detect import open_iterable
+from iterable.exceptions import (
+    FormatDetectionError,
+    FormatNotSupportedError,
+    FormatParseError,
+    ReadError,
+    WriteError,
+    IterableDataError
+)
 
 try:
     with open_iterable('data.csv') as source:
         for row in source:
             process(row)
+except FormatDetectionError as e:
+    print(f"Could not detect format: {e.reason}")
+    # Try with explicit format
+    with open_iterable('data.csv', format='csv') as source:
+        for row in source:
+            process(row)
+except FormatNotSupportedError as e:
+    print(f"Format '{e.format_id}' not supported: {e.reason}")
+    # Install dependencies or use different format
+except FormatParseError as e:
+    print(f"Parse error at row {e.row_number}: {e.message}")
+    if e.original_line:
+        print(f"Problematic line: {e.original_line}")
+    # Handle or skip malformed data
+except ReadError as e:
+    print(f"Read error: {e.message}")
+    # Handle read errors
+except IterableDataError as e:
+    # Catch all IterableData errors
+    print(f"IterableData error: {e.message}")
+    if e.error_code:
+        print(f"Error code: {e.error_code}")
 except FileNotFoundError:
     print("File not found")
-except UnicodeDecodeError:
-    print("Encoding error - specify encoding explicitly")
 except Exception as e:
     print(f"Unexpected error: {e}")
 ```
 
-**❌ Avoid**: Ignoring potential errors.
+**❌ Avoid**: Ignoring potential errors or using overly generic exception handlers.
 
 ```python
 # Not recommended: No error handling
 with open_iterable('data.csv') as source:
     for row in source:
         process(row)  # May fail silently
+
+# Not recommended: Too generic
+try:
+    with open_iterable('data.csv') as source:
+        for row in source:
+            process(row)
+except Exception as e:
+    print(f"Error: {e}")  # Can't handle specific error types
 ```
 
 ## Performance Optimization
@@ -240,21 +408,31 @@ def transform_all(record, state):
 
 ### Handle Format-Specific Errors
 
-**✅ Recommended**: Handle format-specific errors appropriately.
+**✅ Recommended**: Use FormatParseError for format-specific parsing issues.
 
 ```python
 from iterable.helpers.detect import open_iterable
-import json
+from iterable.exceptions import FormatParseError
 
 try:
     with open_iterable('data.jsonl') as source:
         for row in source:
             process(row)
-except json.JSONDecodeError as e:
-    print(f"Invalid JSON on line: {e.lineno}")
-    # Handle malformed JSON
+except FormatParseError as e:
+    # Access detailed error information
+    print(f"Parse error in {e.format_id} format")
+    if e.filename:
+        print(f"File: {e.filename}")
+    if e.row_number:
+        print(f"Row: {e.row_number}")
+    if e.byte_offset:
+        print(f"Byte offset: {e.byte_offset}")
+    if e.original_line:
+        print(f"Problematic line: {e.original_line}")
+    # Handle or log appropriately
 except UnicodeDecodeError:
     # Handle encoding issues
+    print("Encoding error - specify encoding explicitly")
     with open_iterable('data.jsonl', iterableargs={'encoding': 'latin-1'}) as source:
         for row in source:
             process(row)
@@ -407,6 +585,62 @@ for row in all_data:
     process(row)
 ```
 
+### ⚠️ Non-Streaming Formats
+
+Some formats **load entire files into memory** before processing. When working with large files (>100MB), be aware of memory limitations:
+
+**Non-streaming formats include:**
+- Feed formats (RSS/Atom): `feed`, `rss`, `atom`
+- ARFF: `arff`
+- HTML: `html`, `htm`
+- TOML: `toml`
+- HOCON: `hocon`
+- EDN: `edn`
+- Bencode: `bencode`
+- ASN.1: `asn1`
+- iCal: `ical`, `ics`
+- Turtle RDF: `turtle`, `ttl`
+- VCF: `vcf`
+- MHTML: `mhtml`
+- FlexBuffers: `flexbuffers`
+- PC-Axis: `px`
+- MVT: `mvt`
+
+**Check streaming capability programmatically:**
+
+```python
+from iterable.helpers.capabilities import get_capability
+
+is_streaming = get_capability("html", "streaming")
+if not is_streaming:
+    print("Warning: HTML format loads entire file into memory")
+    # Consider file size before processing
+    import os
+    file_size = os.path.getsize('data.html')
+    if file_size > 100 * 1024 * 1024:  # 100MB
+        print("Large file detected - consider using streaming format")
+```
+
+**Best practices for non-streaming formats:**
+
+1. **Check file size** before processing large files
+2. **Use streaming alternatives** when available (e.g., JSONL instead of JSON for large files)
+3. **Convert to streaming formats** first if you need to process large files repeatedly
+4. **Monitor memory usage** when processing large non-streaming files
+
+**Conditional streaming formats:**
+
+Some formats support streaming for large files but load small files entirely:
+- **JSON**: Streams files >10MB, loads smaller files entirely
+- **GeoJSON**: Streams files >10MB, loads smaller files entirely  
+- **TopoJSON**: Streams files >10MB, loads smaller files entirely
+
+For very large files, prefer formats that always stream:
+- **JSONL/NDJSON**: Always streams line-by-line
+- **CSV/TSV**: Always streams row-by-row
+- **XML**: Streams with `tagname` parameter
+- **Parquet**: Streams in batches
+
 ### Use Appropriate Data Structures
 
 **✅ Recommended**: Use efficient data structures for lookups.
@@ -454,7 +688,7 @@ def transform_user_record(record, state):
 ### Do's ✅
 
 - Use context managers (`with` statements)
-- Handle errors properly
+- Handle errors properly using specific exception types from `iterable.exceptions`
 - Use bulk operations for performance
 - Choose appropriate formats and engines
 - Process in batches
@@ -465,7 +699,7 @@ def transform_user_record(record, state):
 ### Don'ts ❌
 
 - Don't forget to close files (use context managers)
-- Don't ignore errors
+- Don't ignore errors - use specific exception types for better error handling
 - Don't use individual operations for large datasets
 - Don't load entire files into memory
 - Don't process records you'll discard

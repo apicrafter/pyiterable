@@ -464,14 +464,22 @@ class TestDetectors:
         json_file.write_text('{"name": "test"}')
         with open(json_file, "rb") as f:
             result = detect_file_type_from_content(f)
-        assert result == "json"
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "json"
+        assert 0.8 <= confidence <= 1.0
+        assert method == "heuristic"
 
         # Test CSV detection
         csv_file = tmp_path / "test.csv"
         csv_file.write_text("id,name\n1,test")
         with open(csv_file, "rb") as f:
             result = detect_file_type_from_content(f)
-        assert result in ["csv", "tsv"]  # May detect as CSV or TSV
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id in ["csv", "tsv"]  # May detect as CSV or TSV
+        assert 0.7 <= confidence <= 1.0
+        assert method == "heuristic"
 
     def test_detect_file_type_empty_filename(self):
         """Test detect_file_type with empty filename"""
@@ -490,6 +498,9 @@ class TestDetectors:
             result = detect_file_type(str(csv_file), fileobj=f)
         assert result["success"]
         assert result["datatype"] == CSVIterable
+        assert "confidence" in result
+        assert result["confidence"] == 1.0  # Filename detection has highest confidence
+        assert result["detection_method"] == "filename"
 
     def test_load_symbol_error_handling(self):
         """Test _load_symbol error handling"""
@@ -529,3 +540,367 @@ class TestDetectors:
         test_file.write_text("test content" * 1000)
         result = detect_encoding_any(str(test_file), limit=100)
         assert "encoding" in result
+
+
+class TestConfidenceScores:
+    """Test confidence scores in detection results."""
+
+    def test_filename_detection_confidence(self, tmp_path):
+        """Test that filename detection has highest confidence."""
+        from iterable.helpers.detect import detect_file_type
+
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("id,name\n1,test")
+        result = detect_file_type(str(csv_file))
+        assert result["success"]
+        assert result["confidence"] == 1.0
+        assert result["detection_method"] == "filename"
+
+    def test_magic_number_confidence(self, tmp_path):
+        """Test that magic number detection has high confidence."""
+        from iterable.helpers.detect import detect_file_type
+
+        parquet_file = tmp_path / "data"
+        parquet_file.write_bytes(b"PAR1" + b"\x00" * 100)
+        with open(parquet_file, "rb") as f:
+            result = detect_file_type(str(parquet_file), fileobj=f)
+        assert result["success"]
+        assert result["confidence"] >= 0.95
+        assert result["detection_method"] == "magic_number"
+
+    def test_heuristic_confidence(self, tmp_path):
+        """Test that heuristic detection has medium confidence."""
+        from iterable.helpers.detect import detect_file_type
+
+        json_file = tmp_path / "data"
+        json_file.write_text('{"name": "test"}')
+        with open(json_file, "rb") as f:
+            result = detect_file_type(str(json_file), fileobj=f)
+        assert result["success"]
+        assert 0.7 <= result["confidence"] <= 0.95
+        assert result["detection_method"] == "heuristic"
+
+
+class TestContentBasedDetection:
+    """Test content-based format detection (magic numbers and heuristics)."""
+
+    def test_magic_number_parquet(self, tmp_path):
+        """Test Parquet magic number detection."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        parquet_file = tmp_path / "test.parquet"
+        parquet_file.write_bytes(b"PAR1" + b"\x00" * 100)
+        with open(parquet_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "parquet"
+        assert confidence >= 0.95
+        assert method == "magic_number"
+
+    def test_magic_number_orc(self, tmp_path):
+        """Test ORC magic number detection."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        orc_file = tmp_path / "test.orc"
+        orc_file.write_bytes(b"ORC" + b"\x00" * 100)
+        with open(orc_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "orc"
+        assert confidence >= 0.95
+        assert method == "magic_number"
+
+    def test_magic_number_vortex(self, tmp_path):
+        """Test Vortex magic number detection."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        vortex_file = tmp_path / "test.vortex"
+        vortex_file.write_bytes(b"VTXF" + b"\x00" * 100)
+        with open(vortex_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "vortex"
+        assert confidence >= 0.95
+        assert method == "magic_number"
+
+    def test_magic_number_pcap(self, tmp_path):
+        """Test PCAP magic number detection."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        # Little-endian PCAP
+        pcap_le_file = tmp_path / "test_le.pcap"
+        pcap_le_file.write_bytes(b"\xd4\xc3\xb2\xa1" + b"\x00" * 100)
+        with open(pcap_le_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "pcap"
+        assert confidence >= 0.95
+        assert method == "magic_number"
+
+        # Big-endian PCAP
+        pcap_be_file = tmp_path / "test_be.pcap"
+        pcap_be_file.write_bytes(b"\xa1\xb2\xc3\xd4" + b"\x00" * 100)
+        with open(pcap_be_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "pcap"
+        assert confidence >= 0.95
+        assert method == "magic_number"
+
+    def test_magic_number_pcapng(self, tmp_path):
+        """Test PCAPNG magic number detection."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        pcapng_file = tmp_path / "test.pcapng"
+        pcapng_file.write_bytes(b"\x0a\x0d\x0d\x0a" + b"\x00" * 100)
+        with open(pcapng_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "pcapng"
+        assert confidence >= 0.95
+        assert method == "magic_number"
+
+    def test_magic_number_arrow(self, tmp_path):
+        """Test Arrow/Feather magic number detection."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        arrow_file = tmp_path / "test.arrow"
+        arrow_file.write_bytes(b"ARROW1" + b"\x00" * 100)
+        with open(arrow_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "arrow"
+        assert confidence >= 0.95
+        assert method == "magic_number"
+
+    def test_magic_number_xlsx(self, tmp_path):
+        """Test XLSX (ZIP-based) magic number detection."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        # Create a minimal ZIP structure with xl/ directory indicator
+        xlsx_file = tmp_path / "test.xlsx"
+        xlsx_content = b"PK\x03\x04" + b"\x00" * 50 + b"xl/" + b"\x00" * 100
+        xlsx_file.write_bytes(xlsx_content)
+        with open(xlsx_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "xlsx"
+        assert confidence >= 0.90
+        assert method == "magic_number"
+
+    def test_magic_number_zip(self, tmp_path):
+        """Test generic ZIP magic number detection."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        zip_file = tmp_path / "test.zip"
+        zip_file.write_bytes(b"PK\x03\x04" + b"\x00" * 200)
+        with open(zip_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "zip"
+        assert confidence >= 0.85
+        assert method == "magic_number"
+
+    def test_json_detection(self, tmp_path):
+        """Test JSON detection from content."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        # JSON object
+        json_obj_file = tmp_path / "test_obj.json"
+        json_obj_file.write_text('{"name": "test", "value": 123}')
+        with open(json_obj_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "json"
+        assert 0.8 <= confidence <= 1.0
+        assert method == "heuristic"
+
+        # JSON array
+        json_array_file = tmp_path / "test_array.json"
+        json_array_file.write_text('[{"id": 1}, {"id": 2}]')
+        with open(json_array_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "json"
+        assert 0.8 <= confidence <= 1.0
+        assert method == "heuristic"
+
+    def test_jsonl_detection(self, tmp_path):
+        """Test JSONL detection from content."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        jsonl_file = tmp_path / "test.jsonl"
+        jsonl_file.write_text('{"id": 1}\n{"id": 2}\n{"id": 3}\n')
+        with open(jsonl_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "jsonl"
+        assert 0.8 <= confidence <= 1.0
+        assert method == "heuristic"
+
+    def test_csv_detection(self, tmp_path):
+        """Test CSV detection from content."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text("id,name,value\n1,test,123\n2,test2,456\n")
+        with open(csv_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "csv"
+        assert 0.7 <= confidence <= 1.0
+        assert method == "heuristic"
+
+    def test_tsv_detection(self, tmp_path):
+        """Test TSV detection from content."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        tsv_file = tmp_path / "test.tsv"
+        tsv_file.write_text("id\tname\tvalue\n1\ttest\t123\n2\ttest2\t456\n")
+        with open(tsv_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "tsv"
+        assert 0.7 <= confidence <= 1.0
+        assert method == "heuristic"
+
+    def test_psv_detection(self, tmp_path):
+        """Test PSV (pipe-separated) detection from content."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        psv_file = tmp_path / "test.psv"
+        psv_file.write_text("id|name|value\n1|test|123\n2|test2|456\n")
+        with open(psv_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "psv"
+        assert 0.7 <= confidence <= 1.0
+        assert method == "heuristic"
+
+    def test_empty_file(self, tmp_path):
+        """Test detection with empty file."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        empty_file = tmp_path / "empty.txt"
+        empty_file.write_bytes(b"")
+        with open(empty_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is None
+
+    def test_binary_file_no_match(self, tmp_path):
+        """Test detection with binary file that doesn't match any magic number."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        binary_file = tmp_path / "binary.bin"
+        binary_file.write_bytes(b"\x00\x01\x02\x03" * 100)
+        with open(binary_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is None
+
+    def test_detect_file_type_with_content_fallback(self, tmp_path):
+        """Test detect_file_type uses content detection when filename fails."""
+        from iterable.helpers.detect import detect_file_type
+
+        # File without extension but with JSON content
+        json_file = tmp_path / "data"
+        json_file.write_text('{"name": "test"}')
+        with open(json_file, "rb") as f:
+            result = detect_file_type(str(json_file), fileobj=f)
+        assert result["success"]
+        assert result["datatype"] == JSONIterable
+        assert "confidence" in result
+        assert 0.8 <= result["confidence"] <= 1.0
+        assert result["detection_method"] == "heuristic"
+
+    def test_detect_file_type_content_priority(self, tmp_path):
+        """Test that filename detection takes priority over content detection."""
+        from iterable.helpers.detect import detect_file_type
+
+        # CSV file with JSON-like content (should detect as CSV from filename)
+        csv_file = tmp_path / "test.csv"
+        csv_file.write_text('{"name": "test"}')  # JSON-like but filename says CSV
+        result = detect_file_type(str(csv_file))
+        assert result["success"]
+        assert result["datatype"] == CSVIterable
+        assert result["confidence"] == 1.0  # Filename detection has highest confidence
+        assert result["detection_method"] == "filename"
+
+    def test_content_detection_preserves_file_position(self, tmp_path):
+        """Test that content detection preserves file position."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        json_file = tmp_path / "test.json"
+        json_file.write_text('{"name": "test"}')
+        with open(json_file, "rb") as f:
+            initial_pos = f.tell()
+            result = detect_file_type_from_content(f)
+            final_pos = f.tell()
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "json"
+        assert initial_pos == final_pos
+
+    def test_jsonl_minimum_lines(self, tmp_path):
+        """Test JSONL detection requires minimum number of valid lines."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        # Only 2 valid JSON lines (should not be enough)
+        jsonl_file = tmp_path / "test.jsonl"
+        jsonl_file.write_text('{"id": 1}\n{"id": 2}\n')
+        with open(jsonl_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        # Should detect as JSONL if it has at least 3 lines, otherwise might detect as JSON
+        if result is not None:
+            format_id, confidence, method = result
+            assert format_id in ["jsonl", "json"]
+            assert method == "heuristic"
+
+        # 3+ valid JSON lines (should detect as JSONL)
+        jsonl_file.write_text('{"id": 1}\n{"id": 2}\n{"id": 3}\n{"id": 4}\n')
+        with open(jsonl_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "jsonl"
+        assert method == "heuristic"
+
+    def test_csv_delimiter_consistency(self, tmp_path):
+        """Test CSV detection checks for delimiter consistency."""
+        from iterable.helpers.detect import detect_file_type_from_content
+
+        # Inconsistent delimiter (should not detect as CSV)
+        inconsistent_file = tmp_path / "test.txt"
+        inconsistent_file.write_text("id,name,value\n1,test\n2,test2,value2,extra\n")
+        with open(inconsistent_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        # May or may not detect as CSV depending on heuristics
+        if result is not None:
+            format_id, confidence, method = result
+            assert format_id == "csv"
+            assert method == "heuristic"
+        # else: None is acceptable for inconsistent delimiters
+
+        # Consistent delimiter (should detect as CSV)
+        consistent_file = tmp_path / "test.csv"
+        consistent_file.write_text("id,name,value\n1,test,123\n2,test2,456\n")
+        with open(consistent_file, "rb") as f:
+            result = detect_file_type_from_content(f)
+        assert result is not None
+        format_id, confidence, method = result
+        assert format_id == "csv"
+        assert method == "heuristic"

@@ -5,7 +5,8 @@ import typing
 import pyarrow
 import pyarrow.parquet
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from typing import Any
 
 DEFAULT_BATCH_SIZE = 1024
 
@@ -23,16 +24,16 @@ class ParquetIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
+        stream: typing.IO[Any] | None = None,
         mode: str = "r",
-        codec: BaseCodec = None,
-        keys: list[str] = None,
+        codec: BaseCodec | None = None,
+        keys: list[str] | None = None,
         schema: list[str] = None,
         compression: str = "snappy",
         adapt_schema: bool = True,
         use_pandas: bool = True,
         batch_size: int = DEFAULT_BATCH_SIZE,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -56,6 +57,9 @@ class ParquetIterable(BaseFileIterable):
         if self.mode == "r":
             self.reader = pyarrow.parquet.ParquetFile(self.fobj)
             self.iterator = self.__iterator()
+            # Initialize batch iterator for optimized bulk reads
+            self._batch_iterator = self.reader.iter_batches(batch_size=self.batch_size)
+            self._cached_batch = []  # Cache for remaining rows from a batch
         #           self.tbl = self.reader.to_table()
         self.writer = None
         if self.mode == "w":
@@ -87,7 +91,7 @@ class ParquetIterable(BaseFileIterable):
         return True
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -129,20 +133,54 @@ class ParquetIterable(BaseFileIterable):
         for batch in self.reader.iter_batches(batch_size=self.batch_size):
             yield from batch.to_pylist()
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single record"""
         row = next(self.iterator)
         self.pos += 1
         return row
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
-        """Read bulk Parquet records"""
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
+        """Read bulk Parquet records efficiently using batch reading.
+        
+        This optimized implementation directly consumes batches from iter_batches()
+        instead of calling read() in a loop, providing significant performance
+        improvements for columnar data access.
+        """
         chunk = []
-        for _n in range(0, num):
-            chunk.append(self.read())
+        
+        # First, consume from cached batch if available
+        if hasattr(self, '_cached_batch') and self._cached_batch:
+            while len(chunk) < num and self._cached_batch:
+                chunk.append(self._cached_batch.pop(0))
+                self.pos += 1
+        
+        # If we need more rows, read from batches directly
+        while len(chunk) < num:
+            try:
+                # Get next batch from batch iterator
+                batch = next(self._batch_iterator)
+                batch_rows = batch.to_pylist()
+                
+                # Add rows from batch to chunk
+                remaining = num - len(chunk)
+                chunk.extend(batch_rows[:remaining])
+                self.pos += len(batch_rows[:remaining])
+                
+                # Cache remaining rows from batch for next read_bulk() call
+                if len(batch_rows) > remaining:
+                    if not hasattr(self, '_cached_batch'):
+                        self._cached_batch = []
+                    self._cached_batch = batch_rows[remaining:]
+                else:
+                    self._cached_batch = []
+                    
+            except StopIteration:
+                # No more batches available
+                break
+        
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single record"""
         self.write_bulk(
             [
@@ -150,15 +188,36 @@ class ParquetIterable(BaseFileIterable):
             ]
         )
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk records"""
         if not records:
             return
 
-        # If we already have a writer, write immediately (bounded memory).
+        # If we already have a writer, normalize records to match existing schema
         if self.writer is not None:
-            self.writer.write_table(pyarrow.Table.from_pylist(records))
-            return
+            # Get expected fields from existing schema
+            expected_fields = {field.name for field in self.writer.schema}
+            
+            # Normalize records to match existing schema
+            # Add missing fields as None, remove extra fields
+            normalized_records = []
+            for record in records:
+                normalized = {}
+                for field_name in expected_fields:
+                    normalized[field_name] = record.get(field_name)
+                normalized_records.append(normalized)
+            
+            try:
+                table = pyarrow.Table.from_pylist(normalized_records)
+                self.writer.write_table(table)
+                return
+            except Exception as e:
+                # If normalization didn't work, buffer and let flush handle it
+                # This can happen if there are type mismatches
+                self.__buffer.extend(normalized_records)
+                if len(self.__buffer) >= self.batch_size:
+                    self.flush()
+                return
 
         # Schema-adaptive streaming: buffer up to batch_size, then flush (writer created on first flush).
         self.__buffer.extend(records)

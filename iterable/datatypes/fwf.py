@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import typing
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
 from ..helpers.utils import rowincount
+from typing import Any
 
 DEFAULT_ENCODING = "utf8"
 
@@ -12,13 +13,13 @@ class FixedWidthIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         widths: list[int] = None,
         names: list[str] = None,
-        encoding: str = None,
+        encoding: str | None = None,
         mode: str = "r",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -58,7 +59,7 @@ class FixedWidthIterable(BaseFileIterable):
         return True
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -84,7 +85,7 @@ class FixedWidthIterable(BaseFileIterable):
             start = end
         return record
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk fixed-width records"""
         chunk = []
         for _n in range(0, num):
@@ -94,7 +95,7 @@ class FixedWidthIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single fixed-width record"""
         if self.widths is None or self.names is None:
             raise ValueError("Fixed-width files require 'widths' and 'names' parameters")
@@ -108,7 +109,7 @@ class FixedWidthIterable(BaseFileIterable):
 
         self.fobj.write("".join(line_parts) + "\n")
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk fixed-width records"""
         for record in records:
             self.write(record)

@@ -11,7 +11,8 @@ try:
 except ImportError:
     HAS_LANCE = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from typing import Any
 
 DEFAULT_BATCH_SIZE = 1024
 
@@ -22,12 +23,12 @@ class LanceIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
+        stream: typing.IO[Any] | None = None,
         mode: str = "r",
-        codec: BaseCodec = None,
+        codec: BaseCodec | None = None,
         batch_size: int = DEFAULT_BATCH_SIZE,
         write_mode: str = "create",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -79,7 +80,7 @@ class LanceIterable(BaseFileIterable):
         return True
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -116,7 +117,7 @@ class LanceIterable(BaseFileIterable):
         for batch in table.to_batches(max_chunksize=self.batch_size):
             yield from batch.to_pylist()
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single record"""
         if self.iterator is None:
             raise StopIteration
@@ -124,7 +125,7 @@ class LanceIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk Lance records"""
         chunk = []
         for _n in range(0, num):
@@ -134,7 +135,7 @@ class LanceIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single record"""
         self.write_bulk(
             [
@@ -142,6 +143,6 @@ class LanceIterable(BaseFileIterable):
             ]
         )
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk records"""
         self.__buffer.extend(records)

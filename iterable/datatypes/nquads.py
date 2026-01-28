@@ -4,6 +4,7 @@ import typing
 
 from ..base import BaseCodec
 from .ntriples import NTriplesIterable
+from typing import Any
 
 
 class NQuadsIterable(NTriplesIterable):
@@ -16,11 +17,11 @@ class NQuadsIterable(NTriplesIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -121,7 +122,7 @@ class NQuadsIterable(NTriplesIterable):
             self.pos += 1
             return result
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single N-Quads record"""
         subject = record.get("subject", record.get("subject_value", ""))
         subject_type = record.get("subject_type", "uri")

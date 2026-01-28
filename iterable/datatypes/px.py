@@ -4,7 +4,9 @@ import re
 import typing
 from itertools import product
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import WriteNotSupportedError
+from typing import Any
 
 DEFAULT_ENCODING = "utf8"
 
@@ -15,11 +17,11 @@ class PXIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
-        encoding: str = None,
-        options: dict = None,
+        encoding: str | None = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -226,7 +228,7 @@ class PXIterable(BaseFileIterable):
             self.iterator = iter(self.records)
         else:
             self.records = []
-            raise NotImplementedError("PC-Axis file writing is not yet supported")
+            raise WriteNotSupportedError("px", "PC-Axis file writing is not yet implemented")
 
     @staticmethod
     def id() -> str:
@@ -256,7 +258,7 @@ class PXIterable(BaseFileIterable):
         except StopIteration:
             raise StopIteration from None
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk PC-Axis records"""
         chunk = []
         for _n in range(0, num):
@@ -266,10 +268,10 @@ class PXIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single PC-Axis record - not supported"""
-        raise NotImplementedError("PC-Axis file writing is not yet supported")
+        raise WriteNotSupportedError("px", "PC-Axis file writing is not yet implemented")
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk PC-Axis records - not supported"""
-        raise NotImplementedError("PC-Axis file writing is not yet supported")
+        raise WriteNotSupportedError("px", "PC-Axis file writing is not yet implemented")

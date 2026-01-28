@@ -2,11 +2,9 @@
 
 import dataclasses
 from collections.abc import Iterator
-from typing import TypeVar
 
 from ..base import BaseIterable
-
-T = TypeVar("T")
+from ..types import T
 
 
 def as_dataclasses(

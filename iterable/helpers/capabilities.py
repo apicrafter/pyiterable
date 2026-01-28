@@ -6,9 +6,11 @@ allowing users to discover what operations and features are supported by each da
 
 from __future__ import annotations
 
+import inspect
 from typing import TYPE_CHECKING
 
-from .detect import DATATYPE_REGISTRY, _load_symbol
+from .detect import DATATYPE_REGISTRY, READ_ONLY_FORMATS, _load_symbol, _get_format_registry
+from ..exceptions import FormatDetectionError
 
 if TYPE_CHECKING:
     from ..base import BaseIterable
@@ -41,7 +43,64 @@ def _detect_capabilities(format_class: type[BaseIterable]) -> dict[str, bool | N
 
     # Check for read/write methods
     caps["readable"] = hasattr(format_class, "read") and callable(getattr(format_class, "read", None))
-    caps["writable"] = hasattr(format_class, "write") and callable(getattr(format_class, "write", None))
+    
+    # Check for write support - first check READ_ONLY_FORMATS registry for quick lookup
+    format_id = None
+    try:
+        if hasattr(format_class, "id") and callable(getattr(format_class, "id", None)):
+            format_id = format_class.id()
+    except (AttributeError, TypeError):
+        pass
+    
+    # Quick check: if format is in READ_ONLY_FORMATS registry, it's definitely not writable
+    if format_id and format_id.lower() in READ_ONLY_FORMATS:
+        caps["writable"] = False
+    else:
+        # Need to distinguish between actual implementation and base class default
+        has_write_method = hasattr(format_class, "write") and callable(getattr(format_class, "write", None))
+        if has_write_method:
+            # Check if write() is actually implemented (not just base class default)
+            # Base class raises WriteNotSupportedError, so we need to check if the method
+            # is overridden with actual implementation
+            try:
+                # Get the write method
+                write_method = getattr(format_class, "write")
+                # Check if it's the base class method (BaseIterable.write)
+                from ..base import BaseIterable
+                if write_method is BaseIterable.write:
+                    # It's the base class default - not supported
+                    caps["writable"] = False
+                else:
+                    # Method is overridden - check if it actually implements writing
+                    # or just raises WriteNotSupportedError
+                    try:
+                        source = inspect.getsource(write_method)
+                        # If source contains WriteNotSupportedError and is very short,
+                        # it's likely just raising the error
+                        if "WriteNotSupportedError" in source:
+                            # Count non-comment, non-docstring lines
+                            lines = [l.strip() for l in source.split("\n") 
+                                    if l.strip() and not l.strip().startswith("#") 
+                                    and not l.strip().startswith('"""') 
+                                    and not l.strip().startswith("'''")]
+                            # If only 1-3 lines (def + docstring + raise), it's not supported
+                            if len(lines) <= 3:
+                                caps["writable"] = False
+                            else:
+                                # Has more implementation - likely supported
+                                caps["writable"] = True
+                        else:
+                            # No WriteNotSupportedError - likely supported
+                            caps["writable"] = True
+                    except (OSError, TypeError):
+                        # Can't inspect source (e.g., C extension) - assume supported if overridden
+                        caps["writable"] = True
+            except Exception:
+                # Fallback: if method exists and is overridden, assume supported
+                caps["writable"] = has_write_method
+        else:
+            caps["writable"] = False
+    
     caps["bulk_read"] = hasattr(format_class, "read_bulk") and callable(getattr(format_class, "read_bulk", None))
     caps["bulk_write"] = hasattr(format_class, "write_bulk") and callable(getattr(format_class, "write_bulk", None))
 
@@ -76,12 +135,59 @@ def _detect_capabilities(format_class: type[BaseIterable]) -> dict[str, bool | N
 
     # Check for streaming support
     try:
-        # is_streaming() is an instance method, so we can't call it directly on the class
-        # Most formats in IterableData are designed for streaming (row-by-row processing)
-        # Formats that don't stream (like JSON loading entire file) are exceptions
-        # For simplicity, we infer: if format is readable, it likely streams
-        # This is a reasonable default as the library emphasizes streaming processing
-        caps["streaming"] = caps["readable"]
+        # is_streaming() is an instance method, so we need to check it on an instance
+        # However, creating an instance might fail if dependencies are missing or if
+        # the format requires a filename. We'll try a best-effort approach.
+        
+        # Known non-streaming formats (from memory audit)
+        # These formats load entire files into memory
+        KNOWN_NON_STREAMING_FORMATS = {
+            "feed", "rss", "atom",  # Feed formats
+            "arff",  # ARFF format
+            "html", "htm",  # HTML format
+            "toml",  # TOML format
+            "hocon",  # HOCON format
+            "edn",  # EDN format
+            "bencode",  # Bencode format
+            "asn1",  # ASN.1 format
+            "ical", "ics",  # iCal format
+            "turtle", "ttl",  # Turtle RDF format
+            "vcf",  # VCF format
+            "mhtml",  # MHTML format
+            "flexbuffers",  # FlexBuffers format
+            "px",  # PC-Axis format
+            "mvt",  # MVT (Mapbox Vector Tile) - single tile per file
+        }
+        
+        # Check if format ID is in known non-streaming list
+        # Try to get format ID from static method
+        format_id = None
+        try:
+            if hasattr(format_class, "id") and callable(getattr(format_class, "id", None)):
+                format_id = format_class.id()
+        except (AttributeError, TypeError):
+            pass
+        
+        if format_id and format_id.lower() in KNOWN_NON_STREAMING_FORMATS:
+            caps["streaming"] = False
+        else:
+            # Try to determine streaming capability by checking if is_streaming() exists
+            # and if the format has a _should_use_streaming method (indicates conditional streaming)
+            has_streaming_method = hasattr(format_class, "is_streaming") and callable(getattr(format_class, "is_streaming", None))
+            has_conditional_streaming = hasattr(format_class, "_should_use_streaming") and callable(getattr(format_class, "_should_use_streaming", None))
+            
+            # Formats with conditional streaming (like JSON, GeoJSON, TopoJSON) support streaming
+            # for large files but may load small files entirely
+            if has_conditional_streaming:
+                caps["streaming"] = True  # Supports streaming for large files
+            elif has_streaming_method:
+                # Has is_streaming() method - likely supports streaming
+                # Default to True, but this may vary by instance
+                caps["streaming"] = True
+            else:
+                # Default: assume streaming for most formats (library emphasizes streaming)
+                # Most formats in IterableData are designed for streaming (row-by-row processing)
+                caps["streaming"] = caps["readable"]
     except (ImportError, AttributeError, TypeError):
         caps["streaming"] = None
 
@@ -113,10 +219,14 @@ def _get_format_class(format_id: str) -> type[BaseIterable]:
         ImportError: If format class cannot be loaded (optional dependency missing)
     """
     format_id_lower = format_id.lower()
-    if format_id_lower not in DATATYPE_REGISTRY:
-        raise ValueError(f"Unknown format: '{format_id}'. Available formats: {sorted(set(DATATYPE_REGISTRY.keys()))}")
+    registry = _get_format_registry()
+    if format_id_lower not in registry:
+        raise FormatDetectionError(
+            filename=None,
+            reason=f"Unknown format: '{format_id}'. Available formats: {sorted(set(registry.keys()))}",
+        )
 
-    module_path, symbol = DATATYPE_REGISTRY[format_id_lower]
+    module_path, symbol = registry[format_id_lower]
     try:
         return _load_symbol(module_path, symbol)
     except ImportError as e:
@@ -137,7 +247,7 @@ def get_format_capabilities(format_id: str) -> dict[str, bool | None]:
     Returns:
         Dictionary with capability flags:
         - readable: Format supports reading data
-        - writable: Format supports writing data
+        - writable: Format supports writing data (False for read-only formats)
         - bulk_read: Format supports bulk reading
         - bulk_write: Format supports bulk writing
         - totals: Format supports row count totals
@@ -159,6 +269,9 @@ def get_format_capabilities(format_id: str) -> dict[str, bool | None]:
         True
         >>> print(caps["writable"])
         True
+        >>> caps = get_format_capabilities("pcap")
+        >>> print(caps["writable"])
+        False
     """
     format_id_lower = format_id.lower()
 
@@ -166,32 +279,54 @@ def get_format_capabilities(format_id: str) -> dict[str, bool | None]:
     if format_id_lower in _CAPABILITY_CACHE:
         return _CAPABILITY_CACHE[format_id_lower].copy()
 
-    # Get format class and detect capabilities
-    try:
-        format_class = _get_format_class(format_id_lower)
-        capabilities = _detect_capabilities(format_class)
+    # Quick check: if format is in READ_ONLY_FORMATS registry, we can set writable=False early
+    # This avoids loading the format class if we already know it's read-only
+    if format_id_lower in READ_ONLY_FORMATS:
+        # Still need to load class for other capabilities, but we know writable=False
+        try:
+            format_class = _get_format_class(format_id_lower)
+            capabilities = _detect_capabilities(format_class)
+            # Ensure writable is False (should already be set by _detect_capabilities, but be explicit)
+            capabilities["writable"] = False
+        except ImportError:
+            # If import fails, return dict with writable=False (we know it's read-only)
+            capabilities = {
+                "readable": None,
+                "writable": False,  # Known to be read-only from registry
+                "bulk_read": None,
+                "bulk_write": None,
+                "totals": None,
+                "streaming": None,
+                "flat_only": None,
+                "tables": None,
+                "compression": None,
+                "nested": None,
+            }
+    else:
+        # Get format class and detect capabilities
+        try:
+            format_class = _get_format_class(format_id_lower)
+            capabilities = _detect_capabilities(format_class)
+        except ImportError:
+            # If import fails, return dict with None values
+            # This allows graceful handling of missing optional dependencies
+            capabilities = {
+                "readable": None,
+                "writable": None,
+                "bulk_read": None,
+                "bulk_write": None,
+                "totals": None,
+                "streaming": None,
+                "flat_only": None,
+                "tables": None,
+                "compression": None,
+                "nested": None,
+            }
 
-        # Cache the result
-        _CAPABILITY_CACHE[format_id_lower] = capabilities.copy()
+    # Cache the result
+    _CAPABILITY_CACHE[format_id_lower] = capabilities.copy()
 
-        return capabilities
-    except ImportError:
-        # If import fails, return dict with None values
-        # This allows graceful handling of missing optional dependencies
-        capabilities = {
-            "readable": None,
-            "writable": None,
-            "bulk_read": None,
-            "bulk_write": None,
-            "totals": None,
-            "streaming": None,
-            "flat_only": None,
-            "tables": None,
-            "compression": None,
-            "nested": None,
-        }
-        _CAPABILITY_CACHE[format_id_lower] = capabilities.copy()
-        return capabilities
+    return capabilities
 
 
 def list_all_capabilities() -> dict[str, dict[str, bool | None]]:
@@ -210,11 +345,12 @@ def list_all_capabilities() -> dict[str, dict[str, bool | None]]:
         True
     """
     # Get unique format classes (multiple extensions may map to same class)
+    registry = _get_format_registry()
     format_classes_seen: set[tuple[str, str]] = set()
     result: dict[str, dict[str, bool | None]] = {}
 
-    for format_id in sorted(DATATYPE_REGISTRY.keys()):
-        module_path, symbol = DATATYPE_REGISTRY[format_id]
+    for format_id in sorted(registry.keys()):
+        module_path, symbol = registry[format_id]
         class_key = (module_path, symbol)
 
         # Only process each unique class once, but include all format IDs
@@ -240,8 +376,8 @@ def list_all_capabilities() -> dict[str, dict[str, bool | None]]:
         else:
             # Reuse capabilities from the first format ID that uses this class
             # Find the first format_id that uses this class
-            for first_id in sorted(DATATYPE_REGISTRY.keys()):
-                first_module, first_symbol = DATATYPE_REGISTRY[first_id]
+            for first_id in sorted(registry.keys()):
+                first_module, first_symbol = registry[first_id]
                 if (first_module, first_symbol) == class_key:
                     result[format_id] = result[first_id].copy()
                     break
@@ -273,3 +409,77 @@ def get_capability(format_id: str, capability: str) -> bool | None:
     """
     capabilities = get_format_capabilities(format_id)
     return capabilities.get(capability)
+
+
+def supports_write(format_id: str) -> bool:
+    """Check if a format supports write operations.
+
+    This is a convenience function that checks if a format has write support.
+    It returns True only if the format explicitly implements write methods
+    (not just the base class default that raises WriteNotSupportedError).
+
+    Args:
+        format_id: Format identifier (file extension or format name)
+
+    Returns:
+        True if format supports writing, False otherwise
+
+    Raises:
+        ValueError: If format_id is not recognized
+        ImportError: If format class cannot be loaded (optional dependency missing)
+
+    Example:
+        >>> if supports_write("csv"):
+        ...     print("CSV format supports writing")
+        ... else:
+        ...     print("CSV format is read-only")
+        CSV format supports writing
+
+        >>> if supports_write("pcap"):
+        ...     print("PCAP format supports writing")
+        ... else:
+        ...     print("PCAP format is read-only")
+        PCAP format is read-only
+    """
+    capabilities = get_format_capabilities(format_id)
+    writable = capabilities.get("writable")
+    
+    # Return False if None (format couldn't be loaded) or explicitly False
+    return bool(writable)
+
+
+def supports_write(format_id: str) -> bool:
+    """Check if a format supports write operations.
+
+    This is a convenience function that checks if a format has write support.
+    It returns True only if the format explicitly implements write methods
+    (not just the base class default that raises WriteNotSupportedError).
+
+    Args:
+        format_id: Format identifier (file extension or format name)
+
+    Returns:
+        True if format supports writing, False otherwise
+
+    Raises:
+        ValueError: If format_id is not recognized
+        ImportError: If format class cannot be loaded (optional dependency missing)
+
+    Example:
+        >>> if supports_write("csv"):
+        ...     print("CSV format supports writing")
+        ... else:
+        ...     print("CSV format is read-only")
+        CSV format supports writing
+
+        >>> if supports_write("pcap"):
+        ...     print("PCAP format supports writing")
+        ... else:
+        ...     print("PCAP format is read-only")
+        PCAP format is read-only
+    """
+    capabilities = get_format_capabilities(format_id)
+    writable = capabilities.get("writable")
+    
+    # Return False if None (format couldn't be loaded) or explicitly False
+    return bool(writable)

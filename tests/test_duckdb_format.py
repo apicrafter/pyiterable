@@ -432,3 +432,107 @@ def test_duckdb_ddb_extension():
     finally:
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)
+
+
+def test_duckdb_has_tables():
+    """Test has_tables static method"""
+    assert DuckDBIterable.has_tables() is True
+
+
+def test_duckdb_list_tables_instance_method():
+    """Test list_tables on an already-opened instance"""
+    tmp_path = _new_duckdb_path(".duckdb")
+
+    try:
+        # Create test database with multiple tables
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE users (name VARCHAR, age INTEGER)")
+        conn.execute("CREATE TABLE products (id INTEGER, name VARCHAR)")
+        conn.execute("CREATE TABLE orders (order_id INTEGER, user_id INTEGER)")
+        if hasattr(conn, "commit"):
+            conn.commit()
+        conn.close()
+
+        # Open iterable and list tables (should reuse connection)
+        reader = DuckDBIterable(tmp_path, mode="r", table="users")
+        tables = reader.list_tables()
+        assert isinstance(tables, list)
+        assert len(tables) >= 3
+        assert "users" in tables
+        assert "products" in tables
+        assert "orders" in tables
+        reader.close()
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_list_tables_with_filename():
+    """Test list_tables with filename parameter (class-like usage)"""
+    tmp_path = _new_duckdb_path(".duckdb")
+
+    try:
+        # Create test database with multiple tables
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE users (name VARCHAR)")
+        conn.execute("CREATE TABLE products (id INTEGER)")
+        if hasattr(conn, "commit"):
+            conn.commit()
+        conn.close()
+
+        # Create instance and call list_tables with filename
+        reader = DuckDBIterable(tmp_path, mode="r", table="users")
+        tables = reader.list_tables(tmp_path)
+        assert isinstance(tables, list)
+        assert len(tables) >= 2
+        assert "users" in tables
+        assert "products" in tables
+        reader.close()
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_list_tables_reuses_connection():
+    """Test that list_tables reuses open connection"""
+    tmp_path = _new_duckdb_path(".duckdb")
+
+    try:
+        # Create test database
+        conn = duckdb.connect(tmp_path)
+        conn.execute("CREATE TABLE test_table (name VARCHAR)")
+        if hasattr(conn, "commit"):
+            conn.commit()
+        conn.close()
+
+        # Open iterable and read a row to ensure connection is open
+        reader = DuckDBIterable(tmp_path, mode="r", table="test_table")
+        _ = reader.read()
+        # Now list tables - should reuse connection
+        tables1 = reader.list_tables()
+        tables2 = reader.list_tables()
+        assert tables1 == tables2
+        reader.close()
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def test_duckdb_list_tables_empty():
+    """Test list_tables on empty database"""
+    tmp_path = _new_duckdb_path(".duckdb")
+
+    try:
+        # Create empty database
+        conn = duckdb.connect(tmp_path)
+        conn.close()
+
+        # List tables should return empty list
+        reader = DuckDBIterable(tmp_path, mode="r")
+        tables = reader.list_tables()
+        assert isinstance(tables, list)
+        assert len(tables) == 0
+        reader.close()
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)

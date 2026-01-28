@@ -10,7 +10,9 @@ try:
 except ImportError:
     HAS_WARCIO = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import FormatNotSupportedError
+from typing import Any
 
 
 class WARCIterable(BaseFileIterable):
@@ -25,10 +27,10 @@ class WARCIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -93,13 +95,13 @@ class WARCIterable(BaseFileIterable):
             self.warc_writer = WARCWriter(fileobj)
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return False  # WARC files don't have a reliable way to count records without iterating
 
     def totals(self):
         """Returns file totals - not supported for WARC files"""
-        raise NotImplementedError("WARC files don't support totals counting")
+        raise FormatNotSupportedError("warc", "WARC files don't support totals counting")
 
     @staticmethod
     def id() -> str:
@@ -204,7 +206,7 @@ class WARCIterable(BaseFileIterable):
         self.pos += 1
         return result
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk WARC records"""
         chunk = []
         for _n in range(0, num):
@@ -214,7 +216,7 @@ class WARCIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single WARC record"""
         if self.warc_writer is None:
             raise RuntimeError("WARC file not opened for writing")
@@ -260,7 +262,7 @@ class WARCIterable(BaseFileIterable):
         )
         self.warc_writer.write_record(warc_record)
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk WARC records"""
         for record in records:
             self.write(record)

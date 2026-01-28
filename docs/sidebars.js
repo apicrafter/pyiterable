@@ -21,6 +21,7 @@ const sidebars = {
         'getting-started/installation',
         'getting-started/quick-start',
         'getting-started/basic-usage',
+        'getting-started/performance',
         'getting-started/troubleshooting',
         'getting-started/migration-guide',
         'getting-started/best-practices',
@@ -56,6 +57,7 @@ const sidebars = {
         'api/validate',
         'api/ingest',
         'api/ai',
+        'api/type-system',
       ],
     },
     {

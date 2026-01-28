@@ -4,8 +4,9 @@ import re
 import typing
 from urllib.parse import unquote
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
 from ..helpers.utils import rowincount
+from typing import Any
 
 
 class CEFIterable(BaseFileIterable):
@@ -19,11 +20,11 @@ class CEFIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -45,7 +46,7 @@ class CEFIterable(BaseFileIterable):
         return True
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -164,7 +165,7 @@ class CEFIterable(BaseFileIterable):
             self.pos += 1
             return result
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk CEF records"""
         chunk = []
         for _n in range(0, num):
@@ -186,7 +187,7 @@ class CEFIterable(BaseFileIterable):
             .replace("\t", "\\t")
         )
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single CEF record"""
         # Build CEF line
         parts = []
@@ -222,7 +223,7 @@ class CEFIterable(BaseFileIterable):
         line = "CEF:" + "|".join(parts) + "\n"
         self.fobj.write(line)
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk CEF records"""
         for record in records:
             self.write(record)

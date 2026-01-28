@@ -5,8 +5,9 @@ import logging
 import typing
 from datetime import datetime
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
 from ..helpers.utils import rowincount
+from typing import Any
 
 DEFAULT_ENCODING = "utf8"
 DEFAULT_DELIMITER = ","
@@ -70,15 +71,15 @@ class AnnotatedCSVIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
-        keys: list[str] = None,
-        delimiter: str = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
+        keys: list[str] | None = None,
+        delimiter: str | None = None,
         quotechar: str = '"',
         mode: str = "r",
-        encoding: str = None,
+        encoding: str | None = None,
         autodetect: bool = False,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -122,7 +123,7 @@ class AnnotatedCSVIterable(BaseFileIterable):
         self.reset()
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -391,7 +392,7 @@ class AnnotatedCSVIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk annotated CSV records"""
         chunk = []
         for _n in range(0, num):
@@ -401,7 +402,7 @@ class AnnotatedCSVIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single annotated CSV record"""
         # If this is the first write, write annotations
         if self.pos == 0:
@@ -410,7 +411,7 @@ class AnnotatedCSVIterable(BaseFileIterable):
         self.writer.writerow(record)
         self.pos += 1
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk annotated CSV records"""
         if self.pos == 0:
             self._write_annotations()

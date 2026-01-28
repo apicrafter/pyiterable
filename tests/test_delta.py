@@ -52,3 +52,33 @@ class TestDelta:
             iterable.close()
         except ImportError:
             pytest.skip("Delta Lake support requires deltalake package")
+
+    def test_has_tables(self):
+        """Test has_tables static method"""
+        try:
+            # Delta returns False for single table directories (most common case)
+            assert DeltaIterable.has_tables() is False
+        except ImportError:
+            pytest.skip("Delta Lake support requires deltalake package")
+
+    def test_list_tables(self):
+        """Test list_tables method (returns None for single table directories)"""
+        try:
+            iterable = DeltaIterable(FIXTURE_DIR)
+            # For single table directories, list_tables should return None
+            tables = iterable.list_tables()
+            assert tables is None or isinstance(tables, list)
+            iterable.close()
+        except ImportError:
+            pytest.skip("Delta Lake support requires deltalake package")
+
+    def test_list_tables_with_filename(self):
+        """Test list_tables with filename parameter"""
+        try:
+            iterable = DeltaIterable(FIXTURE_DIR)
+            # Should work with filename parameter too
+            tables = iterable.list_tables(FIXTURE_DIR)
+            assert tables is None or isinstance(tables, list)
+            iterable.close()
+        except ImportError:
+            pytest.skip("Delta Lake support requires deltalake package")

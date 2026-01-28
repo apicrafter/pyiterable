@@ -274,11 +274,12 @@ Database engines provide read-only access to SQL and NoSQL databases as iterable
 - ✅ **Unified interface**: Works with `open_iterable()`, `convert()`, and `pipeline()`
 - ✅ **Read-only safety**: All operations are read-only by default
 - ✅ **Memory efficient**: Server-side cursors and batch processing
-- ✅ **Multiple databases**: PostgreSQL (available), MySQL, MSSQL, SQLite, MongoDB, Elasticsearch (planned)
+- ✅ **Multiple databases**: PostgreSQL, ClickHouse (available), MySQL, MSSQL, SQLite, MongoDB, Elasticsearch (planned)
 
 ### Supported Databases
 
 - **PostgreSQL**: ✅ Available (requires `psycopg2-binary`)
+- **ClickHouse**: ✅ Available (requires `clickhouse-connect`)
 - **MySQL/MariaDB**: 🚧 Planned
 - **Microsoft SQL Server**: 🚧 Planned
 - **SQLite**: 🚧 Planned
@@ -301,6 +302,9 @@ pip install iterabledata[db-nosql]
 
 # Specific database (PostgreSQL)
 pip install psycopg2-binary
+
+# Specific database (ClickHouse)
+pip install clickhouse-connect
 ```
 
 ### Basic Usage
@@ -313,6 +317,15 @@ with open_iterable(
     'postgresql://user:password@localhost:5432/mydb',
     engine='postgres',
     iterableargs={'query': 'users'}
+) as source:
+    for row in source:
+        print(row)
+
+# Read from ClickHouse database
+with open_iterable(
+    'clickhouse://user:password@localhost:9000/analytics',
+    engine='clickhouse',
+    iterableargs={'query': 'events'}
 ) as source:
     for row in source:
         print(row)
@@ -369,6 +382,46 @@ with open_iterable(
         'query': 'users',
         'columns': ['id', 'name', 'email'],
         'filter': 'active = TRUE'
+    }
+) as source:
+    for row in source:
+        print(row)
+```
+
+#### ClickHouse
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Read table
+with open_iterable(
+    'clickhouse://localhost:9000/analytics',
+    engine='clickhouse',
+    iterableargs={'query': 'events'}
+) as source:
+    for row in source:
+        print(row)
+
+# Read with ClickHouse query settings
+with open_iterable(
+    'clickhouse://localhost:9000/analytics',
+    engine='clickhouse',
+    iterableargs={
+        'query': 'large_table',
+        'settings': {'max_threads': 4, 'max_memory_usage': 10000000000}
+    }
+) as source:
+    for row in source:
+        print(row)
+
+# Read with database parameter
+with open_iterable(
+    'clickhouse://localhost:9000',
+    engine='clickhouse',
+    iterableargs={
+        'query': 'events',
+        'database': 'analytics',
+        'columns': ['id', 'name', 'timestamp']
     }
 ) as source:
     for row in source:

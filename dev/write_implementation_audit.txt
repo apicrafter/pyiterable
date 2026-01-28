@@ -1,0 +1,104 @@
+Write Implementation Audit
+============================================================
+
+✅ Formats with write support (67):
+  - annotatedcsv
+  - apachelog
+  - arrow
+  - asn1
+  - beam
+  - bencode
+  - bsonf
+  - capnp
+  - cbor
+  - cdx
+  - cef
+  - csv
+  - csvw
+  - duckdb
+  - edn
+  - eml
+  - flexbuffers
+  - flink
+  - fwf
+  - gelf
+  - geojson
+  - geopackage
+  - gml
+  - hocon
+  - ical
+  - ilp
+  - ini
+  - ion
+  - json
+  - jsonl
+  - jsonld
+  - kafka
+  - kml
+  - lance
+  - ldif
+  - libsvm
+  - ltsv
+  - mbox
+  - mhtml
+  - msgpack
+  - mysqldump
+  - nquads
+  - ntriples
+  - numpy
+  - orc
+  - parquet
+  - pgcopy
+  - picklef
+  - protobuf
+  - pulsar
+  - rdfxml
+  - recordio
+  - sequencefile
+  - shapefile
+  - smile
+  - sqlite
+  - tfrecord
+  - thrift
+  - toml
+  - topojson
+  - turtle
+  - txt
+  - ubjson
+  - vcf
+  - vortex
+  - warc
+  - yaml
+
+❌ Formats that raise WriteNotSupportedError (16):
+  - arff
+  - delta
+  - feed
+  - flatbuffers
+  - hdf5
+  - html
+  - hudi
+  - iceberg
+  - ods
+  - pcap
+  - px
+  - rdata
+  - rds
+  - sas
+  - spss
+  - stata
+
+⚠️  Formats with NotImplementedError (0):
+
+📝 Formats using base class default (11):
+  - avro
+  - dbf
+  - dxf
+  - mvt
+  - netcdf
+  - psv
+  - xls
+  - xlsx
+  - xml
+  - zipped
+  - zipxml

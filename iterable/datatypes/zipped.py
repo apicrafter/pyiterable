@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from zipfile import ZipFile
 
-from ..base import BaseIterable
+from ..base import BaseIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import FormatNotSupportedError
 
 
 class ZIPSourceWrapper(BaseIterable):
@@ -35,7 +36,7 @@ class ZIPSourceWrapper(BaseIterable):
         else:
             return False
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single record"""
         try:
             row = self.read_single()
@@ -55,9 +56,9 @@ class ZIPSourceWrapper(BaseIterable):
 
     def read_single(self):
         """Not implemented single record read"""
-        raise NotImplementedError
+        raise FormatNotSupportedError("zipped", "Single record reading is not supported for ZIP files")
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk records"""
         chunk = []
         n = 0

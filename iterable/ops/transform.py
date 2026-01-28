@@ -889,3 +889,7 @@ def exclude(
             key = tuple(sorted(row.items()))
         if key not in exclude_keys:
             yield row
+
+
+# Alias for backward compatibility with task specification
+sample = sample_rows

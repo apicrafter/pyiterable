@@ -52,6 +52,124 @@ print(f"Valid: {stats['valid_rows']}, Invalid: {stats['invalid_rows']}")
 - If `mode="stats"`: Dictionary with validation statistics
 - Otherwise: Iterator of (record, errors) tuples where errors is a list of error messages
 
+## Validation Hooks
+
+Validation hooks allow you to automatically validate data during read and write operations, providing fail-fast validation and data quality assurance.
+
+### Basic Usage
+
+```python
+from iterable.helpers.detect import open_iterable
+from iterable.helpers.validation import rules_validator
+
+# Create validation hook
+rules = {"email": ["common.email"], "url": ["common.url"]}
+hook = rules_validator(rules)
+
+# Use validation hook during iteration
+with open_iterable(
+    "data.csv",
+    iterableargs={"validation_hook": hook, "on_validation_error": "skip"}
+) as source:
+    for row in source:  # Invalid rows automatically skipped
+        process(row)
+```
+
+### Error Handling Policies
+
+Validation hooks support four error handling policies:
+
+- `'raise'` (default): Raise exception on validation failure
+- `'skip'`: Skip invalid rows, continue processing
+- `'log'`: Log errors, continue processing
+- `'warn'`: Issue warning, continue processing
+
+```python
+# Fail fast on invalid data
+with open_iterable("data.csv", iterableargs={"validation_hook": hook, "on_validation_error": "raise"}) as source:
+    for row in source:  # Raises on first invalid row
+        process(row)
+
+# Skip invalid rows
+with open_iterable("data.csv", iterableargs={"validation_hook": hook, "on_validation_error": "skip"}) as source:
+    for row in source:  # Invalid rows skipped
+        process(row)
+```
+
+### Schema Validation Hooks
+
+```python
+from iterable.ops import schema
+from iterable.helpers.validation import schema_validator
+
+# Infer schema
+sch = schema.infer("data.csv")
+
+# Create schema validation hook
+hook = schema_validator(sch)
+
+# Use during iteration
+with open_iterable("data.csv", iterableargs={"validation_hook": hook}) as source:
+    for row in source:  # Automatically validated against schema
+        process(row)
+```
+
+### Rules Validation Hooks
+
+```python
+from iterable.helpers.validation import rules_validator
+
+# Create rules validation hook
+rules = {"email": ["common.email"], "age": ["required"]}
+hook = rules_validator(rules)
+
+# Use during iteration
+with open_iterable("data.csv", iterableargs={"validation_hook": hook}) as source:
+    for row in source:  # Automatically validated against rules
+        process(row)
+```
+
+### Multiple Validation Hooks
+
+You can chain multiple validation hooks:
+
+```python
+def validate_schema(row):
+    return schema_validator(sch)(row)
+
+def validate_business_rules(row):
+    if row["status"] not in ["active", "inactive"]:
+        raise ValueError("Invalid status")
+    return row
+
+# Chain hooks
+with open_iterable(
+    "data.csv",
+    iterableargs={"validation_hook": [validate_schema, validate_business_rules]}
+) as source:
+    for row in source:  # Both hooks applied in sequence
+        process(row)
+```
+
+### Validation During Write
+
+Validation hooks also work during write operations:
+
+```python
+def validate_before_write(row):
+    if "id" not in row:
+        raise ValueError("Row missing required 'id' field")
+    return row
+
+with open_iterable(
+    "output.jsonl",
+    mode="w",
+    iterableargs={"validation_hook": validate_before_write, "on_validation_error": "skip"}
+) as dest:
+    dest.write({"id": 1, "name": "test"})  # Validated before write
+    dest.write({"name": "no_id"})  # Skipped (missing id)
+```
+
 ## Built-in Validation Rules
 
 ### Email Validation

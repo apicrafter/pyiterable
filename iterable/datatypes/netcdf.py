@@ -11,7 +11,9 @@ try:
 except ImportError:
     HAS_NETCDF = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import WriteNotSupportedError, ReadError
+from typing import Any
 
 
 class NetCDFIterable(BaseFileIterable):
@@ -20,10 +22,10 @@ class NetCDFIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -49,11 +51,15 @@ class NetCDFIterable(BaseFileIterable):
                 # If we have a stream of bytes but no filename, netCDF4 can read from memory if we pass the bytes.
                 # But BaseFileIterable usually gives us a stream.
                 # For now, let's require a filename or a named stream.
-                raise ValueError("NetCDF reading currently requires a filename or a file object with a name attribute.")
+                raise ReadError(
+                "NetCDF reading currently requires a filename or a file object with a name attribute",
+                filename=None,
+                error_code="RESOURCE_REQUIREMENT_NOT_MET",
+            )
 
             self.iterator = self.__iterator()
         else:
-            raise NotImplementedError("NetCDF writing not yet supported")
+            raise WriteNotSupportedError("netcdf", "NetCDF writing is not yet implemented")
 
     def __iterator(self):
         """Iterator for reading NetCDF dataset"""
@@ -192,7 +198,9 @@ class NetCDFIterable(BaseFileIterable):
             nc_dataset.close()
 
     @staticmethod
-    def has_totals():
+
+
+        def has_totals() -> bool:
         return True
 
     def totals(self):
@@ -218,12 +226,12 @@ class NetCDFIterable(BaseFileIterable):
             self.nc_dataset.close()
         super().close()
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         row = next(self.iterator)
         self.pos += 1
         return row
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         chunk = []
         for _n in range(0, num):
             try:

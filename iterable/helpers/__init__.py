@@ -4,6 +4,7 @@ from .capabilities import (
     get_capability,
     get_format_capabilities,
     list_all_capabilities,
+    supports_write,
 )
 
 try:
@@ -16,6 +17,7 @@ __all__ = [
     "get_capability",
     "get_format_capabilities",
     "list_all_capabilities",
+    "supports_write",
 ]
 
 if to_dask is not None:

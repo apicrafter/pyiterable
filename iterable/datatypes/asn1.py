@@ -10,7 +10,8 @@ try:
 except ImportError:
     HAS_PYASN1 = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from typing import Any
 
 
 class ASN1Iterable(BaseFileIterable):
@@ -19,10 +20,10 @@ class ASN1Iterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -91,7 +92,7 @@ class ASN1Iterable(BaseFileIterable):
         else:
             return str(obj)
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single ASN.1 record"""
         row = next(self.iterator)
         self.pos += 1
@@ -101,7 +102,7 @@ class ASN1Iterable(BaseFileIterable):
         else:
             return {"value": row}
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk ASN.1 records"""
         chunk = []
         for _n in range(0, num):
@@ -111,7 +112,7 @@ class ASN1Iterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single ASN.1 record"""
         # Convert dict to ASN.1 Sequence
         # This is a simplified conversion - real ASN.1 encoding requires schema
@@ -133,7 +134,7 @@ class ASN1Iterable(BaseFileIterable):
         asn1_data = encoder.encode(seq)
         self.fobj.write(asn1_data)
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk ASN.1 records"""
         for record in records:
             self.write(record)

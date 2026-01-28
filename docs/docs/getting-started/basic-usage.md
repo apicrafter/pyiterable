@@ -29,7 +29,7 @@ with open_iterable('data.csv.xz') as source:
 
 ## Format Detection and Encoding
 
-You can detect file types and encoding before opening:
+IterableData automatically detects file formats using a two-stage approach: filename extension detection (primary) and content-based detection (fallback). You can also detect file types and encoding manually before opening:
 
 ```python
 from iterable.helpers.detect import open_iterable, detect_file_type
@@ -39,6 +39,11 @@ from iterable.helpers.utils import detect_encoding, detect_delimiter
 result = detect_file_type('data.csv.gz')
 print(f"Type: {result['datatype']}, Codec: {result['codec']}")
 
+# Content-based detection (when filename detection fails)
+with open('data', 'rb') as f:
+    result = detect_file_type('data', fileobj=f)
+    print(f"Detected format: {result['datatype']}")
+
 # Detect encoding for CSV files
 encoding_info = detect_encoding('data.csv')
 print(f"Encoding: {encoding_info['encoding']}, Confidence: {encoding_info['confidence']}")
@@ -47,11 +52,39 @@ print(f"Encoding: {encoding_info['encoding']}, Confidence: {encoding_info['confi
 delimiter = detect_delimiter('data.csv', encoding=encoding_info['encoding'])
 
 # Open with detected settings
-source = open_iterable('data.csv', iterableargs={
+with open_iterable('data.csv', iterableargs={
     'encoding': encoding_info['encoding'],
     'delimiter': delimiter
-})
+}) as source:
+    for row in source:
+        print(row)
 ```
+
+### Content-Based Detection
+
+When files don't have extensions or have unknown extensions, the library automatically uses content-based detection:
+
+**Binary formats** are detected by magic numbers:
+- Parquet: `PAR1` header
+- ORC: `ORC` header
+- PCAP: `\xa1\xb2\xc3\xd4` or `\xd4\xc3\xb2\xa1` header
+- Arrow: `ARROW1` header
+- ZIP/XLSX: `PK\x03\x04` header
+
+**Text formats** are detected by heuristics:
+- JSON: Valid JSON structure (`{...}` or `[...]`)
+- JSONL: Multiple lines of valid JSON
+- CSV/TSV: Consistent delimiter patterns across lines
+
+**Example:**
+```python
+# File without extension - automatically detected from content
+with open_iterable('data') as source:  # Contains JSON content
+    for row in source:
+        print(row)  # Automatically detected as JSON
+```
+
+See [Format Detection Details](/api/open-iterable#format-detection-details) for complete information.
 
 ## Working with Excel Files
 
@@ -164,13 +197,142 @@ except Exception as e:
     print(f"Error processing file: {e}")
 ```
 
+## Querying Format Capabilities
+
+Before working with a format, you can programmatically check what capabilities it supports:
+
+```python
+from iterable.helpers.capabilities import (
+    get_format_capabilities,
+    get_capability,
+    list_all_capabilities
+)
+
+# Check if a format supports writing before attempting to write
+if get_capability("csv", "writable"):
+    with open_iterable("output.csv", mode="w") as dest:
+        dest.write({"name": "Alice", "age": 30})
+
+# Check if format supports totals for progress tracking
+if get_capability("parquet", "totals"):
+    with open_iterable("data.parquet") as source:
+        total = source.totals()
+        print(f"Processing {total} rows...")
+
+# Find formats that support multiple tables
+all_caps = list_all_capabilities()
+multi_table_formats = [
+    fmt_id for fmt_id, caps in all_caps.items()
+    if caps.get("tables")
+]
+print(f"Formats with table support: {multi_table_formats}")
+```
+
+**Use Cases:**
+- **Format Selection**: Choose the best format based on required capabilities
+- **Adaptive Code**: Write code that adapts to format capabilities
+- **Error Prevention**: Check capabilities before attempting operations
+- **Documentation**: Generate capability reports or format comparison tables
+
+See the [Capability Matrix](/api/capabilities) documentation for complete details.
+
+## Type Hints and Type Safety
+
+IterableData provides comprehensive type hints for better IDE support and static type checking. You can also use typed helper functions for type-safe data processing.
+
+### Using Type Hints
+
+Type hints improve IDE autocomplete and enable static type checking with tools like mypy or pyright:
+
+```python
+from iterable import open_iterable, Row, IterableArgs
+
+# Type hints help IDEs understand return types
+def process_csv(filename: str) -> list[Row]:
+    rows: list[Row] = []
+    with open_iterable(filename) as source:
+        row: Row = source.read()
+        rows.append(row)
+        # Process more rows...
+    return rows
+
+# Type hints for configuration arguments
+config: IterableArgs = {
+    'delimiter': ',',
+    'encoding': 'utf-8'
+}
+with open_iterable('data.csv', iterableargs=config) as source:
+    for row in source:
+        process(row)
+```
+
+### Typed Helpers: Dataclasses
+
+Convert dict-based rows into dataclass instances for type-safe data processing:
+
+```python
+from dataclasses import dataclass
+from iterable import open_iterable, as_dataclasses
+
+@dataclass
+class Person:
+    name: str
+    age: int
+    email: str
+
+# Convert rows to dataclass instances
+with open_iterable('people.csv') as source:
+    for person in as_dataclasses(source, Person):
+        # Type checkers recognize person as Person type
+        print(f"{person.name} is {person.age} years old")
+        # IDE autocomplete works for person.name, person.age, etc.
+```
+
+**Benefits:**
+- **Type safety**: Catch errors at development time
+- **IDE support**: Better autocomplete and type checking
+- **Cleaner code**: Access fields as attributes instead of dict keys
+
+### Typed Helpers: Pydantic Models
+
+For more advanced validation, use Pydantic models:
+
+```python
+from pydantic import BaseModel
+from iterable import open_iterable, as_pydantic
+
+class PersonModel(BaseModel):
+    name: str
+    age: int
+    email: str
+
+# Convert rows to Pydantic model instances with validation
+with open_iterable('people.csv') as source:
+    for person in as_pydantic(source, PersonModel, validate=True):
+        # Rows are validated against the model schema
+        # Invalid rows raise ValidationError
+        print(f"{person.name} ({person.email})")
+```
+
+**Installation:**
+```bash
+pip install iterabledata[pydantic]
+```
+
+**Benefits:**
+- **Automatic validation**: Catches schema mismatches early
+- **Type conversion**: Automatically converts types (e.g., string to int)
+- **Rich error messages**: Detailed validation errors for debugging
+
+See the [Type System](/api/type-system) documentation for complete details.
+
 ## Best Practices
 
 1. **Use context managers**: Prefer `with` statements for automatic resource cleanup
 2. **Use bulk operations**: For large files, use `write_bulk()` and `read_bulk()` for better performance
 3. **Handle encoding**: For text files, let the library auto-detect encoding or specify it explicitly
 4. **Use compression**: Compressed files save space and often process faster
-5. **Check format support**: Verify that your format supports read/write operations before use
+5. **Check format support**: Verify that your format supports read/write operations before use using capability queries
 6. **Handle errors**: Always wrap file operations in try/except blocks for production code
 7. **Batch processing**: Process large files in batches (10,000-50,000 records) for optimal performance
 

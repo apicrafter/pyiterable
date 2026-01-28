@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import typing
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
 from ..helpers.utils import rowincount
+from ..exceptions import FormatParseError, WriteError
+from typing import Any
 
 
 class LIBSVMIterable(BaseFileIterable):
@@ -25,13 +27,13 @@ class LIBSVMIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
         label_key: str = "label",
         features_key: str = "features",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         """
         Initialize LIBSVM iterable.
@@ -66,7 +68,7 @@ class LIBSVMIterable(BaseFileIterable):
         return True
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -103,19 +105,37 @@ class LIBSVMIterable(BaseFileIterable):
             if label.is_integer():
                 label = int(label)
         except ValueError as e:
-            raise ValueError(f"Invalid label in LIBSVM line: {line}") from e
+            raise FormatParseError(
+                format_id="libsvm",
+                message=f"Invalid label in LIBSVM line: {line}",
+                filename=self.filename,
+                row_number=self.pos + 1,
+                original_line=line,
+            ) from e
 
         # Remaining parts are feature:value pairs
         features = {}
         for part in parts[1:]:
             if ":" not in part:
-                raise ValueError(f"Invalid feature format in LIBSVM line: {line}")
+                raise FormatParseError(
+                    format_id="libsvm",
+                    message=f"Invalid feature format in LIBSVM line: {line}",
+                    filename=self.filename,
+                    row_number=self.pos + 1,
+                    original_line=line,
+                )
             index_str, value_str = part.split(":", 1)
             try:
                 index = int(index_str)
                 value = float(value_str)
             except ValueError as e:
-                raise ValueError(f"Invalid feature index or value in LIBSVM line: {line}") from e
+                raise FormatParseError(
+                    format_id="libsvm",
+                    message=f"Invalid feature index or value in LIBSVM line: {line}",
+                    filename=self.filename,
+                    row_number=self.pos + 1,
+                    original_line=line,
+                ) from e
             features[index] = value
 
         return {self.label_key: label, self.features_key: features}
@@ -148,7 +168,11 @@ class LIBSVMIterable(BaseFileIterable):
                 if value != 0:  # Only include non-zero features (sparse format)
                     feature_parts.append(f"{i}:{value}")
         else:
-            raise ValueError(f"Features must be dict, list, or tuple, got {type(features)}")
+            raise WriteError(
+                f"Features must be dict, list, or tuple, got {type(features)}",
+                filename=self.filename,
+                error_code="INVALID_PARAMETER",
+            )
 
         # Combine label and features
         line_parts = [str(label)] + feature_parts
@@ -166,7 +190,7 @@ class LIBSVMIterable(BaseFileIterable):
         self.pos += 1
         return parsed
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk LIBSVM records"""
         chunk = []
         for _n in range(0, num):
@@ -176,13 +200,13 @@ class LIBSVMIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single LIBSVM record"""
         line = self._format_line(record)
         self.fobj.write(line + "\n")
         self.pos += 1
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk LIBSVM records"""
         if not records:
             return

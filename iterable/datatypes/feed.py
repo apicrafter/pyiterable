@@ -9,18 +9,20 @@ try:
 except ImportError:
     HAS_FEEDPARSER = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import WriteNotSupportedError
+from typing import Any
 
 
 class FeedIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -79,7 +81,9 @@ class FeedIterable(BaseFileIterable):
         return False
 
     @staticmethod
-    def has_totals():
+
+
+        def has_totals() -> bool:
         return True
 
     def totals(self):
@@ -87,12 +91,12 @@ class FeedIterable(BaseFileIterable):
             return len(self.features)
         return 0
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         entry = next(self.iterator)
         self.pos += 1
         return entry
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         chunk = []
         for _n in range(0, num):
             try:
@@ -101,10 +105,10 @@ class FeedIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write not supported for feeds"""
-        raise NotImplementedError("Writing to feed formats is not supported")
+        raise WriteNotSupportedError("feed", "feed formats are read-only")
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write not supported for feeds"""
-        raise NotImplementedError("Writing to feed formats is not supported")
+        raise WriteNotSupportedError("feed", "feed formats are read-only")

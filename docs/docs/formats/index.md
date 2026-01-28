@@ -139,7 +139,9 @@ All formats can be used with compression codecs:
 
 - **✅ Read**: Format supports reading data
 - **✅ Write**: Format supports writing data
-- **❌**: Feature not supported
+- **❌**: Feature not supported (read-only format)
+
+**Note**: Some formats are read-only and do not support write operations. Attempting to write to these formats will raise a `WriteNotSupportedError`. See the [Capability Matrix](/api/capabilities#read-only-formats) documentation for a complete list of read-only formats and how to check write support programmatically.
 
 ### Dependencies
 
@@ -156,10 +158,9 @@ All formats can be opened using the unified `open_iterable()` function:
 from iterable.helpers.detect import open_iterable
 
 # Automatically detects format from file extension
-source = open_iterable('data.csv.gz')
-for row in source:
-    print(row)
-source.close()
+with open_iterable('data.csv.gz') as source:
+    for row in source:
+        print(row)
 ```
 
 For format-specific options, see individual format documentation pages.

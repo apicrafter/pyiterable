@@ -4,7 +4,9 @@ import json
 import struct
 import typing
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import FormatParseError
+from typing import Any
 
 
 class SequenceFileIterable(BaseFileIterable):
@@ -18,12 +20,12 @@ class SequenceFileIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         key_name: str = "key",
         value_name: str = "value",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         """
         Initialize SequenceFile iterable.
@@ -184,9 +186,13 @@ class SequenceFileIterable(BaseFileIterable):
         except StopIteration:
             raise StopIteration from None
         except Exception as e:
-            raise ValueError(f"Error reading SequenceFile: {e}") from e
+            raise FormatParseError(
+                format_id="sequencefile",
+                message=f"Error reading SequenceFile: {e}",
+                filename=self.filename,
+            ) from e
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk SequenceFile records"""
         chunk = []
         for _n in range(0, num):
@@ -196,7 +202,7 @@ class SequenceFileIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single SequenceFile record"""
         # Extract key and value from record
         if self.key_name in record and self.value_name in record:
@@ -239,7 +245,7 @@ class SequenceFileIterable(BaseFileIterable):
         # Write value
         self.fobj.write(value_data)
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk SequenceFile records"""
         for record in records:
             self.write(record)

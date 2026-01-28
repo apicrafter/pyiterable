@@ -114,3 +114,27 @@ class TestXLSX:
         sheets2 = iterable.list_tables()
         assert sheets1 == sheets2
         iterable.close()
+
+    def test_list_tables_empty_file(self):
+        """Test list_tables on empty Excel file (edge case)"""
+        import tempfile
+        import os
+        from openpyxl import Workbook
+
+        # Create empty workbook
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as f:
+            temp_file = f.name
+
+        try:
+            wb = Workbook()
+            wb.save(temp_file)
+            wb.close()
+
+            iterable = XLSXIterable(temp_file)
+            sheets = iterable.list_tables()
+            # Empty workbook should still have at least one sheet
+            assert isinstance(sheets, list)
+            iterable.close()
+        finally:
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)

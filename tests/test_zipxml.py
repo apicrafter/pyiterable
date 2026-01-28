@@ -89,3 +89,95 @@ class TestZIPXML:
 
         assert count > 0
         source.close()
+
+    def test_has_tables(self):
+        """Test has_tables static method"""
+        assert ZIPXMLSource.has_tables() is True
+
+    def test_list_tables_single_xml(self):
+        """Test list_tables with single XML file"""
+        test_file = "testdata/test_zipxml_list1.zip"
+        os.makedirs("testdata", exist_ok=True)
+
+        # Create a ZIP file with one XML file
+        with zipfile.ZipFile(test_file, "w") as zf:
+            zf.writestr("data.xml", '<?xml version="1.0"?><root><item>test</item></root>')
+
+        try:
+            source = ZIPXMLSource(test_file, tagname="item")
+            tables = source.list_tables(test_file)
+            assert isinstance(tables, list)
+            assert len(tables) == 1
+            assert "data.xml" in tables
+            source.close()
+        finally:
+            if os.path.exists(test_file):
+                os.unlink(test_file)
+
+    def test_list_tables_multiple_xml(self):
+        """Test list_tables with multiple XML files"""
+        test_file = "testdata/test_zipxml_list2.zip"
+        os.makedirs("testdata", exist_ok=True)
+
+        # Create a ZIP file with multiple XML files
+        with zipfile.ZipFile(test_file, "w") as zf:
+            zf.writestr("file1.xml", '<?xml version="1.0"?><root><item>1</item></root>')
+            zf.writestr("file2.xml", '<?xml version="1.0"?><root><item>2</item></root>')
+            zf.writestr("file3.xml", '<?xml version="1.0"?><root><item>3</item></root>')
+            zf.writestr("readme.txt", "Not an XML file")
+
+        try:
+            source = ZIPXMLSource(test_file, tagname="item")
+            tables = source.list_tables(test_file)
+            assert isinstance(tables, list)
+            assert len(tables) == 3
+            assert "file1.xml" in tables
+            assert "file2.xml" in tables
+            assert "file3.xml" in tables
+            assert "readme.txt" not in tables  # Should only list XML files
+            source.close()
+        finally:
+            if os.path.exists(test_file):
+                os.unlink(test_file)
+
+    def test_list_tables_instance_method(self):
+        """Test list_tables on already-opened instance"""
+        test_file = "testdata/test_zipxml_list3.zip"
+        os.makedirs("testdata", exist_ok=True)
+
+        # Create a ZIP file with multiple XML files
+        with zipfile.ZipFile(test_file, "w") as zf:
+            zf.writestr("first.xml", '<?xml version="1.0"?><root><item>1</item></root>')
+            zf.writestr("second.xml", '<?xml version="1.0"?><root><item>2</item></root>')
+
+        try:
+            source = ZIPXMLSource(test_file, tagname="item")
+            tables = source.list_tables()
+            assert isinstance(tables, list)
+            assert len(tables) == 2
+            assert "first.xml" in tables
+            assert "second.xml" in tables
+            source.close()
+        finally:
+            if os.path.exists(test_file):
+                os.unlink(test_file)
+
+    def test_list_tables_empty_zip(self):
+        """Test list_tables on ZIP file with no XML files"""
+        test_file = "testdata/test_zipxml_list4.zip"
+        os.makedirs("testdata", exist_ok=True)
+
+        # Create a ZIP file with no XML files
+        with zipfile.ZipFile(test_file, "w") as zf:
+            zf.writestr("readme.txt", "No XML here")
+            zf.writestr("data.json", '{"key": "value"}')
+
+        try:
+            source = ZIPXMLSource(test_file, tagname="item")
+            tables = source.list_tables(test_file)
+            assert isinstance(tables, list)
+            assert len(tables) == 0
+            source.close()
+        finally:
+            if os.path.exists(test_file):
+                os.unlink(test_file)

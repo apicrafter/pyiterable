@@ -9,7 +9,9 @@ try:
 except ImportError:
     HAS_EZDXF = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import WriteNotSupportedError, FormatParseError, ReadError
+from typing import Any
 
 
 class DXFIterable(BaseFileIterable):
@@ -18,10 +20,10 @@ class DXFIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -42,22 +44,33 @@ class DXFIterable(BaseFileIterable):
                 try:
                     self.doc = ezdxf.readfile(self.filename)
                 except Exception as e:
-                    raise ValueError(f"Failed to read DXF file: {e}") from e
+                    raise FormatParseError(
+                        format_id="dxf",
+                        message=f"Failed to read DXF file: {e}",
+                        filename=self.filename,
+                    ) from e
             elif hasattr(self.fobj, "name"):
                 try:
                     self.doc = ezdxf.readfile(self.fobj.name)
                 except Exception as e:
-                    raise ValueError(f"Failed to read DXF file: {e}") from e
+                    raise FormatParseError(
+                        format_id="dxf",
+                        message=f"Failed to read DXF file: {e}",
+                        filename=getattr(self.fobj, "name", None),
+                    ) from e
             else:
                 # Try to read from stream
                 try:
                     self.doc = ezdxf.read(self.fobj)
                 except Exception as e:
-                    raise ValueError(f"Failed to read DXF from stream: {e}") from e
+                    raise ReadError(
+                        message=f"Failed to read DXF from stream: {e}",
+                        filename=self.filename,
+                    ) from e
 
             self.iterator = self.__iterator()
         else:
-            raise NotImplementedError("DXF writing not yet supported")
+            raise WriteNotSupportedError("dxf", "DXF writing is not yet implemented")
 
     def __iterator(self):
         """Iterator for reading DXF entities"""
@@ -118,7 +131,9 @@ class DXFIterable(BaseFileIterable):
         return False
 
     @staticmethod
-    def has_totals():
+
+
+        def has_totals() -> bool:
         return True
 
     def totals(self):
@@ -135,12 +150,12 @@ class DXFIterable(BaseFileIterable):
             self.doc.close()
         super().close()
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         entity = next(self.iterator)
         self.pos += 1
         return entity
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         chunk = []
         for _n in range(0, num):
             try:

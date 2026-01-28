@@ -76,6 +76,66 @@ def _register_builtin_drivers() -> None:
         # psycopg2 not available - skip registration
         pass
 
+    # ClickHouse driver
+    try:
+        from .clickhouse import ClickHouseDriver
+
+        register_driver("clickhouse", ClickHouseDriver)
+    except ImportError:
+        # clickhouse-connect not available - skip registration
+        pass
+
+    # MongoDB driver
+    try:
+        from .mongo import MongoDriver
+
+        register_driver("mongo", MongoDriver)
+        register_driver("mongodb", MongoDriver)  # Alias
+    except ImportError:
+        # pymongo not available - skip registration
+        pass
+
+    # Elasticsearch driver
+    try:
+        from .elasticsearch import ElasticsearchDriver
+
+        register_driver("elasticsearch", ElasticsearchDriver)
+        register_driver("opensearch", ElasticsearchDriver)  # Alias (OpenSearch is compatible)
+    except ImportError:
+        # elasticsearch not available - skip registration
+        pass
+
+    # MySQL/MariaDB driver
+    try:
+        from .mysql import MySQLDriver
+
+        register_driver("mysql", MySQLDriver)
+        register_driver("mariadb", MySQLDriver)  # Alias
+    except ImportError:
+        # pymysql not available - skip registration
+        pass
+
+    # Microsoft SQL Server driver
+    try:
+        from .mssql import MSSQLDriver
+
+        register_driver("mssql", MSSQLDriver)
+        register_driver("sqlserver", MSSQLDriver)  # Alias
+    except ImportError:
+        # pyodbc not available - skip registration
+        pass
+
+    # SQLite driver
+    try:
+        from .sqlite import SQLiteDriver
+
+        register_driver("sqlite", SQLiteDriver)
+        register_driver("sqlite3", SQLiteDriver)  # Alias
+    except ImportError:
+        # sqlite3 is standard library, so this shouldn't fail
+        # But catch it anyway for consistency
+        pass
+
 
 # Register built-in drivers on import
 _register_builtin_drivers()

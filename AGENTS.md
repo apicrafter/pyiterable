@@ -1,21 +1,24 @@
-<!-- OPENSPEC:START -->
+
+
 # OpenSpec Instructions
 
 These instructions are for AI assistants working in this project.
 
 Always open `@/openspec/AGENTS.md` when the request:
+
 - Mentions planning or proposals (words like proposal, spec, change, plan)
 - Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
 - Sounds ambiguous and you need the authoritative spec before coding
 
 Use `@/openspec/AGENTS.md` to learn:
+
 - How to create and apply change proposals
 - Spec format and conventions
 - Project structure and guidelines
 
 Keep this managed block so 'openspec update' can refresh the instructions.
 
-<!-- OPENSPEC:END -->
+
 
 # AGENTS.md
 
@@ -24,17 +27,11 @@ Instructions for AI coding agents working on the IterableData project.
 ## Setup commands
 
 - Install dependencies: `pip install -e ".[dev]"`
-
 - Run tests: `pytest --verbose` (includes coverage automatically)
-
 - Run tests with parallel execution: `pytest -n auto`
-
 - Run linter: `ruff check iterable tests`
-
 - Format code: `ruff format iterable tests`
-
 - Type check: `mypy iterable`
-
 - Run all checks: `ruff check iterable tests && ruff format --check iterable tests && pytest`
 
 ## Security and Quality Tools
@@ -175,6 +172,18 @@ Instructions for AI coding agents working on the IterableData project.
 - Large files should use streaming (iterator interface) to avoid memory issues
 - XML parsing requires specifying tag names via `iterableargs={'tagname': 'item'}`
 
+## Cursor Skills
+
+This project includes Cursor Skills (`.cursor/skills/`) that provide specialized guidance for common tasks:
+
+- **iterabledata-development** - Core development workflows and conventions
+- **openspec-workflows** - OpenSpec proposal and implementation workflows
+- **format-implementation** - Guide for implementing new data formats
+- **testing-patterns** - Testing conventions and best practices
+- **database-engine-implementation** - Guide for implementing database engines
+
+Skills are automatically applied by Cursor AI when relevant. See `.cursor/skills/README.md` for details.
+
 ## Resources
 
 - Main documentation: See `README.md` and `docs/` directory
@@ -182,3 +191,4 @@ Instructions for AI coding agents working on the IterableData project.
 - Format documentation: `docs/docs/formats/`
 - Examples: `examples/` directory
 - AI Integration guides: `docs/integrations/` directory
+

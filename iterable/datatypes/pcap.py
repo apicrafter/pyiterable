@@ -1,6 +1,8 @@
 import typing
 
 from iterable.base import BaseFileIterable
+from iterable.exceptions import WriteNotSupportedError
+from typing import Any
 
 try:
     import dpkt
@@ -18,13 +20,13 @@ class PCAPIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
+        stream: typing.IO[Any] | None = None,
         codec=None,
         binary: bool = True,
-        encoding: str = None,
+        encoding: str | None = None,
         noopen: bool = False,
         mode: str = "r",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if not HAS_DPKT:
             raise ImportError("dpkt is required for PCAP support. Install with 'pip install iterabledata[pcap]'")
@@ -34,7 +36,7 @@ class PCAPIterable(BaseFileIterable):
         self.reader = None
         self._iter = None
 
-    def read(self, skip_empty: bool = True):
+    def read(self, skip_empty: bool = True) -> Row:
         if self._iter is None:
             self._iter = iter(self)
         try:
@@ -68,8 +70,8 @@ class PCAPIterable(BaseFileIterable):
 
         yield from self.reader
 
-    def write(self, record: dict):
-        raise NotImplementedError("Writing PCAP files is not yet supported")
+    def write(self, record: Row) -> None:
+        raise WriteNotSupportedError("pcap", "Writing PCAP files is not yet implemented")
 
-    def write_bulk(self, records: list[dict]):
-        raise NotImplementedError("Writing PCAP files is not yet supported")
+    def write_bulk(self, records: list[Row]) -> None:
+        raise WriteNotSupportedError("pcap", "Writing PCAP files is not yet implemented")

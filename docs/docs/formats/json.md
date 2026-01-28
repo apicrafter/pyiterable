@@ -47,15 +47,59 @@ source = open_iterable('data.json', iterableargs={
 
 ## Parameters
 
-- `tagname` (str): Optional key name to extract from root object before iterating
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `tagname` | str | `None` | No | Key name to extract from root object before iterating. If root is an object (not array), use this to specify which key contains the array to iterate over. |
+
+## Error Handling
+
+```python
+from iterable.helpers.detect import open_iterable
+import json
+
+try:
+    # Reading with error handling
+    with open_iterable('data.json', iterableargs={
+        'tagname': 'items'  # Optional: extract specific key
+    }) as source:
+        for row in source:
+            process(row)
+except FileNotFoundError:
+    print("JSON file not found")
+except json.JSONDecodeError as e:
+    print(f"Invalid JSON: {e}")
+    print(f"Position: {e.pos if hasattr(e, 'pos') else 'unknown'}")
+except ValueError as e:
+    # May occur if root is not an array or tagname not found
+    print(f"JSON structure error: {e}")
+    # Try without tagname if root is an array
+    with open_iterable('data.json') as source:
+        for row in source:
+            process(row)
+except ImportError:
+    # For large files, ijson is required
+    print("For large JSON files, install ijson: pip install ijson")
+except Exception as e:
+    print(f"Error reading JSON: {e}")
+```
+
+### Common Errors
+
+- **JSONDecodeError**: Invalid JSON syntax - check file format and encoding
+- **ValueError**: Root element is not an array, or `tagname` key not found in root object
+- **ImportError**: For large files (>10MB), `ijson` package is required for streaming
+- **FileNotFoundError**: File path is incorrect or file doesn't exist
+- **MemoryError**: For very large files, consider using JSONL format instead
 
 ## Limitations
 
 1. **Read-only**: JSON format does not support writing (use JSONL for writing)
-2. **Memory usage**: Entire file is loaded into memory
-3. **Array requirement**: Root element must be an array of objects
-4. **No streaming**: Cannot process very large JSON files efficiently
-5. **Single document**: Only supports single JSON document per file
+2. **⚠️ Memory usage**: 
+   - **Small files (<10MB)**: Entire JSON document is loaded into memory
+   - **Large files (>10MB)**: Automatically uses streaming parser (`ijson`) to avoid loading entire file
+   - For very large files, prefer **JSONL** format for true line-by-line streaming
+3. **Array requirement**: Root element must be an array of objects (or object with array values via `tagname`)
+4. **Single document**: Only supports single JSON document per file
 
 ## Compression Support
 

@@ -59,9 +59,69 @@ dest.close()
 
 ## Parameters
 
-- `widths` (list[int]): **Required** - Width of each field in characters
-- `names` (list[str]): **Required** - Names of each field
-- `encoding` (str): File encoding (default: `utf8`)
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `widths` | list[int] | None | **Yes** | Width of each field in characters. Must match the number of fields in the file. Example: `[10, 20, 15]` for three fields. |
+| `names` | list[str] | None | **Yes** | Names of each field. Must have same length as `widths`. Example: `['id', 'name', 'date']`. |
+| `encoding` | str | `utf8` | No | File encoding for reading/writing fixed-width files. Common values: `utf-8`, `latin-1`, `cp1252`. |
+
+## Error Handling
+
+```python
+from iterable.helpers.detect import open_iterable
+
+try:
+    # Reading with error handling
+    with open_iterable('data.fwf', iterableargs={
+        'widths': [10, 20, 15],  # Required
+        'names': ['id', 'name', 'date'],  # Required
+        'encoding': 'utf-8'
+    }) as source:
+        for row in source:
+            process(row)
+except FileNotFoundError:
+    print("FWF file not found")
+except ValueError as e:
+    # May occur if widths/names are missing or mismatched
+    print(f"Invalid parameters: {e}")
+    print("Ensure 'widths' and 'names' are provided and have same length")
+except KeyError as e:
+    # May occur when writing if record missing required field
+    print(f"Missing required field: {e}")
+except UnicodeDecodeError:
+    print("Encoding error - try specifying encoding explicitly")
+    with open_iterable('data.fwf', iterableargs={
+        'widths': [10, 20, 15],
+        'names': ['id', 'name', 'date'],
+        'encoding': 'latin-1'
+    }) as source:
+        for row in source:
+            process(row)
+except Exception as e:
+    print(f"Error reading FWF: {e}")
+
+try:
+    # Writing with error handling
+    with open_iterable('output.fwf', mode='w', iterableargs={
+        'widths': [10, 20, 15],
+        'names': ['id', 'name', 'date']
+    }) as dest:
+        dest.write({'id': '1', 'name': 'John', 'date': '2024-01-01'})
+except ValueError as e:
+    print(f"Invalid parameters: {e}")
+    print("Ensure 'widths' and 'names' are provided and have same length")
+except KeyError as e:
+    print(f"Missing required field in record: {e}")
+except Exception as e:
+    print(f"Error writing FWF: {e}")
+```
+
+### Common Errors
+
+- **ValueError**: Missing or mismatched `widths` and `names` parameters - both are required and must have same length
+- **KeyError**: Missing required field when writing - ensure all records contain all field names
+- **UnicodeDecodeError**: Encoding issue - specify correct encoding
+- **FileNotFoundError**: File path is incorrect or file doesn't exist
 
 ## Limitations
 

@@ -7,6 +7,7 @@ import chardet
 
 from ..base import BaseCodec, BaseIterable
 from ..types import CodecArgs, IterableArgs
+from .debug import format_detection_logger, file_io_logger, is_debug_enabled
 
 
 def _load_symbol(module_path: str, symbol: str):
@@ -22,6 +23,74 @@ def _load_symbol(module_path: str, symbol: str):
             f"This format/codec likely requires an optional dependency. "
             f"Install the needed extras (for now: `pip install iterabledata[dev]` or `pip install iterabledata`)."
         ) from e
+
+
+# Plugin discovery flag
+_plugins_discovered = False
+
+
+def _ensure_plugins_discovered() -> None:
+    """Ensure plugins are discovered (lazy discovery)."""
+    global _plugins_discovered
+    if not _plugins_discovered:
+        try:
+            from ..plugins import discover_plugins
+
+            discover_plugins()
+        except Exception:
+            # Silently fail if plugin system not available
+            pass
+        _plugins_discovered = True
+
+
+def _get_format_registry() -> dict[str, tuple[str, str]]:
+    """Get merged format registry (built-in + plugins).
+
+    Built-in formats take precedence over plugins.
+    """
+    _ensure_plugins_discovered()
+
+    # Start with built-in formats (take precedence)
+    merged = DATATYPE_REGISTRY.copy()
+
+    # Add plugin formats (don't override built-in)
+    try:
+        from ..plugins import get_plugin_registry
+
+        registry = get_plugin_registry()
+        for format_id, value in registry._formats.items():
+            if format_id not in merged:
+                merged[format_id] = value
+    except Exception:
+        # Silently fail if plugin system not available
+        pass
+
+    return merged
+
+
+def _get_codec_registry() -> dict[str, tuple[str, str]]:
+    """Get merged codec registry (built-in + plugins).
+
+    Built-in codecs take precedence over plugins.
+    """
+    _ensure_plugins_discovered()
+
+    # Start with built-in codecs (take precedence)
+    merged = CODEC_REGISTRY.copy()
+
+    # Add plugin codecs (don't override built-in)
+    try:
+        from ..plugins import get_plugin_registry
+
+        registry = get_plugin_registry()
+        for codec_id, value in registry._codecs.items():
+            if codec_id not in merged:
+                merged[codec_id] = value
+    except Exception:
+        # Silently fail if plugin system not available
+        pass
+
+    return merged
 
 
 # Lazy registries: extension -> (module_path, class_name)
@@ -184,24 +253,76 @@ CODEC_REGISTRY: dict[str, tuple[str, str]] = {
     "lzop": ("iterable.codecs.lzocodec", "LZOCodec"),
 }
 
+# Formats that are read-only (do not support write operations)
+# This set includes formats that explicitly raise WriteNotSupportedError
+# or use the base class default (which also raises WriteNotSupportedError)
+READ_ONLY_FORMATS: set[str] = {
+    # Formats that explicitly raise WriteNotSupportedError
+    "arff",
+    "delta",
+    "feed",
+    "atom",  # alias for feed
+    "rss",  # alias for feed
+    "flatbuffers",
+    "hdf5",
+    "html",
+    "htm",  # alias for html
+    "hudi",
+    "iceberg",
+    "ods",
+    "pcap",
+    "px",
+    "rdata",
+    "rds",
+    "sas",
+    "sas7bdat",  # alias for sas
+    "spss",
+    "sav",  # alias for spss
+    "stata",
+    "dta",  # alias for stata
+    # Formats that use base class default (raises WriteNotSupportedError)
+    "avro",
+    "dbf",
+    "dxf",
+    "mvt",
+    "pbf",  # alias for mvt
+    "netcdf",
+    "psv",
+    "xls",
+    "xlsx",
+    "xml",
+    "zipped",
+    "zipxml",
+}
+
 
 def _datatype_class(ext: str) -> type[BaseIterable]:
-    module_path, symbol = DATATYPE_REGISTRY[ext]
+    """Get datatype class for extension (with plugin support)."""
+    registry = _get_format_registry()
+    if ext not in registry:
+        raise ValueError(f"Unknown format: {ext}")
+    module_path, symbol = registry[ext]
     return _load_symbol(module_path, symbol)
 
 
 def _codec_class(ext: str) -> type[BaseCodec]:
-    module_path, symbol = CODEC_REGISTRY[ext]
+    """Get codec class for extension (with plugin support)."""
+    registry = _get_codec_registry()
+    if ext not in registry:
+        raise ValueError(f"Unknown codec: {ext}")
+    module_path, symbol = registry[ext]
     return _load_symbol(module_path, symbol)
 
 
-class FileTypeResult(TypedDict):
+class FileTypeResult(TypedDict, total=False):
     """Result of file type detection"""
 
     filename: str
     success: bool
     codec: type[BaseCodec] | None
     datatype: type[BaseIterable] | None
+    confidence: float  # Confidence score 0.0-1.0, higher is more confident
+    detection_method: str  # "filename", "magic_number", or "heuristic"
 
 
 class CompressionResult(TypedDict):
@@ -359,7 +480,7 @@ def is_flat(filename: str | None = None, filetype: str | None = None) -> bool:
     return False
 
 
-def detect_file_type_from_content(fileobj, peek_size: int = 8192) -> str | None:
+def detect_file_type_from_content(fileobj, peek_size: int = 8192) -> tuple[str, float, str] | None:
     """Detect file type from content (magic numbers and heuristics).
 
     Args:
@@ -367,7 +488,10 @@ def detect_file_type_from_content(fileobj, peek_size: int = 8192) -> str | None:
         peek_size: Number of bytes to read for detection
 
     Returns:
-        Format ID string if detected, None otherwise
+        Tuple of (format_id, confidence, method) if detected, None otherwise
+        - format_id: Format identifier string
+        - confidence: Confidence score (0.0-1.0), higher is more confident
+        - method: Detection method ("magic_number" or "heuristic")
     """
     try:
         # Save current position
@@ -378,32 +502,41 @@ def detect_file_type_from_content(fileobj, peek_size: int = 8192) -> str | None:
         if len(peek) == 0:
             return None
 
-        # Binary format detection (magic numbers)
+        # Binary format detection (magic numbers) - High confidence (0.95-0.99)
         # Parquet
         if peek.startswith(b"PAR1"):
-            return "parquet"
+            return ("parquet", 0.99, "magic_number")
 
         # ORC
         if peek.startswith(b"ORC"):
-            return "orc"
+            return ("orc", 0.99, "magic_number")
 
         # Vortex
         if peek.startswith(b"VTXF"):
-            return "vortex"
+            return ("vortex", 0.99, "magic_number")
+
+        # PCAP/PCAPNG
+        if len(peek) >= 4:
+            # Standard PCAP: magic number can be big-endian (0xa1b2c3d4) or little-endian (0xd4c3b2a1)
+            if peek[:4] == b"\xa1\xb2\xc3\xd4" or peek[:4] == b"\xd4\xc3\xb2\xa1":
+                return ("pcap", 0.99, "magic_number")
+            # PCAPNG: section header block starts with 0x0a0d0d0a
+            if peek[:4] == b"\x0a\x0d\x0d\x0a":
+                return ("pcapng", 0.99, "magic_number")
 
         # ZIP-based formats (XLSX, DOCX, etc.)
         if peek.startswith(b"PK\x03\x04"):
             # Check for specific ZIP-based formats
             if b"xl/" in peek[:100] or b"[Content_Types].xml" in peek[:200]:
-                return "xlsx"
+                return ("xlsx", 0.95, "magic_number")  # Slightly lower - ZIP structure analysis
             if b"word/" in peek[:100]:
-                return "docx"  # Not in registry, but detectable
+                return ("docx", 0.95, "magic_number")  # Not in registry, but detectable
             # Generic ZIP - could be many formats
-            return "zip"
+            return ("zip", 0.90, "magic_number")  # Lower confidence - generic ZIP
 
         # Arrow/Feather
         if peek.startswith(b"ARROW1"):
-            return "arrow"
+            return ("arrow", 0.99, "magic_number")
 
         # Text format detection (heuristics)
         try:
@@ -411,25 +544,25 @@ def detect_file_type_from_content(fileobj, peek_size: int = 8192) -> str | None:
             text = peek.decode("utf-8", errors="ignore")
             text_stripped = text.strip()
 
-            # JSON detection
+            # JSON detection - Medium-high confidence (0.85-0.90)
             if text_stripped.startswith("{") or text_stripped.startswith("["):
                 # Try to parse as JSON to confirm
                 try:
                     import json
 
                     json.loads(text_stripped[:1000])  # Try parsing first part
-                    return "json"
+                    return ("json", 0.90, "heuristic")  # High confidence - valid JSON parsed
                 except (ValueError, json.JSONDecodeError):
                     # Might be JSONL - check if first line is valid JSON
                     first_line = text_stripped.split("\n")[0].strip()
                     if first_line.startswith("{") or first_line.startswith("["):
                         try:
                             json.loads(first_line)
-                            return "jsonl"
+                            return ("jsonl", 0.80, "heuristic")  # Medium confidence - single line
                         except (ValueError, json.JSONDecodeError):
                             pass
 
-            # CSV detection (heuristics)
+            # CSV detection (heuristics) - Medium confidence (0.75-0.85)
             if "," in text[:100] or "\t" in text[:100]:
                 # Check if it looks like CSV (has consistent delimiter)
                 lines = text.split("\n")[:5]
@@ -442,9 +575,12 @@ def detect_file_type_from_content(fileobj, peek_size: int = 8192) -> str | None:
                             counts_1 = lines[1].count(delim)
                             # Allow some variance (headers might have different structure)
                             if abs(counts_0 - counts_1) <= 2 and counts_0 > 0:
-                                return "csv" if delim == "," else "tsv" if delim == "\t" else "psv"
+                                format_id = "csv" if delim == "," else "tsv" if delim == "\t" else "psv"
+                                # Higher confidence if delimiter is very consistent
+                                confidence = 0.85 if abs(counts_0 - counts_1) == 0 else 0.75
+                                return (format_id, confidence, "heuristic")
 
-            # JSONL detection (each line is JSON)
+            # JSONL detection (each line is JSON) - Medium-high confidence (0.80-0.90)
             lines = text.split("\n")[:10]
             jsonl_count = 0
             for line in lines:
@@ -459,7 +595,9 @@ def detect_file_type_from_content(fileobj, peek_size: int = 8192) -> str | None:
                 except (ValueError, json.JSONDecodeError):
                     break
             if jsonl_count >= 3:  # At least 3 valid JSON lines
-                return "jsonl"
+                # Higher confidence with more valid lines
+                confidence = min(0.90, 0.70 + (jsonl_count * 0.05))
+                return ("jsonl", confidence, "heuristic")
 
         except UnicodeDecodeError:
             # Binary format, already checked above
@@ -471,12 +609,13 @@ def detect_file_type_from_content(fileobj, peek_size: int = 8192) -> str | None:
         return None
 
 
-def detect_file_type(filename: str, fileobj=None) -> FileTypeResult:
+def detect_file_type(filename: str, fileobj=None, debug: bool = False) -> FileTypeResult:
     """Detects file type and compression codec from filename and/or content
 
     Args:
         filename: Path to the file to detect
         fileobj: Optional file-like object for content-based detection
+        debug: If True, enable verbose debug logging
 
     Returns:
         FileTypeResult dictionary with detection results
@@ -487,29 +626,86 @@ def detect_file_type(filename: str, fileobj=None) -> FileTypeResult:
     if not filename:
         raise ValueError("Filename cannot be empty")
 
-    result: FileTypeResult = {"filename": filename, "success": False, "codec": None, "datatype": None}
+    if debug or is_debug_enabled():
+        format_detection_logger.debug(f"Detecting file type for: {filename}")
 
-    # First, try filename-based detection
+    result: FileTypeResult = {
+        "filename": filename,
+        "success": False,
+        "codec": None,
+        "datatype": None,
+        "confidence": 0.0,
+        "detection_method": "none",
+    }
+
+    # First, try filename-based detection - High confidence (1.0)
     parts = filename.lower().rsplit(".", 2)
+    if debug or is_debug_enabled():
+        format_detection_logger.debug(f"File extension parts: {parts}")
+
+    format_registry = _get_format_registry()
+    codec_registry = _get_codec_registry()
+    
     if len(parts) == 2:
-        if parts[-1] in DATATYPE_REGISTRY:
+        if parts[-1] in format_registry:
             result["datatype"] = _datatype_class(parts[-1])
             result["success"] = True
+            result["confidence"] = 1.0
+            result["detection_method"] = "filename"
+            if debug or is_debug_enabled():
+                format_detection_logger.debug(
+                    f"Detected format from extension: {parts[-1]} (confidence: 1.0, method: filename)"
+                )
     elif len(parts) > 2:
-        if parts[-2] in DATATYPE_REGISTRY and parts[-1] in CODEC_REGISTRY:
+        if parts[-2] in format_registry and parts[-1] in codec_registry:
             result["datatype"] = _datatype_class(parts[-2])
             result["success"] = True
             result["codec"] = _codec_class(parts[-1])
-        elif parts[-1] in DATATYPE_REGISTRY:
+            result["confidence"] = 1.0
+            result["detection_method"] = "filename"
+            if debug or is_debug_enabled():
+                format_detection_logger.debug(
+                    f"Detected format from extension: {parts[-2]} with codec {parts[-1]} "
+                    f"(confidence: 1.0, method: filename)"
+                )
+        elif parts[-1] in format_registry:
             result["datatype"] = _datatype_class(parts[-1])
             result["success"] = True
+            result["confidence"] = 1.0
+            result["detection_method"] = "filename"
+            if debug or is_debug_enabled():
+                format_detection_logger.debug(
+                    f"Detected format from extension: {parts[-1]} (confidence: 1.0, method: filename)"
+                )
 
     # If filename detection failed and we have a file object, try content-based detection
     if not result["success"] and fileobj is not None:
-        detected_format = detect_file_type_from_content(fileobj)
-        if detected_format and detected_format in DATATYPE_REGISTRY:
-            result["datatype"] = _datatype_class(detected_format)
-            result["success"] = True
+        if debug or is_debug_enabled():
+            format_detection_logger.debug("Extension detection failed, trying content-based detection")
+        detection_result = detect_file_type_from_content(fileobj)
+        if detection_result:
+            detected_format, confidence, method = detection_result
+            format_registry = _get_format_registry()
+            if detected_format and detected_format in format_registry:
+                result["datatype"] = _datatype_class(detected_format)
+                result["success"] = True
+                result["confidence"] = confidence
+                result["detection_method"] = method
+                if debug or is_debug_enabled():
+                    format_detection_logger.debug(
+                        f"Content-based detection: {detected_format} "
+                        f"(confidence: {confidence:.2f}, method: {method})"
+                    )
+
+    if debug or is_debug_enabled():
+        if result["success"]:
+            format_detection_logger.debug(
+                f"Detection successful: format={result['datatype'].__name__ if result['datatype'] else None}, "
+                f"codec={result['codec'].__name__ if result['codec'] else None}, "
+                f"confidence={result['confidence']:.2f}, method={result['detection_method']}"
+            )
+        else:
+            format_detection_logger.debug("Detection failed: no matching format found")
 
     return result
 
@@ -537,12 +733,13 @@ def detect_compression(filename: str) -> CompressionResult:
         "datatype": None,
     }
     parts = filename.lower().rsplit(".", 2)
+    codec_registry = _get_codec_registry()
     if len(parts) == 2:
-        if parts[-1] in CODEC_REGISTRY:
+        if parts[-1] in codec_registry:
             result["compression"] = _codec_class(parts[-1])
             result["success"] = True
     elif len(parts) > 2:
-        if parts[-1] in CODEC_REGISTRY:
+        if parts[-1] in codec_registry:
             result["compression"] = _codec_class(parts[-1])
             result["success"] = True
     return result
@@ -678,6 +875,7 @@ def open_iterable(
     engine: str = "internal",
     codecargs: CodecArgs | None = None,
     iterableargs: IterableArgs | None = None,
+    debug: bool = False,
 ) -> BaseIterable:
     """Opens file and returns iterable object.
 
@@ -687,6 +885,7 @@ def open_iterable(
         engine: Processing engine ('internal' or 'duckdb')
         codecargs: Dictionary with arguments for codec initialization
         iterableargs: Dictionary with arguments for iterable initialization
+        debug: If True, enable verbose debug logging
 
     Returns:
         Iterable object for the detected file type
@@ -704,8 +903,21 @@ def open_iterable(
     """
     import os
 
+    if debug or is_debug_enabled():
+        file_io_logger.debug(f"Opening file: {filename} (mode: {mode}, engine: {engine})")
+
     if not filename:
         raise ValueError("Filename cannot be empty")
+
+    # Enable debug mode if requested
+    if debug:
+        from .debug import enable_debug_mode
+        enable_debug_mode()
+
+    # Pass debug flag to iterableargs for downstream use
+    if iterableargs is None:
+        iterableargs = {}
+    iterableargs["_debug"] = debug or is_debug_enabled()
 
     # Check if this is a database engine
     try:
@@ -791,10 +1003,12 @@ def open_iterable(
         )
 
     # Try filename-based detection first
-    result = detect_file_type(filename)
+    result = detect_file_type(filename, debug=debug or is_debug_enabled())
 
     # If filename detection failed, try content-based detection
     if not result["success"] and normalized_mode == "r":
+        if debug or is_debug_enabled():
+            format_detection_logger.debug("Filename detection failed, attempting content-based detection")
         try:
             if is_cloud_uri and cloud_stream is not None:
                 # For cloud storage, use the already-opened stream
@@ -804,7 +1018,7 @@ def open_iterable(
                 try:
                     if hasattr(cloud_stream, "seekable") and cloud_stream.seekable():
                         pos = cloud_stream.tell()
-                        result = detect_file_type(filename, fileobj=cloud_stream)
+                        result = detect_file_type(filename, fileobj=cloud_stream, debug=debug or is_debug_enabled())
                         cloud_stream.seek(pos)
                     else:
                         # Can't seek, skip content-based detection for cloud
@@ -814,7 +1028,7 @@ def open_iterable(
                     pass
             else:
                 with open(filename, "rb") as f:
-                    result = detect_file_type(filename, fileobj=f)
+                    result = detect_file_type(filename, fileobj=f, debug=debug or is_debug_enabled())
         except OSError:
             # Can't read file, fall through to error
             pass
@@ -833,11 +1047,12 @@ def open_iterable(
     detected_filetype = None
     detected_codec = None
 
+    codec_registry = _get_codec_registry()
     if len(parts) == 2:
         detected_filetype = parts[-1]
     elif len(parts) > 2:
-        detected_filetype = parts[-2] if parts[-1] in CODEC_REGISTRY else parts[-1]
-        detected_codec = parts[-1] if parts[-1] in CODEC_REGISTRY else None
+        detected_filetype = parts[-2] if parts[-1] in codec_registry else parts[-1]
+        detected_codec = parts[-1] if parts[-1] in codec_registry else None
 
     # Validate DuckDB engine support
     if engine == "duckdb":
@@ -856,6 +1071,12 @@ def open_iterable(
 
     # Get datatype class name for better error messages
     datatype_name = result["datatype"].__name__ if result["datatype"] else "unknown"
+
+    if debug or is_debug_enabled():
+        file_io_logger.debug(
+            f"Creating iterable: format={datatype_name}, codec={result['codec'].__name__ if result['codec'] else 'none'}, "
+            f"engine={engine}"
+        )
 
     try:
         # If we have a cloud storage stream, pass it appropriately
@@ -891,10 +1112,21 @@ def open_iterable(
             f"File not found: '{filename}'. Please check that the file exists and the path is correct."
         ) from e
     except Exception as e:
+        if debug or is_debug_enabled():
+            file_io_logger.error(f"Failed to open file '{filename}': {e}", exc_info=True)
         raise RuntimeError(
             f"Failed to open file '{filename}' with format '{datatype_name}' "
             f"(detected type: '{detected_filetype}', codec: '{detected_codec or 'none'}'). "
             f"Error: {str(e)}"
         ) from e
 
+    if debug or is_debug_enabled():
+        file_io_logger.debug(f"Successfully opened file: {filename}")
+
     return iterable
+
+
+# Convenience exports for easier imports
+from ..convert.core import bulk_convert, convert  # noqa: E402
+
+__all__ = ["open_iterable", "detect_file_type", "convert", "bulk_convert"]

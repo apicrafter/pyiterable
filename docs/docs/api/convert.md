@@ -45,12 +45,14 @@ Format-specific arguments for reading the source file. Common options:
 - `page` - Excel sheet/page
 
 **Database source options** (when `fromfile` is a database connection string):
-- `engine` - Database engine name (e.g., `'postgres'`, `'mysql'`, `'mongo'`)
+- `engine` - Database engine name (e.g., `'postgres'`, `'clickhouse'`, `'mysql'`, `'mongo'`)
 - `query` - SQL query string or table name (required for SQL databases)
-- `schema` - Schema name for table references
+- `schema` - Schema name for table references (PostgreSQL)
+- `database` - Database name (ClickHouse)
 - `columns` - List of column names for projection
 - `filter` - WHERE clause fragment for filtering
 - `batch_size` - Number of rows per batch (default: 10000)
+- `settings` - Query settings dictionary (ClickHouse)
 
 See [Database Engines](/api/database-engines) for detailed database-specific parameters.
 
@@ -424,7 +426,9 @@ bulk_convert(
     use_totals: bool = False,
     progress: Callable[[dict], None] | None = None,
     show_progress: bool = False,
-    atomic: bool = False
+    atomic: bool = False,
+    parallel: bool = False,
+    workers: int | None = None
 ) -> BulkConversionResult
 ```
 
@@ -450,6 +454,38 @@ If `None`, uses `to_ext` or keeps original name.
 #### `to_ext` (str, optional)
 
 Target file extension (e.g., `'parquet'`). Used if `pattern` is `None`. Extension replacement removes all existing extensions and adds the new one. Either `pattern` or `to_ext` must be specified.
+
+#### `atomic` (bool, optional)
+
+If `True`, each file conversion uses atomic writes (writes to temporary file, then atomically renames). Default: `False`.
+
+#### `parallel` (bool, optional)
+
+If `True`, enables parallel file conversion using threading. Recommended for I/O-bound operations where multiple files can be converted concurrently. Default: `False`.
+
+**Benefits of Parallel Conversion**:
+- ✅ Faster processing for multiple files
+- ✅ Better CPU utilization
+- ✅ Reduced total conversion time
+
+**When to Use Parallel**:
+- Converting many files (10+ files)
+- I/O-bound operations (reading from disk/network)
+- Files are independent (no shared state)
+
+**When NOT to Use Parallel**:
+- Very few files (overhead may not be worth it)
+- CPU-bound operations (threading doesn't help)
+- Limited system resources
+
+#### `workers` (int, optional)
+
+Number of worker threads for parallel conversion. If `None`, uses `min(4, CPU count)`. Only used when `parallel=True`. Default: `None`.
+
+**Choosing Worker Count**:
+- **I/O-bound**: Use more workers (e.g., 8-16) to keep I/O busy
+- **CPU-bound**: Use fewer workers (e.g., 2-4) to avoid context switching overhead
+- **Default**: `min(4, CPU count)` works well for most cases
 
 #### Other Parameters
 
@@ -576,6 +612,30 @@ result = bulk_convert(
     progress=progress_callback
 )
 ```
+
+#### Parallel Conversion
+
+```python
+from iterable.convert.core import bulk_convert
+
+# Convert multiple files in parallel for faster processing
+result = bulk_convert(
+    'data/raw/*.csv.gz',
+    'data/processed/',
+    to_ext='parquet',
+    parallel=True,  # Enable parallel processing
+    workers=8      # Use 8 worker threads (optional)
+)
+
+print(f"Converted {result.successful_files} files in parallel")
+print(f"Total time: {result.total_elapsed_seconds:.2f}s")
+```
+
+**Parallel Conversion Notes**:
+- Progress callbacks work in parallel mode (may be called out of order)
+- Atomic writes are supported in parallel mode
+- Errors from individual files don't stop other conversions
+- Best performance when converting many files (10+)
 
 ### Error Handling
 

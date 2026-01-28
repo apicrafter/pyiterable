@@ -4,6 +4,19 @@ from fixdata import FIXTURES
 from iterable.datatypes import JSONIterable
 
 
+def test_json_has_tables():
+    """Test JSON doesn't support tables"""
+    assert JSONIterable.has_tables() is False
+
+
+def test_json_list_tables():
+    """Test JSON list_tables returns None"""
+    iterable = JSONIterable("fixtures/2cols6rows_array.json")
+    assert iterable.list_tables() is None
+    assert iterable.list_tables("fixtures/2cols6rows_array.json") is None
+    iterable.close()
+
+
 class TestJSON:
     def test_id(self):
         datatype_id = JSONIterable.id()

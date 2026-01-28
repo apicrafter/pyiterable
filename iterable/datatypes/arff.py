@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import typing
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import WriteNotSupportedError
+from typing import Any
 
 try:
     import arff
@@ -18,11 +20,11 @@ class ARFFIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -101,20 +103,40 @@ class ARFFIterable(BaseFileIterable):
         self.pos += 1
         return result
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
-        """Read bulk ARFF records"""
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
+        """Read bulk ARFF records efficiently using slicing.
+
+        This optimized implementation uses list slicing instead of calling
+        read() in a loop, providing significant performance improvements
+        for in-memory data access.
+        """
+        # Calculate how many rows are available
+        remaining = len(self.rows) - self.pos
+        if remaining == 0:
+            return []
+
+        # Use slicing to get the requested number of rows
+        read_count = min(num, remaining)
+        row_slice = self.rows[self.pos : self.pos + read_count]
+
+        # Convert row values to dictionaries
         chunk = []
-        for _n in range(0, num):
-            try:
-                chunk.append(self.read())
-            except StopIteration:
-                break
+        for row_values in row_slice:
+            result = dict(zip(self.keys, row_values, strict=False))
+            # Add relation name as metadata if needed
+            if self.relation_name:
+                result["_relation"] = self.relation_name
+            chunk.append(result)
+
+        # Update position
+        self.pos += read_count
+
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single ARFF record (not supported)"""
-        raise NotImplementedError("ARFF write mode is not currently supported")
+        raise WriteNotSupportedError("arff", "ARFF write mode is not currently supported")
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk ARFF records (not supported)"""
-        raise NotImplementedError("ARFF write mode is not currently supported")
+        raise WriteNotSupportedError("arff", "ARFF write mode is not currently supported")

@@ -19,7 +19,7 @@ This library simplifies data processing and conversion between formats while pre
 - **Context Manager Support**: Use `with` statements for automatic resource cleanup
 - **DataFrame Bridges**: Convert iterable data to Pandas, Polars, and Dask DataFrames with one-liner methods
 - **Cloud Storage Support**: Direct access to S3, GCS, and Azure Blob Storage via URI schemes
-- **Database Engine Support**: Read-only access to SQL and NoSQL databases (PostgreSQL, MySQL, MongoDB, Elasticsearch, etc.) as iterable data sources
+- **Database Engine Support**: Read-only access to SQL and NoSQL databases (PostgreSQL, ClickHouse, MySQL, MongoDB, Elasticsearch, etc.) as iterable data sources
 - **Atomic Writes**: Production-safe file writing with temporary files and atomic renames
 - **Bulk File Conversion**: Convert multiple files at once using glob patterns or directories
 - **Progress Tracking and Metrics**: Built-in progress bars, callbacks, and structured metrics objects
@@ -29,6 +29,7 @@ This library simplifies data processing and conversion between formats while pre
 ## Supported File Types
 
 ### Core Formats
+
 - **JSON** - Standard JSON files
 - **JSONL/NDJSON** - JSON Lines format (one JSON object per line)
 - **JSON-LD** - JSON for Linking Data (RDF format)
@@ -43,6 +44,7 @@ This library simplifies data processing and conversion between formats while pre
 - **HTML** - HTML files with table extraction
 
 ### Binary Formats
+
 - **BSON** - Binary JSON format
 - **MessagePack** - Efficient binary serialization
 - **CBOR** - Concise Binary Object Representation
@@ -53,6 +55,7 @@ This library simplifies data processing and conversion between formats while pre
 - **Pickle** - Python pickle format
 
 ### Columnar & Analytics Formats
+
 - **Parquet** - Apache Parquet columnar format
 - **ORC** - Optimized Row Columnar format
 - **Arrow/Feather** - Apache Arrow columnar format
@@ -63,6 +66,7 @@ This library simplifies data processing and conversion between formats while pre
 - **Hudi** - Apache Hudi format
 
 ### Database Formats
+
 - **SQLite** - SQLite database files
 - **DBF** - dBase/FoxPro database files
 - **MySQL Dump** - MySQL dump files
@@ -70,6 +74,7 @@ This library simplifies data processing and conversion between formats while pre
 - **DuckDB** - DuckDB database files
 
 ### Statistical Formats
+
 - **SAS** - SAS data files
 - **Stata** - Stata data files
 - **SPSS** - SPSS data files
@@ -78,10 +83,12 @@ This library simplifies data processing and conversion between formats while pre
 - **ARFF** - Attribute-Relation File Format (Weka format)
 
 ### Scientific Formats
+
 - **NetCDF** - Network Common Data Form for scientific data
 - **HDF5** - Hierarchical Data Format
 
 ### Geospatial Formats
+
 - **GeoJSON** - Geographic JSON format
 - **GeoPackage** - OGC GeoPackage format
 - **GML** - Geography Markup Language
@@ -91,6 +98,7 @@ This library simplifies data processing and conversion between formats while pre
 - **TopoJSON** - Topology-preserving GeoJSON extension
 
 ### RDF & Semantic Formats
+
 - **JSON-LD** - JSON for Linking Data
 - **RDF/XML** - RDF in XML format
 - **Turtle** - Terse RDF Triple Language
@@ -98,14 +106,17 @@ This library simplifies data processing and conversion between formats while pre
 - **N-Quads** - N-Triples with context
 
 ### Feed Formats
+
 - **Atom** - Atom Syndication Format
 - **RSS** - Rich Site Summary feed format
 
 ### Network Formats
+
 - **PCAP** - Packet Capture format
 - **PCAPNG** - PCAP Next Generation format
 
 ### Log & Event Formats
+
 - **Apache Log** - Apache access/error logs
 - **CEF** - Common Event Format
 - **GELF** - Graylog Extended Log Format
@@ -115,11 +126,13 @@ This library simplifies data processing and conversion between formats while pre
 - **HTML** - HTML files with table extraction
 
 ### Email Formats
+
 - **EML** - Email message format
 - **MBOX** - Mailbox format
 - **MHTML** - MIME HTML format
 
 ### Configuration Formats
+
 - **INI** - INI configuration files
 - **TOML** - Tom's Obvious Minimal Language
 - **YAML** - YAML Ain't Markup Language
@@ -127,13 +140,16 @@ This library simplifies data processing and conversion between formats while pre
 - **EDN** - Extensible Data Notation
 
 ### Office Formats
+
 - **XLS/XLSX** - Microsoft Excel files
 - **ODS** - OpenDocument Spreadsheet
 
 ### CAD Formats
+
 - **DXF** - AutoCAD Drawing Exchange Format
 
 ### Streaming & Big Data Formats
+
 - **Kafka** - Apache Kafka format
 - **Pulsar** - Apache Pulsar format
 - **Flink** - Apache Flink format
@@ -143,6 +159,7 @@ This library simplifies data processing and conversion between formats while pre
 - **TFRecord** - TensorFlow Record format
 
 ### Protocol & Serialization Formats
+
 - **Protocol Buffers** - Google Protocol Buffers
 - **Cap'n Proto** - Cap'n Proto serialization
 - **FlatBuffers** - FlatBuffers serialization
@@ -152,6 +169,7 @@ This library simplifies data processing and conversion between formats while pre
 - **Ion** - Amazon Ion format
 
 ### Other Formats
+
 - **VCF** - Variant Call Format (genomics)
 - **iCal** - iCalendar format
 - **LDIF** - LDAP Data Interchange Format
@@ -197,7 +215,7 @@ IterableData supports optional extras for additional features:
 # AI-powered documentation generation
 pip install iterabledata[ai]
 
-# Database ingestion (PostgreSQL, MongoDB, MySQL, Elasticsearch, etc.)
+# Database ingestion (PostgreSQL, ClickHouse, MongoDB, MySQL, Elasticsearch, etc.)
 pip install iterabledata[db]
 
 # All optional dependencies
@@ -206,8 +224,9 @@ pip install iterabledata[all]
 
 **AI Features** (`[ai]`): Enables AI-powered documentation generation using OpenAI, OpenRouter, Ollama, LMStudio, or Perplexity.
 
-**Database Engines** (`[db]`): Enables read-only database access as iterable data sources. Supports PostgreSQL (available), MySQL/MariaDB, Microsoft SQL Server, SQLite, MongoDB, and Elasticsearch/OpenSearch (planned). Includes convenience groups:
-- `[db-sql]`: SQL databases only (PostgreSQL, MySQL, MSSQL)
+**Database Engines** (`[db]`): Enables read-only database access as iterable data sources. Supports PostgreSQL, ClickHouse (available), MySQL/MariaDB, Microsoft SQL Server, SQLite, MongoDB, and Elasticsearch/OpenSearch (planned). Includes convenience groups:
+
+- `[db-sql]`: SQL databases only (PostgreSQL, ClickHouse, MySQL, MSSQL)
 - `[db-nosql]`: NoSQL databases only (MongoDB, Elasticsearch)
 
 See the [API documentation](docs/docs/api/) for details on these features.
@@ -328,12 +347,28 @@ with open_iterable(
     for row in source:
         print(row)
 
+# Read from ClickHouse database
+with open_iterable(
+    'clickhouse://user:password@localhost:9000/analytics',
+    engine='clickhouse',
+    iterableargs={'query': 'events', 'settings': {'max_threads': 4}}
+) as source:
+    for row in source:
+        print(row)
+
 # Convert database to file
 from iterable.convert import convert
 convert(
     fromfile='postgresql://localhost/mydb',
     tofile='users.parquet',
     iterableargs={'engine': 'postgres', 'query': 'users'}
+)
+
+# Convert ClickHouse to Parquet
+convert(
+    fromfile='clickhouse://localhost:9000/analytics',
+    tofile='events.parquet',
+    iterableargs={'engine': 'clickhouse', 'query': 'events'}
 )
 ```
 
@@ -349,8 +384,10 @@ print(f"Type: {result['datatype']}, Codec: {result['codec']}")
 
 # Content-based detection (for files without extensions or streams)
 with open('data.unknown', 'rb') as f:
-    detected_format = detect_file_type_from_content(f)
-    print(f"Detected format: {detected_format}")  # e.g., 'parquet', 'json', 'csv'
+    detection_result = detect_file_type_from_content(f)
+    if detection_result:
+        format_id, confidence, method = detection_result
+        print(f"Detected format: {format_id} (confidence: {confidence:.2f}, method: {method})")
 
 # open_iterable() automatically uses content-based detection as fallback
 # Works with files without extensions, streams, or incorrect extensions
@@ -684,6 +721,7 @@ with open_iterable(
 ```
 
 **Supported Providers**:
+
 - Amazon S3: `s3://` and `s3a://` schemes
 - Google Cloud Storage: `gs://` and `gcs://` schemes
 - Azure Blob Storage: `az://`, `abfs://`, and `abfss://` schemes
@@ -848,6 +886,7 @@ result = ddf.groupby('category').sum().compute()
 ```
 
 **Note**: DataFrame bridges require optional dependencies. Install with:
+
 ```bash
 pip install iterabledata[dataframes]  # All DataFrame libraries
 # Or individually:
@@ -895,6 +934,7 @@ with open_iterable('people.jsonl') as source:
 ```
 
 **Benefits**:
+
 - Complete type annotations across the public API
 - `py.typed` marker file enables mypy, pyright, and other type checkers
 - Typed helpers provide IDE autocomplete and type safety
@@ -945,6 +985,7 @@ writer.close()
 Opens a file and returns an iterable object.
 
 **Parameters:**
+
 - `filename` (str): Path to the file (supports local files and cloud storage URIs: `s3://`, `gs://`, `az://`)
 - `mode` (str): File mode ('r' for read, 'w' for write)
 - `engine` (str): Processing engine ('internal' or 'duckdb')
@@ -970,6 +1011,7 @@ Detects file type and compression codec from filename.
 Converts data between formats.
 
 **Parameters:**
+
 - `fromfile` (str): Source file path
 - `tofile` (str): Destination file path
 - `iterableargs` (dict): Options for reading source file
@@ -984,6 +1026,7 @@ Converts data between formats.
 - `atomic` (bool): Write to temporary file and atomically rename on success
 
 **Returns:** `ConversionResult` object with:
+
 - `rows_in` (int): Total rows read
 - `rows_out` (int): Total rows written
 - `elapsed_seconds` (float): Conversion time
@@ -996,6 +1039,7 @@ Converts data between formats.
 Convert multiple files at once using glob patterns, directories, or file lists.
 
 **Parameters:**
+
 - `source` (str): Glob pattern, directory path, or file path
 - `destination` (str): Output directory or filename pattern
 - `pattern` (str): Filename pattern with placeholders (`{name}`, `{stem}`, `{ext}`)
@@ -1003,6 +1047,7 @@ Convert multiple files at once using glob patterns, directories, or file lists.
 - `**kwargs`: All parameters from `convert()` function
 
 **Returns:** `BulkConversionResult` object with:
+
 - `total_files` (int): Total files processed
 - `successful_files` (int): Files successfully converted
 - `failed_files` (int): Files that failed
@@ -1018,6 +1063,7 @@ Convert multiple files at once using glob patterns, directories, or file lists.
 Execute a data processing pipeline.
 
 **Parameters:**
+
 - `source` (BaseIterable): Source iterable to read from
 - `destination` (BaseIterable | None): Destination iterable to write to
 - `process_func` (callable): Function to process each record
@@ -1033,6 +1079,7 @@ Execute a data processing pipeline.
 - `atomic` (bool): Use atomic writes if destination is a file
 
 **Returns:** `PipelineResult` object with:
+
 - `rows_processed` (int): Total rows processed
 - `elapsed_seconds` (float): Processing time
 - `throughput` (float | None): Rows per second
@@ -1063,6 +1110,7 @@ All iterable objects support:
 Convert dict-based rows from an iterable into dataclass instances.
 
 **Parameters:**
+
 - `iterable` (BaseIterable): The iterable to read rows from
 - `dataclass_type` (type[T]): The dataclass type to convert rows to
 - `skip_empty` (bool): Whether to skip empty rows
@@ -1074,6 +1122,7 @@ Convert dict-based rows from an iterable into dataclass instances.
 Convert dict-based rows from an iterable into Pydantic model instances.
 
 **Parameters:**
+
 - `iterable` (BaseIterable): The iterable to read rows from
 - `model_type` (type[T]): The Pydantic model type to convert rows to
 - `skip_empty` (bool): Whether to skip empty rows
@@ -1088,6 +1137,7 @@ Convert dict-based rows from an iterable into Pydantic model instances.
 Convert multiple files to a unified Dask DataFrame with automatic format detection.
 
 **Parameters:**
+
 - `files` (str | list[str]): Single file path or list of file paths
 - `chunksize` (int): Number of rows per partition
 - `**iterableargs`: Additional arguments to pass to `open_iterable()` for each file
@@ -1105,6 +1155,7 @@ The internal engine uses pure Python implementations for all formats. It support
 ### DuckDB Engine
 
 The DuckDB engine provides high-performance querying capabilities for supported formats:
+
 - **Formats**: CSV, JSONL, NDJSON, JSON
 - **Codecs**: GZIP, ZStandard (.zst)
 - **Features**: Fast querying, totals counting, SQL-like operations
@@ -1133,18 +1184,15 @@ IterableData can be integrated with AI platforms and frameworks for intelligent 
   - Tool creation for data reading and format conversion
   - Schema inference and data quality analysis
   - Multi-agent workflows for data processing
-  
 - **[OpenAI](docs/integrations/OPENAI.md)** - Direct OpenAI API integration (GPT-4, GPT-3.5, etc.)
   - Function calling and Assistants API
   - Structured outputs for consistent results
   - Natural language data analysis and transformation
-  
 - **[Claude](docs/integrations/CLAUDE.md)** - Anthropic Claude AI integration
   - Claude API integration with tools support
   - Intelligent data analysis and schema inference
   - Format conversion with AI guidance
   - Data quality assessment and documentation
-  
 - **[Gemini](docs/integrations/GEMINI.md)** - Google Gemini AI integration
   - Natural language data analysis
   - Intelligent format conversion with AI guidance
@@ -1156,6 +1204,7 @@ These guides provide patterns, examples, and best practices for combining Iterab
 ## Related Projects
 
 This library is used in:
+
 - [undatum](https://github.com/datacoon/undatum) - Command line data processing tool
 - [datacrafter](https://github.com/apicrafter/datacrafter) - Data processing ETL engine
 
@@ -1172,6 +1221,7 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
 ### Version 1.0.11 (2026-01-25)
+
 - **Atomic Writes**: Production-safe file writing with temporary files and atomic renames
 - **Bulk File Conversion**: Convert multiple files at once using glob patterns, directories, or file lists
 - **Observability Features**: Progress tracking, metrics objects, and progress bars for conversions and pipelines
@@ -1182,12 +1232,14 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 - **Vortex Format Support**: Added support for reading and writing Vortex columnar data files
 
 ### Version 1.0.11 (2026-01-25)
+
 - **Enhanced Format Detection**: Added content-based format detection using magic numbers and heuristics for files without extensions, streams, and files with incorrect extensions
 - **Exception Hierarchy**: Added comprehensive exception hierarchy (`IterableDataError`, `FormatError`, `CodecError`, etc.) for better error handling
 - **Format Capability Reporting**: Added programmatic API to query format capabilities (`get_format_capabilities()`, `list_all_capabilities()`, `get_capability()`)
 - **Table Listing Support**: Added `list_tables()` and `has_tables()` methods for discovering tables, sheets, and datasets in multi-table formats
 
 ### Version 1.0.8 (2026-01-05)
+
 - **AI Integration Guides**: Added comprehensive guides for LangChain, CrewAI, AutoGen, and Google Gemini AI
 - **Documentation**: Added capability matrix and enhanced API documentation
 - **Development Tools**: Added benchmarking and utility scripts
@@ -1195,6 +1247,7 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 - **Examples**: Added ZIP XML processing example
 
 ### Version 1.0.7 (2024-12-15)
+
 - **Major Format Expansion**: Added support for 50+ new data formats across multiple categories
 - **Enhanced Compression**: Added LZO, Snappy, and SZIP codec support
 - **CI/CD**: Added GitHub Actions workflows for automated testing and deployment
@@ -1202,12 +1255,15 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 - **Testing**: Comprehensive test suite for all formats
 
 ### Version 1.0.6
+
 - Comprehensive documentation enhancements
 - GitHub Actions release workflow
 - Improved examples and use cases
 
 ### Version 1.0.5
+
 - DuckDB engine support
 - Enhanced format detection
 - Pipeline processing framework
 - Bulk operations support
+

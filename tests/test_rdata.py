@@ -52,3 +52,35 @@ class TestRData:
             iterable.close()
         except ImportError:
             pytest.skip("RData support requires pyreadr package")
+
+    def test_has_tables(self):
+        try:
+            flag = RDataIterable.has_tables()
+            assert flag is True
+        except ImportError:
+            pytest.skip("RData support requires pyreadr package")
+
+    def test_list_tables_instance_method(self):
+        """Test list_tables on an already-opened instance"""
+        try:
+            iterable = RDataIterable(FIXTURE_FILE)
+            # Read a row to ensure data is loaded
+            _ = iterable.read()
+            # Now list tables
+            objects = iterable.list_tables()
+            assert isinstance(objects, list)
+            assert len(objects) > 0
+            iterable.close()
+        except ImportError:
+            pytest.skip("RData support requires pyreadr package")
+
+    def test_list_tables_with_filename(self):
+        """Test list_tables with filename parameter (class-like usage)"""
+        try:
+            iterable = RDataIterable(FIXTURE_FILE)
+            objects = iterable.list_tables(FIXTURE_FILE)
+            assert isinstance(objects, list)
+            assert len(objects) > 0
+            iterable.close()
+        except ImportError:
+            pytest.skip("RData support requires pyreadr package")

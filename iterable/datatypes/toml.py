@@ -17,18 +17,19 @@ except ImportError:
         HAS_TOML = False
         HAS_TOMLI = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from typing import Any
 
 
 class TOMLIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -82,23 +83,36 @@ class TOMLIterable(BaseFileIterable):
     def is_flatonly() -> bool:
         return False
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single TOML record"""
         row = next(self.iterator)
         self.pos += 1
         return row
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
-        """Read bulk TOML records"""
-        chunk = []
-        for _n in range(0, num):
-            try:
-                chunk.append(self.read())
-            except StopIteration:
-                break
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
+        """Read bulk TOML records efficiently using slicing.
+
+        This optimized implementation uses list slicing instead of calling
+        read() in a loop, providing significant performance improvements
+        for in-memory data access.
+        """
+        # Calculate how many items are available
+        remaining = len(self.items) - self.pos
+        if remaining == 0:
+            return []
+
+        # Use slicing to get the requested number of items
+        read_count = min(num, remaining)
+        chunk = self.items[self.pos : self.pos + read_count]
+
+        # Update position and recreate iterator to stay in sync
+        self.pos += read_count
+        # Recreate iterator from current position for read() to work correctly
+        self.iterator = iter(self.items[self.pos :])
+
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single TOML record"""
         self.write_bulk(
             [
@@ -106,7 +120,7 @@ class TOMLIterable(BaseFileIterable):
             ]
         )
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk TOML records"""
         # Convert records to TOML format
         if HAS_TOMLI:

@@ -18,7 +18,9 @@ except ImportError:
         HAS_PYEXCEL_ODS = False
         HAS_ODF = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import WriteNotSupportedError, ReadError
+from typing import Any
 
 
 class ODSIterable(BaseFileIterable):
@@ -27,13 +29,13 @@ class ODSIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode="r",
-        keys: list[str] = None,
+        keys: list[str] | None = None,
         page: int = 0,
         start_line: int = 0,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -60,7 +62,11 @@ class ODSIterable(BaseFileIterable):
             self.doc = load(self.filename)
             self.sheets = [sheet for sheet in self.doc.spreadsheet.getElementsByType(Table)]
             if self.page >= len(self.sheets):
-                raise ValueError(f"Sheet index {self.page} out of range. Available sheets: {len(self.sheets)}")
+                raise ReadError(
+                    f"Sheet index {self.page} out of range. Available sheets: {len(self.sheets)}",
+                    filename=self.filename,
+                    error_code="INVALID_PARAMETER",
+                )
             self.sheet = self.sheets[self.page]
             self.rows = self.sheet.getElementsByType(TableRow)
             self.row_index = 0
@@ -83,7 +89,11 @@ class ODSIterable(BaseFileIterable):
             self.data = pyexcel_ods3.get_data(self.filename)
             sheet_names = list(self.data.keys())
             if self.page >= len(sheet_names):
-                raise ValueError(f"Sheet index {self.page} out of range. Available sheets: {len(sheet_names)}")
+                raise ReadError(
+                    f"Sheet index {self.page} out of range. Available sheets: {len(sheet_names)}",
+                    filename=filename,
+                    error_code="INVALID_PARAMETER",
+                )
             self.sheet_name = sheet_names[self.page]
             self.rows = self.data[self.sheet_name]
             self.row_index = 0
@@ -95,7 +105,7 @@ class ODSIterable(BaseFileIterable):
                 self.pos += 1
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -157,7 +167,7 @@ class ODSIterable(BaseFileIterable):
         else:
             return None
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single ODS record"""
         if HAS_ODF:
             if self.row_index >= len(self.rows):
@@ -191,7 +201,7 @@ class ODSIterable(BaseFileIterable):
             self.pos += 1
             return result
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk ODS records"""
         chunk = []
         for _n in range(0, num):
@@ -201,10 +211,10 @@ class ODSIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single ODS record"""
-        raise NotImplementedError("ODS writing is not yet supported")
+        raise WriteNotSupportedError("ods", "ODS writing is not yet implemented")
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk ODS records"""
-        raise NotImplementedError("ODS writing is not yet supported")
+        raise WriteNotSupportedError("ods", "ODS writing is not yet implemented")

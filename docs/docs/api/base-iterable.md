@@ -21,10 +21,9 @@ Read a single record from the iterable.
 
 **Example:**
 ```python
-source = open_iterable('data.csv')
-record = source.read()
-print(record)
-source.close()
+with open_iterable('data.csv') as source:
+    record = source.read()
+    print(record)
 ```
 
 ### `read_bulk(num: int = 1000) -> list[dict]`
@@ -38,11 +37,10 @@ Read multiple records at once for better performance.
 
 **Example:**
 ```python
-source = open_iterable('data.jsonl')
-batch = source.read_bulk(10000)
-for record in batch:
-    process(record)
-source.close()
+with open_iterable('data.jsonl') as source:
+    batch = source.read_bulk(10000)
+    for record in batch:
+        process(record)
 ```
 
 ### `__iter__()` and `__next__()`
@@ -50,10 +48,9 @@ source.close()
 Iterables support Python's iterator protocol, so you can use them in `for` loops:
 
 ```python
-source = open_iterable('data.csv')
-for row in source:
-    print(row)
-source.close()
+with open_iterable('data.csv') as source:
+    for row in source:
+        print(row)
 ```
 
 ## Writing Methods
@@ -67,9 +64,8 @@ Write a single record to the iterable.
 
 **Example:**
 ```python
-dest = open_iterable('output.jsonl', mode='w')
-dest.write({'name': 'John', 'age': 30})
-dest.close()
+with open_iterable('output.jsonl', mode='w') as dest:
+    dest.write({'name': 'John', 'age': 30})
 ```
 
 ### `write_bulk(records: list[dict]) -> None`
@@ -81,14 +77,13 @@ Write multiple records at once for better performance.
 
 **Example:**
 ```python
-dest = open_iterable('output.jsonl', mode='w')
-batch = [
-    {'id': 1, 'value': 'a'},
-    {'id': 2, 'value': 'b'},
-    {'id': 3, 'value': 'c'}
-]
-dest.write_bulk(batch)
-dest.close()
+with open_iterable('output.jsonl', mode='w') as dest:
+    batch = [
+        {'id': 1, 'value': 'a'},
+        {'id': 2, 'value': 'b'},
+        {'id': 3, 'value': 'c'}
+    ]
+    dest.write_bulk(batch)
 ```
 
 ## Utility Methods
@@ -99,18 +94,15 @@ Reset the iterator to the beginning of the file. Useful for re-reading files.
 
 **Example:**
 ```python
-source = open_iterable('data.csv')
-
-# Read all records
-for row in source:
-    print(row)
-
-# Reset and read again
-source.reset()
-for row in source:
-    process(row)
-
-source.close()
+with open_iterable('data.csv') as source:
+    # Read all records
+    for row in source:
+        print(row)
+    
+    # Reset and read again
+    source.reset()
+    for row in source:
+        process(row)
 ```
 
 ### `close() -> None`
@@ -135,10 +127,9 @@ Get the total number of records in the file. Only available for some formats and
 
 **Example:**
 ```python
-source = open_iterable('data.csv.gz', engine='duckdb')
-total = source.totals()
-print(f"Total records: {total}")
-source.close()
+with open_iterable('data.csv.gz', engine='duckdb') as source:
+    total = source.totals()
+    print(f"Total records: {total}")
 ```
 
 ### `has_totals() -> bool`
@@ -149,11 +140,10 @@ Check if the iterable supports the `totals()` method.
 
 **Example:**
 ```python
-source = open_iterable('data.csv')
-if source.has_totals():
-    total = source.totals()
-    print(f"Total: {total}")
-source.close()
+with open_iterable('data.csv') as source:
+    if source.has_totals():
+        total = source.totals()
+        print(f"Total: {total}")
 ```
 
 ### `has_tables() -> bool`
@@ -201,17 +191,14 @@ source = open_iterable('data.xlsx', iterableargs={'page': sheets[1]})
 **Example - Discovery after opening:**
 ```python
 # Open file on first sheet
-source = open_iterable('data.xlsx', iterableargs={'page': 0})
-
-# List all available sheets (reuses open workbook)
-all_sheets = source.list_tables()
-print(f"All sheets: {all_sheets}")
-
-# Process current sheet
-for row in source:
-    process(row)
-
-source.close()
+with open_iterable('data.xlsx', iterableargs={'page': 0}) as source:
+    # List all available sheets (reuses open workbook)
+    all_sheets = source.list_tables()
+    print(f"All sheets: {all_sheets}")
+    
+    # Process current sheet
+    for row in source:
+        process(row)
 ```
 
 **Example - Database tables:**
@@ -242,8 +229,7 @@ source2 = open_iterable('data.db', iterableargs={'table': tables[1]})
 from iterable.helpers.detect import open_iterable
 
 # Reading
-source = open_iterable('input.csv')
-try:
+with open_iterable('input.csv') as source:
     # Method 1: Iterator protocol
     for row in source:
         print(row)
@@ -258,12 +244,9 @@ try:
     batch = source.read_bulk(1000)
     for record in batch:
         process(record)
-finally:
-    source.close()
 
 # Writing
-dest = open_iterable('output.jsonl', mode='w')
-try:
+with open_iterable('output.jsonl', mode='w') as dest:
     # Method 1: Single writes
     dest.write({'id': 1, 'value': 'a'})
     dest.write({'id': 2, 'value': 'b'})

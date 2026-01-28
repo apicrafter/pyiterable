@@ -54,7 +54,53 @@ dest.close()
 
 ## Parameters
 
-- `encoding` (str): File encoding (default: `utf8`)
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `encoding` | str | `utf8` | No | File encoding for reading/writing YAML files. Common values: `utf-8`, `latin-1`, `cp1252`. |
+
+## Error Handling
+
+```python
+from iterable.helpers.detect import open_iterable
+import yaml
+
+try:
+    # Reading with error handling
+    with open_iterable('data.yaml') as source:
+        for row in source:
+            process(row)
+except FileNotFoundError:
+    print("YAML file not found")
+except yaml.YAMLError as e:
+    print(f"YAML parsing error: {e}")
+    if hasattr(e, "problem_mark"):
+        mark = e.problem_mark
+        print(f"Error position: line {mark.line + 1}, column {mark.column + 1}")
+except UnicodeDecodeError:
+    print("Encoding error - try specifying encoding explicitly")
+    with open_iterable('data.yaml', iterableargs={'encoding': 'latin-1'}) as source:
+        for row in source:
+            process(row)
+except ImportError as e:
+    print(f"Missing dependency: {e}")
+    print("Install with: pip install iterabledata[yaml] or pip install pyyaml")
+except Exception as e:
+    print(f"Error reading YAML: {e}")
+
+try:
+    # Writing with error handling
+    with open_iterable('output.yaml', mode='w') as dest:
+        dest.write({'name': 'John', 'age': 30})
+except Exception as e:
+    print(f"Error writing YAML: {e}")
+```
+
+### Common Errors
+
+- **YAMLError**: Invalid YAML syntax - check file format and indentation
+- **UnicodeDecodeError**: Encoding issue - specify correct encoding
+- **ImportError**: Missing `pyyaml` package - install with `pip install pyyaml`
+- **FileNotFoundError**: File path is incorrect or file doesn't exist
 
 ## Limitations
 

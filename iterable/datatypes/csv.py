@@ -3,12 +3,15 @@ from __future__ import annotations
 import logging
 import typing
 from csv import DictReader, DictWriter
+from typing import Any
 
 import chardet
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
 from ..exceptions import FormatParseError
 from ..helpers.utils import rowincount
+from ..types import Row
+from typing import Any
 
 DEFAULT_ENCODING = "utf8"
 DEFAULT_DELIMITER = ","
@@ -46,15 +49,15 @@ class CSVIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
-        keys: list[str] = None,
-        delimiter: str = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
+        keys: list[str] | None = None,
+        delimiter: str | None = None,
         quotechar: str = '"',
         mode: str = "r",
-        encoding: str = None,
+        encoding: str | None = None,
         autodetect: bool = False,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -94,15 +97,15 @@ class CSVIterable(BaseFileIterable):
         pass
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
-    def totals(self):
+    def totals(self) -> int:
         """Returns file totals"""
         return rowincount(self.filename, self.fobj)
 
-    def reset(self):
+    def reset(self) -> None:
         super().reset()
         if self.fobj is None and self.codec is not None:
             fobj = self.codec.textIO(self.encoding)
@@ -136,7 +139,7 @@ class CSVIterable(BaseFileIterable):
     def is_flatonly() -> bool:
         return True
 
-    def read(self, skip_empty: bool = True):
+    def read(self, skip_empty: bool = True) -> Row:
         """Read single CSV record"""
         while True:
             try:
@@ -148,18 +151,18 @@ class CSVIterable(BaseFileIterable):
                         self._current_byte_offset = self.fobj.tell()
                     except (OSError, AttributeError):
                         pass
-                
+
                 row = next(self.reader)
                 self._current_line_number = self.reader.line_num
-                
+
                 # Try to get the original line if possible
                 # Note: DictReader doesn't expose raw lines, so we'll set it to None
                 # Format-specific implementations can override this
                 self._current_line = None
-                
+
                 if skip_empty and len(row) == 0:
                     continue
-                
+
                 self.pos += 1
                 return row
             except StopIteration:
@@ -183,7 +186,7 @@ class CSVIterable(BaseFileIterable):
                 # If we get here, error was handled (skip/warn), continue to next record
                 continue
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[Row]:
         """Read bulk CSV records efficiently"""
         chunk = []
         for _n in range(0, num):
@@ -193,11 +196,11 @@ class CSVIterable(BaseFileIterable):
                         self._current_byte_offset = self.fobj.tell()
                     except (OSError, AttributeError):
                         pass
-                
+
                 row = next(self.reader)
                 self._current_line_number = self.reader.line_num
                 self._current_line = None
-                
+
                 chunk.append(row)
                 self.pos += 1
             except StopIteration:
@@ -226,10 +229,24 @@ class CSVIterable(BaseFileIterable):
         """Returns True - CSV always streams row by row"""
         return True
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single CSV record"""
+        # Apply validation hooks if configured
+        if self._validation_hooks:
+            validated = self._apply_validation_hooks(record)
+            if validated is None:  # Skipped
+                return  # Don't write invalid row
+            record = validated
         self.writer.writerow(record)
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk CSV records"""
+        # Apply validation hooks if configured
+        if self._validation_hooks:
+            validated_records = []
+            for record in records:
+                validated = self._apply_validation_hooks(record)
+                if validated is not None:  # Not skipped
+                    validated_records.append(validated)
+            records = validated_records
         self.writer.writerows(records)

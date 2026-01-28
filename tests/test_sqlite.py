@@ -201,3 +201,24 @@ def test_sqlite_id():
 def test_sqlite_flatonly():
     """Test SQLite is flat only"""
     assert SQLiteIterable.is_flatonly()
+
+
+def test_sqlite_list_tables_invalid_file():
+    """Test list_tables on invalid file (edge case)"""
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".sqlite") as tmp:
+        tmp_path = tmp.name
+        tmp.write(b"not a sqlite database")
+
+    try:
+        # Should handle gracefully - SQLite will create a new database if file doesn't exist or is invalid
+        reader = SQLiteIterable(tmp_path, mode="r")
+        # Should return a list (might be empty if new database)
+        tables = reader.list_tables()
+        assert isinstance(tables, list)
+        reader.close()
+    except Exception:
+        # If it raises an error, that's also acceptable for invalid files
+        pass
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)

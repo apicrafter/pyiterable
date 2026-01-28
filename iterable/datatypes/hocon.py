@@ -9,18 +9,19 @@ try:
 except ImportError:
     HAS_PYHOCON = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from typing import Any
 
 
 class HOCONIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -81,13 +82,13 @@ class HOCONIterable(BaseFileIterable):
     def is_flatonly() -> bool:
         return False
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single HOCON record"""
         row = next(self.iterator)
         self.pos += 1
         return row
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk HOCON records"""
         chunk = []
         for _n in range(0, num):
@@ -97,7 +98,7 @@ class HOCONIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single HOCON record"""
         # Convert dict to HOCON format
         from pyhocon import ConfigTree
@@ -122,7 +123,7 @@ class HOCONIterable(BaseFileIterable):
 
         self.fobj.write("\n".join(lines) + "\n")
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk HOCON records"""
         # Write as array
         self.fobj.write("[\n")

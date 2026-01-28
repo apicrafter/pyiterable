@@ -77,12 +77,14 @@ db = [
     "elasticsearch>=8.0.0",  # Elasticsearch/OpenSearch
     "pymysql>=1.0.0",  # MySQL/MariaDB
     "pyodbc>=4.0.0",  # Microsoft SQL Server
+    "clickhouse-connect>=0.6.0",  # ClickHouse
 ]
 # SQL databases only
 db-sql = [
     "psycopg2-binary>=2.9.0",  # PostgreSQL
     "pymysql>=1.0.0",  # MySQL/MariaDB
     "pyodbc>=4.0.0",  # Microsoft SQL Server
+    "clickhouse-connect>=0.6.0",  # ClickHouse
 ]
 # NoSQL databases only
 db-nosql = [
@@ -155,6 +157,7 @@ all = [
     "elasticsearch>=8.0.0",
     "pymysql>=1.0.0",
     "pyodbc>=4.0.0",
+    "clickhouse-connect>=0.6.0",
     # Database ingestion (write support)
     "psycopg[binary]>=3.0.0",
     "mysql-connector-python>=8.0.0",
@@ -164,15 +167,25 @@ dev = [
     "pytest>=7.0.0",
     "pytest-benchmark>=4.0.0",
     "pytest-cov>=4.1.0",
+    "memory-profiler>=0.61.0",
+    "psutil>=5.9.0",
     "pytest-xdist>=3.3.0",
     "pytest-timeout>=2.2.0",
     "mock>=4.0.0",
     "ruff>=0.1.0",
     "mypy>=1.0.0",
+    # Type stubs for optional dependencies
     "types-chardet>=5.0.0",
     "types-openpyxl>=3.0.0",
+    "types-pyyaml>=6.0.0",
+    "types-requests>=2.31.0",
+    "types-python-dateutil>=2.8.0",
+    "types-setuptools>=68.0.0",
+    # Note: pandas-stubs and pyarrow-stubs are available but not included
+    # as they are large and pandas/pyarrow are already in dev dependencies
+    # for testing. Add them if needed for stricter type checking.
     "hypothesis>=6.0.0",
-    "pandas>=1.5.0", # Often used in tests or examples
+    "pandas>=1.5.0", # Often used in tests or examples (pandas has built-in type stubs)
     # Security tools
     "bandit[toml]>=1.7.5",
     "pip-audit>=2.6.1",
@@ -224,6 +237,11 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 timeout = 300
 timeout_method = "thread"
+markers = [
+    "stress: marks tests as stress tests (creates large files, may take long time)",
+    "slow: marks tests as slow running (may take several minutes)",
+    "benchmark: marks tests as benchmarks (use --benchmark-only to run)",
+]
 
 [tool.coverage.run]
 source = ["iterable"]
@@ -256,3 +274,57 @@ skips = ["B101"]  # Skip assert_used warnings in tests
 convention = "google"
 match = "(?!test_).*\\.py"
 match-dir = "(?!build|dist|tests|__pycache__)"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Set to true after fixing all errors
+disallow_incomplete_defs = false  # Set to true after fixing all errors
+check_untyped_defs = true
+disallow_untyped_decorators = false  # Set to true after fixing all errors
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+show_error_codes = true
+show_error_context = true
+pretty = true
+
+# Per-module options
+[[tool.mypy.overrides]]
+module = [
+    "tests.*",
+    "examples.*",
+    "dev.*",
+]
+disallow_untyped_defs = false
+ignore_errors = false
+
+# Ignore missing imports for optional dependencies
+# Note: Type stubs are available for many optional dependencies via types-* packages
+# (e.g., types-pyyaml, types-requests). These are installed as dev dependencies.
+# For packages without type stubs, we use ignore_missing_imports.
+[[tool.mypy.overrides]]
+module = [
+    "iterable.datatypes.*",
+    "iterable.codecs.*",
+    "iterable.db.*",
+    "iterable.engines.*",
+]
+ignore_missing_imports = true  # Many formats have optional dependencies without type stubs
+
+# Packages with type stubs available (no ignore_missing_imports needed):
+# - pandas (pandas-stubs package available, but not installed by default)
+# - pyarrow (pyarrow-stubs package available, but not installed by default)
+# - pyyaml (types-pyyaml)
+# - requests (types-requests)
+# - chardet (types-chardet)
+# - openpyxl (types-openpyxl)
+# - pydantic (built-in type stubs)
+# - duckdb (built-in type stubs)
+# 
+# Packages without type stubs (ignore_missing_imports = true):
+# - Most other optional dependencies (pyorc, lxml, pymongo, etc.)

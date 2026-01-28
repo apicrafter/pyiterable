@@ -9,18 +9,19 @@ try:
 except ImportError:
     HAS_YAML = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from typing import Any
 
 
 class YAMLIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -61,7 +62,7 @@ class YAMLIterable(BaseFileIterable):
     def is_flatonly() -> bool:
         return False
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single YAML record"""
         if self.pos >= len(self.data):
             raise StopIteration
@@ -69,7 +70,7 @@ class YAMLIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk YAML records"""
         chunk = []
         for _n in range(0, num):
@@ -79,12 +80,12 @@ class YAMLIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single YAML record"""
         yaml.dump(record, self.fobj, default_flow_style=False, allow_unicode=True)
         self.fobj.write("---\n")
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk YAML records"""
         for record in records:
             yaml.dump(record, self.fobj, default_flow_style=False, allow_unicode=True)

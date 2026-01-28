@@ -4,6 +4,19 @@ from fixdata import FIXTURES
 from iterable.datatypes import CSVIterable
 
 
+def test_csv_has_tables():
+    """Test CSV doesn't support tables"""
+    assert CSVIterable.has_tables() is False
+
+
+def test_csv_list_tables():
+    """Test CSV list_tables returns None"""
+    iterable = CSVIterable("fixtures/2cols6rows.csv")
+    assert iterable.list_tables() is None
+    assert iterable.list_tables("fixtures/2cols6rows.csv") is None
+    iterable.close()
+
+
 class TestCSV:
     def test_id(self):
         datatype_id = CSVIterable.id()

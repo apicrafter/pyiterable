@@ -19,6 +19,7 @@ from .exceptions import (
     StreamingNotSupportedError,
     StreamNotSeekableError,
     WriteError,
+    WriteNotSupportedError,
 )
 from .helpers.detect import open_iterable
 from .helpers.typed import as_dataclasses, as_pydantic
@@ -57,6 +58,7 @@ __all__ = [
     "CodecCompressionError",
     "ReadError",
     "WriteError",
+    "WriteNotSupportedError",
     "StreamingNotSupportedError",
     "ResourceError",
     "StreamNotSeekableError",

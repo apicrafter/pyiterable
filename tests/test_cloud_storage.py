@@ -60,8 +60,14 @@ class TestCloudStorageWithoutDependencies:
         """Test S3 URI raises ImportError when s3fs is missing"""
         # Mock fsspec import success but s3fs import failure
         mock_fsspec = MagicMock()
+
+        def mock_import(name, **kwargs):
+            if name == "s3fs":
+                raise ImportError("No module named 's3fs'")
+            return MagicMock()
+
         with patch("iterable.helpers.detect.fsspec", mock_fsspec):
-            with patch("builtins.__import__", side_effect=lambda x, **kwargs: (_ if x != "s3fs" else (_ for _ in ()).throw(ImportError("No module named 's3fs'")))):
+            with patch("builtins.__import__", side_effect=mock_import):
                 with pytest.raises(ImportError, match="s3fs"):
                     open_iterable("s3://bucket/file.csv")
 
@@ -109,7 +115,7 @@ class TestCloudStorageWithMocks:
 
     def test_azure_uri_detection(self):
         """Test Azure URI is detected correctly"""
-        from iterable.helpers.detect import _is_cloud_storage_uri, _get_cloud_backend
+        from iterable.helpers.detect import _get_cloud_backend, _is_cloud_storage_uri
 
         assert _is_cloud_storage_uri("az://container/file.csv") is True
         assert _get_cloud_backend("az://container/file.csv") == "adlfs"

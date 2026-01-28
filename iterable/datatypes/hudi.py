@@ -16,7 +16,9 @@ except ImportError:
         HAS_HUDI = False
         HAS_PYHUDI = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import WriteNotSupportedError, ReadError
+from typing import Any
 
 
 class HudiIterable(BaseFileIterable):
@@ -25,11 +27,11 @@ class HudiIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         table_path: str = None,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -40,9 +42,17 @@ class HudiIterable(BaseFileIterable):
         if "table_path" in options:
             self.table_path = options["table_path"]
         if stream is not None:
-            raise ValueError("Hudi requires table_path, not a stream")
+            raise ReadError(
+                "Hudi requires table_path, not a stream",
+                filename=None,
+                error_code="RESOURCE_REQUIREMENT_NOT_MET",
+            )
         if self.table_path is None and self.filename is None:
-            raise ValueError("Hudi requires table_path parameter")
+            raise ReadError(
+                "Hudi requires table_path parameter",
+                filename=None,
+                error_code="RESOURCE_REQUIREMENT_NOT_MET",
+            )
         if self.table_path is None:
             self.table_path = self.filename
         self.table = None
@@ -70,10 +80,10 @@ class HudiIterable(BaseFileIterable):
                 # Placeholder - would need actual Hudi API documentation
                 self.iterator = iter([])
         else:
-            raise NotImplementedError("Hudi writing is not yet supported")
+            raise WriteNotSupportedError("hudi", "Hudi writing is not yet implemented")
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -142,7 +152,7 @@ class HudiIterable(BaseFileIterable):
         except Exception:
             return None
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single Hudi record"""
         try:
             row = next(self.iterator)
@@ -151,7 +161,7 @@ class HudiIterable(BaseFileIterable):
         except (StopIteration, EOFError, ValueError):
             raise StopIteration from None
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk Hudi records"""
         chunk = []
         for _n in range(0, num):
@@ -161,10 +171,10 @@ class HudiIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single Hudi record"""
-        raise NotImplementedError("Hudi writing is not yet supported")
+        raise WriteNotSupportedError("hudi", "Hudi writing is not yet implemented")
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk Hudi records"""
-        raise NotImplementedError("Hudi writing is not yet supported")
+        raise WriteNotSupportedError("hudi", "Hudi writing is not yet implemented")

@@ -9,7 +9,9 @@ try:
 except ImportError:
     HAS_NUMPY = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import ReadError, WriteError, FormatNotSupportedError
+from typing import Any
 
 
 class NumPyIterable(BaseFileIterable):
@@ -30,11 +32,11 @@ class NumPyIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         array_name: str = None,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         """
         Initialize NumPy iterable.
@@ -87,7 +89,11 @@ class NumPyIterable(BaseFileIterable):
                         self.array_name = self.array_keys[0]
                         self.current_array = self.npz_data[self.array_name]
                     else:
-                        raise ValueError("No arrays found in .npz file")
+                        raise FormatNotSupportedError(
+                            "No arrays found in .npz file",
+                            format_id="numpy",
+                            reason="NPZ file contains no arrays",
+                        )
                 else:
                     # .npy file
                     self.is_npz = False
@@ -98,7 +104,11 @@ class NumPyIterable(BaseFileIterable):
         else:
             # Write mode
             if not self.filename:
-                raise ValueError("NumPy file writing requires filename")
+                raise WriteError(
+                    "NumPy file writing requires filename",
+                    filename=None,
+                    error_code="RESOURCE_REQUIREMENT_NOT_MET",
+                )
             self.current_array = None
             self.rows_written = []
 
@@ -121,7 +131,11 @@ class NumPyIterable(BaseFileIterable):
                     for j in range(self.current_array.shape[1])
                 }
         else:
-            raise ValueError(f"NumPy array must be 1D or 2D for iteration, got shape {self.current_array.shape}")
+            raise FormatNotSupportedError(
+                f"NumPy array must be 1D or 2D for iteration, got shape {self.current_array.shape}",
+                format_id="numpy",
+                reason="Only 1D and 2D arrays are supported for iteration",
+            )
 
     @staticmethod
     def id() -> str:
@@ -160,7 +174,7 @@ class NumPyIterable(BaseFileIterable):
             return None
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -177,7 +191,7 @@ class NumPyIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk NumPy array records"""
         chunk = []
         for _n in range(0, num):
@@ -187,11 +201,11 @@ class NumPyIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single NumPy array record"""
         self.write_bulk([record])
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk NumPy array records"""
         if not records:
             return

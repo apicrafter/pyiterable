@@ -42,6 +42,56 @@ source = open_iterable('/path/to/hudi/table', iterableargs={
 for row in source:
     print(row)
 source.close()
+
+# Discover available tables in catalog/directory
+from iterable.datatypes.hudi import HudiIterable
+
+# Before opening - discover tables (if catalog-based)
+iterable = HudiIterable(filename='/path/to/catalog', table_path='/path/to/catalog')
+tables = iterable.list_tables('/path/to/catalog')
+if tables:
+    print(f"Available tables: {tables}")
+else:
+    print("Single table path or catalog doesn't support listing")
+
+# After opening - list all tables (reuses catalog connection)
+source = open_iterable('/path/to/hudi/table', iterableargs={
+    'table_path': '/path/to/hudi/table'
+})
+all_tables = source.list_tables()  # May return None for single table paths
+if all_tables:
+    print(f"All tables: {all_tables}")
+
+# Process different tables (if catalog-based)
+if all_tables:
+    for table_name in all_tables:
+        source = open_iterable('/path/to/catalog', iterableargs={
+            'table_path': f'/path/to/catalog/{table_name}'
+        })
+        print(f"Processing table: {table_name}")
+        for row in source:
+            process(row)
+        source.close()
+```
+
+### Discovering Available Tables
+
+Hudi catalogs or directories can contain multiple tables. Use `list_tables()` to discover available tables:
+
+```python
+from iterable.datatypes.hudi import HudiIterable
+
+# Before opening - discover tables (if catalog-based)
+iterable = HudiIterable(filename='/path/to/catalog', table_path='/path/to/catalog')
+tables = iterable.list_tables('/path/to/catalog')
+if tables:
+    print(f"Available tables: {tables}")
+    # Output: ['events', 'users', 'transactions']
+else:
+    print("Single table path or catalog doesn't support listing")
+
+# Note: list_tables() returns None for single table paths
+# It only returns a list when the path is a catalog with multiple tables
 ```
 
 ## Parameters

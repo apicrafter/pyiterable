@@ -9,7 +9,7 @@ from .zipped import ZIPSourceWrapper
 
 
 class ZIPXMLSource(ZIPSourceWrapper):
-    def __init__(self, filename: str = None, tagname: str = None, prefix_strip: bool = True):
+    def __init__(self, filename: str | None = None, tagname: str = None, prefix_strip: bool = True):
         super().__init__(filename)
         self.tagname = tagname
         self.prefix_strip = prefix_strip

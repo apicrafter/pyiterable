@@ -4,9 +4,10 @@ import datetime
 import typing
 from json import dumps, loads
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
 from ..exceptions import FormatParseError
 from ..helpers.utils import rowincount
+from typing import Any
 
 
 def date_handler(obj):
@@ -17,11 +18,11 @@ class JSONLinesIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -40,7 +41,7 @@ class JSONLinesIterable(BaseFileIterable):
         return False
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -51,14 +52,14 @@ class JSONLinesIterable(BaseFileIterable):
         else:
             fobj = self.fobj
         return rowincount(self.filename, fobj)
-    
+
     def reset(self):
         """Reset iterator and line tracking"""
         super().reset()
         self._current_line_number = 0
         self._current_byte_offset = 0
 
-    def read(self, skip_empty: bool = False) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single JSON lines record"""
         while True:
             try:
@@ -68,15 +69,15 @@ class JSONLinesIterable(BaseFileIterable):
                         self._current_byte_offset = self.fobj.tell()
                     except (OSError, AttributeError):
                         pass
-                
+
                 line = next(self.fobj)
                 self._current_line_number += 1
-                
+
                 if skip_empty and len(line.strip()) == 0:
                     continue
-                
+
                 original_line = line.rstrip("\n\r")
-                
+
                 if line:
                     try:
                         result = loads(line)
@@ -104,7 +105,7 @@ class JSONLinesIterable(BaseFileIterable):
             except StopIteration:
                 raise
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk JSON lines records efficiently"""
         chunk = []
         for _n in range(0, num):
@@ -115,15 +116,15 @@ class JSONLinesIterable(BaseFileIterable):
                         self._current_byte_offset = self.fobj.tell()
                     except (OSError, AttributeError):
                         pass
-                
+
                 line = self.fobj.readline()
                 if not line:
                     break
-                
+
                 self._current_line_number += 1
                 original_line = line.rstrip("\n\r")
                 line = line.strip()
-                
+
                 if line:
                     try:
                         chunk.append(loads(line))
@@ -154,11 +155,11 @@ class JSONLinesIterable(BaseFileIterable):
         """Returns True - JSONL always streams line by line"""
         return True
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single JSON lines record"""
         self.fobj.write(dumps(record, ensure_ascii=False, default=date_handler) + "\n")
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk JSON lines records"""
         if not records:
             return

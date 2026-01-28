@@ -16,7 +16,9 @@ try:
 except ImportError:
     HAS_PYARROW = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import ReadError
+from typing import Any
 
 DEFAULT_BATCH_SIZE = 1024
 
@@ -27,11 +29,11 @@ class VortexIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
+        stream: typing.IO[Any] | None = None,
         mode: str = "r",
-        codec: BaseCodec = None,
+        codec: BaseCodec | None = None,
         batch_size: int = DEFAULT_BATCH_SIZE,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -47,9 +49,17 @@ class VortexIterable(BaseFileIterable):
             )
         # Vortex requires a file path, not a stream
         if stream is not None:
-            raise ValueError("Vortex format does not support stream mode. Use filename instead.")
+            raise ReadError(
+                "Vortex format does not support stream mode. Use filename instead.",
+                filename=None,
+                error_code="RESOURCE_REQUIREMENT_NOT_MET",
+            )
         if filename is None:
-            raise ValueError("Vortex format requires a filename")
+            raise ReadError(
+                "Vortex format requires a filename",
+                filename=None,
+                error_code="RESOURCE_REQUIREMENT_NOT_MET",
+            )
         self.batch_size = batch_size
         self.__buffer = []
         self.vortex_file = None
@@ -74,7 +84,11 @@ class VortexIterable(BaseFileIterable):
                 scan = self.vortex_file.scan(batch_size=self.batch_size)
                 self.iterator = self.__iterator(scan)
             else:
-                raise ValueError("Vortex reading requires filename")
+                raise ReadError(
+                    "Vortex reading requires filename",
+                    filename=None,
+                    error_code="RESOURCE_REQUIREMENT_NOT_MET",
+                )
         # For write mode, buffer will be flushed on close
 
     @staticmethod
@@ -86,7 +100,7 @@ class VortexIterable(BaseFileIterable):
         return True
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -202,7 +216,7 @@ class VortexIterable(BaseFileIterable):
                 # If batch processing fails, yield error info
                 yield {"_error": f"Failed to process batch: {str(e)}"}
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single record"""
         if self.iterator is None:
             raise RuntimeError("Iterator not initialized. Call reset() first.")
@@ -213,7 +227,7 @@ class VortexIterable(BaseFileIterable):
         except StopIteration:
             raise StopIteration from None
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk Vortex records"""
         chunk = []
         for _n in range(0, num):
@@ -223,11 +237,11 @@ class VortexIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single record"""
         self.write_bulk([record])
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk records"""
         if not records:
             return

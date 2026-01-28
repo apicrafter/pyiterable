@@ -44,6 +44,63 @@ source = open_iterable('catalog.properties', iterableargs={
 for row in source:
     print(row)
 source.close()
+
+# Discover available tables in catalog
+from iterable.datatypes.iceberg import IcebergIterable
+
+# Before opening - discover tables
+iterable = IcebergIterable(
+    filename='catalog.properties',
+    catalog_name='my_catalog',
+    table_name='dummy_table'  # Required but may not be used for listing
+)
+tables = iterable.list_tables('catalog.properties')
+print(f"Available tables: {tables}")
+
+# After opening - list all tables (reuses catalog connection)
+source = open_iterable('catalog.properties', iterableargs={
+    'catalog_name': 'my_catalog',
+    'table_name': 'my_table'
+})
+all_tables = source.list_tables()  # Reuses catalog connection
+print(f"All tables: {all_tables}")
+
+# Process different tables
+for table_name in all_tables:
+    source = open_iterable('catalog.properties', iterableargs={
+        'catalog_name': 'my_catalog',
+        'table_name': table_name
+    })
+    print(f"Processing table: {table_name}")
+    for row in source:
+        process(row)
+    source.close()
+```
+
+### Discovering Available Tables
+
+Iceberg catalogs can contain multiple tables. Use `list_tables()` to discover available tables:
+
+```python
+from iterable.datatypes.iceberg import IcebergIterable
+
+# Before opening - discover tables
+iterable = IcebergIterable(
+    filename='catalog.properties',
+    catalog_name='my_catalog',
+    table_name='dummy_table'  # Required parameter
+)
+tables = iterable.list_tables('catalog.properties')
+print(f"Available tables: {tables}")
+# Output: ['customers', 'orders', 'products']
+
+# After opening - list all tables (reuses catalog connection)
+source = open_iterable('catalog.properties', iterableargs={
+    'catalog_name': 'my_catalog',
+    'table_name': 'customers'
+})
+all_tables = source.list_tables()  # Reuses catalog connection
+print(f"All tables: {all_tables}")
 ```
 
 ## Parameters

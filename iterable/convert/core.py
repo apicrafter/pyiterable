@@ -3,6 +3,7 @@ import logging
 import os
 import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
@@ -60,6 +61,7 @@ def convert(
     is_flatten: bool = False,
     use_totals: bool = False,
     progress: Callable[[dict[str, Any]], None] | None = None,
+    progress_interval: int = DEFAULT_PROGRESS_INTERVAL,
     show_progress: bool = False,
     atomic: bool = False,
 ) -> ConversionResult:
@@ -81,7 +83,11 @@ def convert(
         is_flatten: If True, flattens nested structures when converting to flat formats
         use_totals: If True, uses total count for progress tracking (if available)
         progress: Optional callback function that receives progress stats dictionary
-                 with keys: rows_read, rows_written, elapsed, estimated_total
+                 with keys: rows_read, rows_written, elapsed, estimated_total,
+                 bytes_read, bytes_written, percent_complete, estimated_time_remaining
+        progress_interval: Number of rows between progress callback invocations.
+                          Default: 1000. Set to smaller value for more frequent updates,
+                          or larger value to reduce callback overhead.
         show_progress: If True, displays a progress bar using tqdm (if available).
                       Ignored if silent=True.
         atomic: If True, write to a temporary file and atomically rename to destination
@@ -169,6 +175,17 @@ def convert(
             estimated_total = None
             if use_totals and it_in is not None and it_in.has_totals():
                 estimated_total = it_in.totals()
+            
+            # Calculate enhanced stats
+            percent_complete = None
+            estimated_time_remaining = None
+            if estimated_total is not None and estimated_total > 0:
+                percent_complete = (rows_read / estimated_total) * 100.0
+                if elapsed > 0 and rows_read > 0:
+                    rate = rows_read / elapsed
+                    remaining_rows = estimated_total - rows_read
+                    estimated_time_remaining = remaining_rows / rate if rate > 0 else None
+            
             try:
                 progress(
                     {
@@ -176,6 +193,10 @@ def convert(
                         "rows_written": rows_written,
                         "elapsed": elapsed,
                         "estimated_total": estimated_total,
+                        "bytes_read": bytes_read,
+                        "bytes_written": bytes_written,
+                        "percent_complete": percent_complete,
+                        "estimated_time_remaining": estimated_time_remaining,
                     }
                 )
             except Exception as e:
@@ -293,7 +314,7 @@ def convert(
                 batch = []
 
             # Invoke progress callback periodically
-            if n % DEFAULT_PROGRESS_INTERVAL == 0:
+            if n % progress_interval == 0:
                 invoke_progress_callback()
 
         # Write remaining batch
@@ -446,6 +467,30 @@ def _generate_output_filename(
         return str(dest_path / source_path.name)
 
 
+def _convert_file_worker(file_info: tuple[str, str, dict[str, Any]]) -> tuple[str, ConversionResult | None, Exception | None]:
+    """Convert single file (for parallel execution).
+    
+    This is a worker function designed to be called by ThreadPoolExecutor.
+    It wraps the convert() function call with proper error handling.
+    
+    Args:
+        file_info: Tuple of (source_file, dest_file, kwargs)
+    
+    Returns:
+        Tuple of (source_file, result, error)
+    """
+    source_file, dest_file, kwargs = file_info
+    try:
+        result = convert(
+            fromfile=source_file,
+            tofile=dest_file,
+            **kwargs
+        )
+        return (source_file, result, None)
+    except Exception as e:
+        return (source_file, None, e)
+
+
 def bulk_convert(
     source: str,
     dest: str,
@@ -459,8 +504,11 @@ def bulk_convert(
     is_flatten: bool = False,
     use_totals: bool = False,
     progress: Callable[[dict[str, Any]], None] | None = None,
+    progress_interval: int = DEFAULT_PROGRESS_INTERVAL,
     show_progress: bool = False,
     atomic: bool = False,
+    parallel: bool = False,
+    workers: int | None = None,
 ) -> BulkConversionResult:
     """
     Convert multiple files using glob patterns, directory paths, or file lists.
@@ -486,9 +534,15 @@ def bulk_convert(
         progress: Optional callback function that receives progress stats dictionary.
                  For bulk conversion, callback receives additional keys: 'file_index',
                  'total_files', 'current_file', 'file_rows_read', 'file_rows_written'
+        progress_interval: Number of rows between progress callback invocations.
+                          Default: 1000. Passed to convert() for each file conversion.
         show_progress: If True, displays a progress bar using tqdm (if available).
                       Ignored if silent=True.
         atomic: If True, each file conversion uses atomic writes. Default: False.
+        parallel: If True, enable parallel file conversion using threading.
+                 Recommended for I/O-bound operations. Default: False.
+        workers: Number of worker threads for parallel conversion.
+                If None, uses min(4, CPU count). Default: None.
 
     Returns:
         BulkConversionResult: Object containing aggregated metrics and per-file results
@@ -556,81 +610,173 @@ def bulk_convert(
     # Determine if we should show progress bar
     should_show_progress = show_progress and not silent and TQDM_AVAILABLE
 
-    # Process each file
-    file_iterator = tqdm(source_files, desc="Converting files") if should_show_progress else source_files
+    # Determine number of workers for parallel processing
+    if parallel:
+        if workers is None:
+            # Default to min(4, CPU count) for I/O-bound operations
+            cpu_count = os.cpu_count() or 1
+            workers = min(4, cpu_count)
+        logging.debug(f"Parallel conversion enabled with {workers} workers")
 
-    for file_index, source_file in enumerate(file_iterator, 1):
-        try:
-            # Generate output filename
-            dest_file = _generate_output_filename(source_file, dest, pattern, to_ext)
+    # Prepare file conversion tasks
+    tasks = []
+    for source_file in source_files:
+        dest_file = _generate_output_filename(source_file, dest, pattern, to_ext)
+        tasks.append((
+            source_file,
+            dest_file,
+            {
+                'iterableargs': iterableargs,
+                'toiterableargs': toiterableargs,
+                'scan_limit': scan_limit,
+                'batch_size': batch_size,
+                'silent': True,  # Don't show per-file progress in parallel mode
+                'is_flatten': is_flatten,
+                'use_totals': use_totals,
+                'progress': None,  # Progress callbacks handled separately in parallel mode
+                'progress_interval': progress_interval,
+                'show_progress': False,
+                'atomic': atomic,
+            }
+        ))
 
-            # Create per-file progress callback wrapper if needed
-            file_progress: Callable[[dict[str, Any]], None] | None = None
-            if progress is not None:
+    # Process files in parallel or sequentially
+    if parallel:
+        # Parallel processing using ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            # Submit all conversion tasks
+            futures = {executor.submit(_convert_file_worker, task): task[0] for task in tasks}
+            
+            # Process completed conversions
+            file_iterator = tqdm(futures, desc="Converting files", total=len(tasks)) if should_show_progress else futures
+            
+            for future in as_completed(file_iterator):
+                source_file, result, error = future.result()
+                
+                if error:
+                    # File conversion failed
+                    failed_files += 1
+                    all_errors.append(error)
+                    logging.error(f"Error converting {source_file}: {error}")
+                    
+                    file_results.append(
+                        FileConversionResult(
+                            source_file=source_file,
+                            dest_file=_generate_output_filename(source_file, dest, pattern, to_ext),
+                            result=None,
+                            error=error,
+                        )
+                    )
+                else:
+                    # File conversion succeeded
+                    if result:
+                        total_rows_in += result.rows_in
+                        total_rows_out += result.rows_out
+                        successful_files += 1
+                        if result.errors:
+                            all_errors.extend(result.errors)
+                    
+                    file_results.append(
+                        FileConversionResult(
+                            source_file=source_file,
+                            dest_file=_generate_output_filename(source_file, dest, pattern, to_ext),
+                            result=result,
+                            error=None,
+                        )
+                    )
+                    
+                    # Invoke progress callback if provided
+                    if progress is not None and result:
+                        try:
+                            progress({
+                                "file_index": successful_files + failed_files,
+                                "total_files": len(source_files),
+                                "current_file": source_file,
+                                "file_rows_read": result.rows_in,
+                                "file_rows_written": result.rows_out,
+                                "rows_read": total_rows_in,
+                                "rows_written": total_rows_out,
+                                "elapsed": time.time() - start_time,
+                            })
+                        except Exception as e:
+                            logging.warning(f"Error in progress callback: {e}")
+    else:
+        # Sequential processing (existing code)
+        file_iterator = tqdm(source_files, desc="Converting files") if should_show_progress else source_files
 
-                def make_file_progress(file_idx: int, total: int, src: str) -> Callable[[dict[str, Any]], None]:
-                    def file_progress_callback(stats: dict[str, Any]) -> None:
-                        # Add bulk conversion context to progress stats
-                        bulk_stats = {
-                            **stats,
-                            "file_index": file_idx,
-                            "total_files": total,
-                            "current_file": src,
-                            "file_rows_read": stats.get("rows_read", 0),
-                            "file_rows_written": stats.get("rows_written", 0),
-                        }
-                        progress(bulk_stats)
+        for file_index, source_file in enumerate(file_iterator, 1):
+            try:
+                # Generate output filename
+                dest_file = _generate_output_filename(source_file, dest, pattern, to_ext)
 
-                    return file_progress_callback
+                # Create per-file progress callback wrapper if needed
+                file_progress: Callable[[dict[str, Any]], None] | None = None
+                if progress is not None:
 
-                file_progress = make_file_progress(file_index, len(source_files), source_file)
+                    def make_file_progress(file_idx: int, total: int, src: str) -> Callable[[dict[str, Any]], None]:
+                        def file_progress_callback(stats: dict[str, Any]) -> None:
+                            # Add bulk conversion context to progress stats
+                            bulk_stats = {
+                                **stats,
+                                "file_index": file_idx,
+                                "total_files": total,
+                                "current_file": src,
+                                "file_rows_read": stats.get("rows_read", 0),
+                                "file_rows_written": stats.get("rows_written", 0),
+                            }
+                            progress(bulk_stats)
 
-            # Convert the file
-            result = convert(
-                fromfile=source_file,
-                tofile=dest_file,
-                iterableargs=iterableargs,
-                toiterableargs=toiterableargs,
-                scan_limit=scan_limit,
-                batch_size=batch_size,
-                silent=silent,
-                is_flatten=is_flatten,
-                use_totals=use_totals,
-                progress=file_progress,
-                show_progress=False,  # Don't show per-file progress bars in bulk mode
-                atomic=atomic,
-            )
+                        return file_progress_callback
 
-            # Aggregate metrics
-            total_rows_in += result.rows_in
-            total_rows_out += result.rows_out
-            successful_files += 1
-            if result.errors:
-                all_errors.extend(result.errors)
+                    file_progress = make_file_progress(file_index, len(source_files), source_file)
 
-            file_results.append(
-                FileConversionResult(
-                    source_file=source_file,
-                    dest_file=dest_file,
-                    result=result,
-                    error=None,
+                # Convert the file
+                result = convert(
+                    fromfile=source_file,
+                    tofile=dest_file,
+                    iterableargs=iterableargs,
+                    toiterableargs=toiterableargs,
+                    scan_limit=scan_limit,
+                    batch_size=batch_size,
+                    silent=silent,
+                    is_flatten=is_flatten,
+                    use_totals=use_totals,
+                    progress=file_progress,
+                    progress_interval=progress_interval,
+                    show_progress=False,  # Don't show per-file progress bars in bulk mode
+                    atomic=atomic,
                 )
-            )
 
-        except Exception as e:
-            # File conversion failed, but continue with others
-            failed_files += 1
-            all_errors.append(e)
-            logging.error(f"Error converting {source_file}: {e}")
+                # Aggregate metrics
+                total_rows_in += result.rows_in
+                total_rows_out += result.rows_out
+                successful_files += 1
+                if result.errors:
+                    all_errors.extend(result.errors)
 
-            file_results.append(
-                FileConversionResult(
-                    source_file=source_file,
-                    dest_file=_generate_output_filename(source_file, dest, pattern, to_ext),
-                    result=None,
-                    error=e,
+                file_results.append(
+                    FileConversionResult(
+                        source_file=source_file,
+                        dest_file=dest_file,
+                        result=result,
+                        error=None,
+                    )
                 )
-            )
+
+            except Exception as e:
+                # File conversion failed, but continue with others
+                failed_files += 1
+                all_errors.append(e)
+                logging.error(f"Error converting {source_file}: {e}")
+
+                file_results.append(
+                    FileConversionResult(
+                        source_file=source_file,
+                        dest_file=_generate_output_filename(source_file, dest, pattern, to_ext),
+                        result=None,
+                        error=e,
+                    )
+                )
 
     # Calculate total elapsed time
     total_elapsed_seconds = time.time() - start_time

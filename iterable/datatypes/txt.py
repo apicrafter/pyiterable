@@ -2,20 +2,21 @@ from __future__ import annotations
 
 import typing
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
 from ..helpers.utils import rowincount
+from typing import Any
 
 
 class TxtIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
         parser: typing.Callable[[str], dict] = None,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -36,7 +37,7 @@ class TxtIterable(BaseFileIterable):
         return False
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -48,7 +49,7 @@ class TxtIterable(BaseFileIterable):
             fobj = self.fobj
         return rowincount(self.filename, fobj)
 
-    def read(self, skip_empty: bool = False):
+    def read(self, skip_empty: bool = True) -> Row:
         """Read single line from text file
 
         Returns:
@@ -71,7 +72,7 @@ class TxtIterable(BaseFileIterable):
             # Return line content as string
             return line
 
-    def read_bulk(self, num: int = 10):
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[Row]:
         """Read bulk lines from text file"""
         chunk = []
         for _n in range(0, num):

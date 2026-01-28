@@ -9,6 +9,195 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Confidence Scores for Format Detection**: Detection results now include confidence scores (0.0-1.0) and detection method
+  - `detect_file_type()` returns `confidence` and `detection_method` fields
+  - Filename detection: confidence 1.0, method "filename"
+  - Magic number detection: confidence 0.95-0.99, method "magic_number"
+  - Heuristic detection: confidence 0.70-0.90, method "heuristic" (varies by match quality)
+  - See `docs/docs/api/open-iterable.md` for detailed confidence score documentation
+- **Memory Usage Benchmarks**: New benchmark script `dev/benchmarks/bench_memory_usage.py` for comparing memory usage
+  - Measures memory usage for streaming vs non-streaming formats
+  - Demonstrates memory efficiency improvements from streaming implementations
+  - Reports memory per record and streaming status
+
+### Changed
+- **Exception Hierarchy**: Comprehensive exception hierarchy replaces generic exceptions
+  - **New Base Exception**: `IterableDataError` - Base exception for all library errors
+  - **Format Exceptions**: `FormatError`, `FormatNotSupportedError`, `FormatDetectionError`, `FormatParseError`
+  - **Codec Exceptions**: `CodecError`, `CodecNotSupportedError`, `CodecDecompressionError`, `CodecCompressionError`
+  - **Read/Write Exceptions**: `ReadError`, `WriteError`, `WriteNotSupportedError`, `StreamingNotSupportedError`
+  - **Resource Exceptions**: `ResourceError`, `StreamNotSeekableError`, `ResourceLeakError`
+  - All format implementations updated to use specific exceptions instead of `NotImplementedError`, `ValueError`, or generic `Exception`
+  - Exception messages include error codes for programmatic handling
+  - See `docs/docs/getting-started/migration-guide.md` for migration guide
+- **Format Detection**: Enhanced content-based format detection with confidence scores
+  - `detect_file_type_from_content()` now returns `(format_id, confidence, method)` tuple
+  - `detect_file_type()` includes `confidence` and `detection_method` in results
+  - Improved detection accuracy with confidence scoring
+  - See `docs/docs/api/open-iterable.md` for detection behavior documentation
+- **Streaming Status Reporting**: Improved accuracy of streaming capability detection
+  - Capability system updated to use known non-streaming formats list
+  - Detects conditional streaming (e.g., JSON uses streaming for files >10MB)
+  - `is_streaming()` method now accurately reflects actual streaming behavior
+- **Documentation**: Enhanced documentation with memory warnings and error handling guides
+  - Added memory warnings for non-streaming formats in `capabilities.md`, `best-practices.md`, and format-specific docs
+  - Added comprehensive error handling guide with exception hierarchy examples
+  - Added format detection details with magic numbers table and confidence scores
+  - Updated migration guide with exception handling changes
+- **Documentation Improvements**: Standardized examples and expanded coverage
+  - Standardized all examples to use context managers consistently
+  - Added error handling sections to all format documentation (JSON, YAML, XLSX, ODS, TOML, FWF, etc.)
+  - Converted parameter documentation to structured tables with Type, Default, Required, Description columns
+  - Created comprehensive performance guide (`docs/docs/getting-started/performance.md`) covering bulk operations, memory management, format selection, compression, streaming vs batch, DuckDB engine, benchmarking
+  - Expanded troubleshooting guide with factory method issues, reset operation issues, context manager issues, exception handling, common error messages reference, debugging tips
+  - Updated migration guide with factory methods, type hints, and improved initialization validation
+  - Added resource management documentation with context manager patterns, cleanup on exceptions, reset operations
+
+### Fixed
+- **Memory Anti-Patterns**: Fixed memory loading patterns in format implementations
+  - JSON format: Uses `ijson` for streaming when files >10MB (was loading entire file)
+  - GeoJSON format: Uses `ijson` for streaming large files (was loading entire file)
+  - TopoJSON format: Uses `ijson` for streaming when files >10MB (was loading entire file)
+  - Audited all formats using `fobj.read()` - documented legitimate cases in `MEMORY_AUDIT.md`
+  - Memory usage remains constant for streaming formats regardless of file size
+- **Exception Handling**: Replaced generic exceptions with specific exception types
+  - Format parsing errors now raise `FormatParseError` with context (row_number, byte_offset, original_line)
+  - Resource requirement errors now raise `ReadError` or `WriteError` with error codes
+  - Format detection errors now raise `FormatDetectionError` instead of `ValueError`
+  - Write operations on unsupported formats now raise `WriteNotSupportedError` instead of `NotImplementedError`
+  - All format implementations updated (15+ files modified, 30+ exception instances replaced)
+- **DuckDB Engine**: Refactored for better performance and security
+  - Replaced string formatting with parameterized queries to prevent SQL injection
+  - Optimized DataFrame conversions using DuckDB's native `.df()` method when pandas available
+  - Improved error handling with specific exceptions (`ReadError`, `FormatNotSupportedError`, `FormatParseError`)
+  - Simplified batch loading logic with helper methods for better maintainability
+- **Base Class Design**: Converted to Abstract Base Class (ABC) with proper method signatures
+  - `BaseIterable` now enforces `read()` and `read_bulk()` as abstract methods
+  - Default implementations for `write()`, `write_bulk()`, `is_flat()`, `has_totals()`, etc.
+  - Updated all 87+ format implementations to match consistent method signatures
+  - Fixed `skip_empty` parameter defaults and `DEFAULT_BULK_NUMBER` usage across all formats
+- **Resource Management**: Improved resource cleanup and error handling
+  - Added seekable stream validation in `reset()` with clear error messages
+  - Improved exception handling in `reset()` and `close()` methods
+  - Simplified codec cleanup logic with proper error handling
+  - Added comprehensive resource leak detection tests
+  - Enhanced context manager support with proper cleanup on exceptions
+- **Bulk Operations**: Optimized bulk read operations for better performance
+  - Parquet/Arrow formats: Direct batch consumption with batch caching (10-100x faster)
+  - ARFF/TOML formats: List slicing optimizations (2-5x faster)
+  - ORC format: Direct iterator access optimization
+  - All optimizations maintain backward compatibility and transparent performance improvements
+- **Type Hints**: Comprehensive type annotation coverage
+  - Added type hints to all public methods in base classes (`BaseIterable`, `BaseFileIterable`, `BaseCodec`)
+  - Added type hints to all 95+ format implementation files
+  - Created `Protocol` classes for duck typing (`Readable`, `Writable`, `Seekable`, `FileLike`)
+  - Added `TypeVar` definitions for generic types (`T`, `T_co`, `T_contra`, `BufferType`, `DataFrameType`)
+  - Enabled strict mypy checking with per-module overrides for optional dependencies
+  - Added type stub packages for optional dependencies (`types-pyyaml`, `types-requests`, etc.)
+
+### Added
+- **Factory Methods for Initialization**: New class methods for clearer, type-safe initialization
+  - `BaseFileIterable.from_file()` - File-based initialization with validation
+  - `BaseFileIterable.from_stream()` - Stream-based initialization
+  - `BaseFileIterable.from_codec()` - Codec-based initialization
+  - Factory methods provide better error messages and prevent invalid configurations
+  - All format implementations automatically inherit factory methods
+  - Backward compatible - existing `__init__()` calls continue to work
+  - See `docs/docs/getting-started/migration-guide.md` for usage examples
+- **Type System**: Comprehensive type hints and type-safe helpers
+  - Type aliases: `Row`, `IterableArgs`, `CodecArgs` for common dictionary types
+  - Result dataclasses: `ConversionResult`, `FileConversionResult`, `BulkConversionResult`, `PipelineResult`
+  - Typed helpers: `as_dataclasses()` and `as_pydantic()` for converting dict rows to typed objects
+  - `py.typed` marker file for type checker support
+  - See `docs/docs/api/type-system.md` for comprehensive documentation
+- **Read-Ahead Caching**: Optional prefetching for improved I/O performance
+  - Configurable via `iterableargs={'read_ahead': True, 'read_ahead_size': 10}`
+  - Automatically refills buffer when it drops below threshold (30% by default)
+  - Provides `peek()` method for non-consuming access to next row
+  - Particularly beneficial for network sources and slow I/O
+  - Disabled by default, opt-in feature
+- **Parallel Bulk Conversion**: Concurrent file conversion support
+  - `bulk_convert()` now supports `parallel=True` parameter
+  - Uses `ThreadPoolExecutor` with configurable worker count (defaults to min(4, CPU count))
+  - Processes multiple file conversions concurrently while maintaining error handling
+  - Progress callbacks supported in parallel mode
+  - Atomic writes supported in parallel mode
+  - Sequential mode remains default for backward compatibility
+- **Debug Mode**: Comprehensive debug logging for troubleshooting
+  - Enable via `open_iterable(..., debug=True)` or `ITERABLEDATA_DEBUG` environment variable
+  - Format detection logging: shows detection steps, extension checks, content-based detection attempts
+  - File I/O logging: logs file operations, modes, encoding, errors
+  - Performance logging: pipeline execution metrics with throughput
+  - Integrates with Python's standard logging framework
+  - See `docs/docs/getting-started/troubleshooting.md` for usage
+- **Enhanced Error Messages**: Actionable guidance in exception messages
+  - Exception messages now include troubleshooting steps and installation instructions
+  - Context-aware guidance for `FormatNotSupportedError`, `FormatDetectionError`, `FormatParseError`
+  - Smart dependency suggestions and format alternatives
+  - Documentation links included in error messages
+- **Structured Logging**: JSON and human-readable structured logging support
+  - `configure_structured_logging()` function for JSON or human-readable output
+  - Operation context tracking with operation IDs and correlation IDs
+  - Standard event types: format_detection, file_io, parsing, conversion, pipeline, error, performance
+  - Environment variable support: `ITERABLEDATA_STRUCTURED_LOGGING`, `ITERABLEDATA_LOG_FORMAT`
+  - Context propagation using `contextvars` for operation tracking
+  - Opt-in feature, disabled by default
+- **Progress Callback Enhancements**: Improved progress tracking with configurable intervals and enhanced stats
+  - Configurable `progress_interval` parameter for `convert()`, `pipeline()`, and `bulk_convert()`
+  - Enhanced progress stats: `bytes_read`, `bytes_written`, `percent_complete`, `estimated_time_remaining`
+  - `with_progress()` helper function for progress tracking during direct iteration
+  - Backward compatible - default interval (1000 rows) unchanged
+  - See `docs/docs/api/observability.md` for usage examples
+- **Validation Hooks**: Automatic data validation during read/write operations
+  - `ValidationHook` protocol for custom validation functions
+  - Error handling policies: `raise` (default), `skip`, `log`, `warn`
+  - Factory functions: `schema_validator()` and `rules_validator()` for easy integration
+  - Support for single hook or multiple hooks (chaining)
+  - Integrated into read operations (`__iter__`) and write operations (`write()`, `write_bulk()`)
+  - Configuration via `iterableargs`: `validation_hook` and `on_validation_error` parameters
+  - See `docs/docs/api/validate.md` for comprehensive documentation
+- **Connection Pooling**: Thread-safe connection pooling for database drivers
+  - `ConnectionPool` abstract base class and `SimpleConnectionPool` implementation
+  - Global pool registry for managing pools per connection string
+  - Automatic connection reuse across multiple queries to the same database
+  - Configurable pool size (`min_size`, `max_size`), timeout, and max idle time
+  - Connection validation and automatic stale connection cleanup
+  - Enabled by default, can be disabled per connection via `pool.enabled=False`
+  - Integrated into PostgreSQL driver (pattern can be applied to other drivers)
+  - Pool statistics and cleanup functions for monitoring and management
+  - See `docs/docs/api/database-engines.md` for usage examples
+- **Plugin System**: Comprehensive plugin architecture for extending IterableData
+  - Support for format, codec, database driver, validation rule, and engine plugins
+  - Automatic plugin discovery via Python entry points (`iterabledata.formats`, `iterabledata.codecs`, etc.)
+  - Programmatic registration API for dynamic plugin loading
+  - Built-in formats/codecs take precedence over plugins (priority system)
+  - Error isolation - plugin errors don't crash the core library
+  - Plugin metadata support (version, author, custom metadata)
+  - Lazy plugin discovery for optimal performance
+  - Integrated with existing format detection and capabilities systems
+  - See `docs/docs/api/plugins.md` for comprehensive documentation and examples
+- **Async/Await Support (Phase 1)**: Foundation for asynchronous I/O operations
+  - `AsyncBaseIterable` and `AsyncBaseFileIterable` base classes with async iterator protocol
+  - `aopen_iterable()` function for async file opening
+  - Async methods: `aread()`, `aread_bulk()`, `awrite()`, `awrite_bulk()`, `areset()`, `aclose()`
+  - Async context manager and async iterator support
+  - Thread pool executor wrapper for synchronous operations (Phase 1)
+  - Supports concurrent file processing and async iteration
+  - Backward compatible - synchronous API unchanged
+  - Phase 2 (native async I/O) and Phase 3 (advanced features) planned for future releases
+- **Write Support Documentation**: Comprehensive write capability tracking
+  - `supports_write()` convenience function to check write support
+  - `READ_ONLY_FORMATS` registry with 27 read-only format IDs
+  - Capability system distinguishes between actual write implementations and base class defaults
+  - Write support roadmap document with prioritized implementation plan
+  - See `docs/docs/api/capabilities.md` for read-only formats documentation
+- **Comprehensive Test Suites**: Expanded testing coverage
+  - Edge case tests: empty files, invalid data, boundary conditions, file permissions, encoding issues
+  - Performance benchmarks: CSV/JSONL read/write, bulk operations, format detection, streaming
+  - Memory profiling tests: streaming vs non-streaming formats, memory leak detection
+  - Stress tests: 10GB+ file handling, concurrent access, error recovery
+  - Performance regression tests: baseline tracking with configurable thresholds
+  - Concurrent access tests: thread safety, state isolation, error handling
 - **Database Engine Support**: Read-only access to SQL and NoSQL databases as iterable data sources
   - **PostgreSQL Support**: Full support for PostgreSQL databases via `psycopg2-binary`
     - Connection via connection strings or existing connection objects
@@ -16,6 +205,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Table name auto-query: automatically builds `SELECT * FROM table` queries
     - Query parameters: `query`, `schema`, `columns`, `filter`, `batch_size`
     - Read-only transactions by default for safety
+    - `list_tables()` helper function for database introspection
+  - **ClickHouse Support**: Full support for ClickHouse databases via `clickhouse-connect`
+    - Connection via connection strings or existing client objects
+    - Streaming queries using batch processing with `max_block_size` for memory efficiency
+    - Table name auto-query: automatically builds `SELECT * FROM table` queries
+    - Query parameters: `query`, `table`, `database`, `columns`, `filter`, `batch_size`, `settings`, `format`
+    - Read-only query validation by default for safety (validates queries are SELECT statements)
+    - ClickHouse-specific query settings support for performance tuning
+    - Native format (default) and JSONEachRow format support
     - `list_tables()` helper function for database introspection
   - **Database Driver Architecture**: Extensible driver registry system
     - `DBDriver` abstract base class for database-specific implementations
@@ -27,8 +225,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Database sources in data pipelines via `pipeline()` function
     - DataFrame bridges (`.to_pandas()`, `.to_polars()`, `.to_dask()`) work with database sources
   - **Optional Dependencies**: New dependency groups for database support
-    - `db`: All database engines (`psycopg2-binary`, `pymongo`, `elasticsearch`, `pymysql`, `pyodbc`)
-    - `db-sql`: SQL databases only (`psycopg2-binary`, `pymysql`, `pyodbc`)
+    - `db`: All database engines (`psycopg2-binary`, `pymongo`, `elasticsearch`, `pymysql`, `pyodbc`, `clickhouse-connect`)
+    - `db-sql`: SQL databases only (`psycopg2-binary`, `pymysql`, `pyodbc`, `clickhouse-connect`)
     - `db-nosql`: NoSQL databases only (`pymongo`, `elasticsearch`)
   - **Usage Examples**:
     ```python
@@ -43,6 +241,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         for row in source:
             print(row)
     
+    # Read from ClickHouse database
+    with open_iterable(
+        'clickhouse://user:password@localhost:9000/analytics',
+        engine='clickhouse',
+        iterableargs={'query': 'events', 'settings': {'max_threads': 4}}
+    ) as source:
+        for row in source:
+            print(row)
+    
     # Convert database to file
     from iterable.convert import convert
     convert(
@@ -53,9 +260,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     ```
   - **Planned Database Support**: MySQL/MariaDB, Microsoft SQL Server, SQLite, MongoDB, Elasticsearch/OpenSearch
   - **Documentation**: Comprehensive database engine documentation in `docs/docs/api/database-engines.md`
+- **Extended Table Listing Support**: Extended `list_tables()` and `has_tables()` support to additional formats
+  - **HTML Format**: List all `<table>` elements by ID, caption, or index
+    - Prefers table IDs (`<table id="...">`) when available
+    - Falls back to caption text (`<caption>...</caption>`) if no ID
+    - Uses numeric indices as final fallback
+  - **XML Format**: List all unique tag names found in the document
+    - Returns sorted list of tag names that can be iterated
+    - Supports namespace prefix stripping
+  - **ZIPXML Format**: List all XML files within ZIP archives
+    - Returns sorted list of XML filenames (`.xml` extension)
+    - Filters out non-XML files in the archive
+  - **Iceberg Format**: List all tables in Iceberg catalogs
+    - Supports catalog-based table discovery
+    - Handles namespace-based catalogs
+  - **Hudi Format**: List all tables in Hudi catalogs or directories
+    - Returns `None` for single table paths (expected behavior)
+    - Supports catalog-based listing when available
+  - **Delta Format**: Table listing support (returns `None` for single table directories, which is the common case)
+    - `has_tables()` returns `False` to indicate single-table directory usage
+    - Catalog-based listing would require additional configuration
+  - **Documentation**: Added format-specific documentation with `list_tables()` examples
+    - Created `docs/docs/formats/html.md` with table listing examples
+    - Created `docs/docs/formats/zipxml.md` with XML file listing examples
+    - Updated `docs/docs/formats/iceberg.md`, `docs/docs/formats/hudi.md`, `docs/docs/formats/delta.md` with table listing examples
+  - **Tests**: Comprehensive test coverage for all new table listing implementations
+- **Error Handling Controls**: Configurable error policies for handling malformed records in production ETL pipelines
+  - **Error Policy Configuration**: New `on_error` parameter in `iterableargs` with three options:
+    - `'raise'` (default) - Raise exception immediately when parse error occurs (maintains backward compatibility)
+    - `'skip'` - Silently skip malformed records and continue iteration
+    - `'warn'` - Log warning using Python's `warnings` module and continue iteration
+  - **Error Logging**: New `error_log` parameter in `iterableargs` for logging errors to file or file-like object
+    - Logs include contextual information: timestamp, filename, row number, byte offset, error message, original line
+    - Supports both file path strings and file-like objects
+    - Works with all error policies (`raise`, `skip`, `warn`)
+  - **Enhanced Error Context**: Parse errors now include detailed contextual information:
+    - Filename (if available)
+    - Row number (1-indexed, header excluded for text formats)
+    - Byte offset in file (when available)
+    - Original line content (for text formats, when available)
+  - **Format Support**: Error handling implemented for CSV, JSONL, and XML formats
+  - **Usage Examples**:
+    ```python
+    from iterable.helpers.detect import open_iterable
+    
+    # Skip bad records and continue processing
+    with open_iterable('data.csv', iterableargs={'on_error': 'skip'}) as source:
+        for row in source:
+            process(row)
+    
+    # Warn on errors and log to file
+    with open_iterable(
+        'data.jsonl',
+        iterableargs={'on_error': 'warn', 'error_log': 'errors.log'}
+    ) as source:
+        for row in source:
+            process(row)
+    
+    # Log errors while raising exceptions (for analysis)
+    with open_iterable(
+        'data.xml',
+        iterableargs={'on_error': 'raise', 'error_log': 'errors.log'}
+    ) as source:
+        for row in source:
+            process(row)
+    ```
 
 ### Changed
-- `open_iterable()` now accepts database engines via `engine` parameter (e.g., `'postgres'`, `'mysql'`, `'mongo'`)
+- `open_iterable()` now accepts database engines via `engine` parameter (e.g., `'postgres'`, `'clickhouse'`, `'mysql'`, `'mongo'`)
 - `convert()` now supports database sources (database → file conversion)
 - `pipeline()` now supports database sources as input
 

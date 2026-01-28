@@ -104,3 +104,35 @@ class TestGeoPackage:
             iterable.close()
         except ImportError:
             pytest.skip("fiona library not available")
+
+    def test_has_tables(self):
+        try:
+            flag = GeoPackageIterable.has_tables()
+            assert flag is True
+        except ImportError:
+            pytest.skip("fiona library not available")
+
+    def test_list_tables_instance_method(self):
+        """Test list_tables on an already-opened instance"""
+        try:
+            iterable = GeoPackageIterable(FIXTURE_FILE)
+            # Read a row to ensure collection is open
+            _ = iterable.read()
+            # Now list tables - should work even if collection is open
+            layers = iterable.list_tables()
+            assert isinstance(layers, list)
+            assert len(layers) > 0
+            iterable.close()
+        except ImportError:
+            pytest.skip("fiona library not available")
+
+    def test_list_tables_with_filename(self):
+        """Test list_tables with filename parameter (class-like usage)"""
+        try:
+            iterable = GeoPackageIterable(FIXTURE_FILE)
+            layers = iterable.list_tables(FIXTURE_FILE)
+            assert isinstance(layers, list)
+            assert len(layers) > 0
+            iterable.close()
+        except ImportError:
+            pytest.skip("fiona library not available")

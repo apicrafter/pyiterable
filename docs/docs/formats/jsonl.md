@@ -87,7 +87,7 @@ finally:
 
 | Parameter | Type | Default | Required | Description |
 |-----------|------|---------|----------|-------------|
-| `encoding` | str | `utf8` | No | File encoding. UTF-8 is the standard for JSON/JSONL files. Other encodings like `latin-1` or `cp1252` are supported but not recommended. |
+| `encoding` | str | `utf8` | No | File encoding for reading/writing JSONL files. UTF-8 is the standard for JSON/JSONL files. Other encodings like `latin-1` or `cp1252` are supported but not recommended. |
 
 ## Error Handling
 

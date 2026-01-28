@@ -32,7 +32,7 @@ pipeline(
 
 ### `source` (BaseIterable, required)
 
-Input iterable object (from `open_iterable()`). Can be a file-based source or a database source (e.g., PostgreSQL, MySQL, MongoDB).
+Input iterable object (from `open_iterable()`). Can be a file-based source or a database source (e.g., PostgreSQL, ClickHouse, MySQL, MongoDB).
 
 ### `destination` (BaseIterable, optional)
 
@@ -278,6 +278,35 @@ with open_iterable('output.jsonl', mode='w') as destination:
     )
     
     print(f"Processed {result.rows_processed} rows from database")
+source.close()  # Close database connection
+
+# Process data from ClickHouse database
+source = open_iterable(
+    'clickhouse://user:password@localhost:9000/analytics',
+    engine='clickhouse',
+    iterableargs={
+        'query': 'events',
+        'settings': {'max_threads': 4}
+    }
+)
+
+with open_iterable('events_output.parquet', mode='w') as destination:
+    def transform_record(record, state):
+        # Transform ClickHouse row
+        return {
+            'id': record['id'],
+            'event_type': record['event_type'],
+            'timestamp': record['timestamp']
+        }
+    
+    result = pipeline(
+        source=source,
+        destination=destination,
+        process_func=transform_record,
+        reset_iterables=False  # Database sources don't support reset
+    )
+    
+    print(f"Processed {result.rows_processed} rows from ClickHouse")
 source.close()  # Close database connection
 ```
 

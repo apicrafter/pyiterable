@@ -70,9 +70,55 @@ dest.close()
 
 ## Parameters
 
-- `page` (int): Sheet index to read/write (default: `0`)
-- `keys` (list[str]): Column names (default: extracted from first row)
-- `start_line` (int): Row to start reading from (default: `0`)
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `page` | int | `0` | No | Sheet index to read/write (0-indexed). Use `0` for first sheet, `1` for second sheet, etc. |
+| `keys` | list[str] | auto-detected | No | Column names. When reading, extracted from first row if not specified. When writing, required if first row doesn't contain headers. |
+| `start_line` | int | `0` | No | Row number to start reading from (0-indexed). Useful for skipping header rows or starting at a specific row. |
+
+## Error Handling
+
+```python
+from iterable.helpers.detect import open_iterable
+
+try:
+    # Reading with error handling
+    with open_iterable('data.ods', iterableargs={
+        'page': 0  # Sheet index
+    }) as source:
+        for row in source:
+            process(row)
+except FileNotFoundError:
+    print("ODS file not found")
+except ValueError as e:
+    # May occur if sheet index is invalid
+    print(f"Invalid sheet index: {e}")
+    # List available sheets first
+    from iterable.datatypes.ods import ODSIterable
+    sheets = ODSIterable('data.ods').list_tables('data.ods')
+    print(f"Available sheets: {sheets}")
+except ImportError as e:
+    print(f"Missing dependency: {e}")
+    print("Install with: pip install iterabledata[ods] or pip install odfpy")
+except Exception as e:
+    print(f"Error reading ODS: {e}")
+
+try:
+    # Writing with error handling
+    with open_iterable('output.ods', mode='w') as dest:
+        dest.write({'id': 1, 'name': 'John', 'age': 30})
+except ImportError as e:
+    print(f"Missing dependency: {e}")
+    print("Install with: pip install iterabledata[ods] or pip install odfpy")
+except Exception as e:
+    print(f"Error writing ODS: {e}")
+```
+
+### Common Errors
+
+- **ValueError**: Invalid sheet index - use `list_tables()` to see available sheets
+- **ImportError**: Missing `odfpy` package - install with `pip install odfpy`
+- **FileNotFoundError**: File path is incorrect or file doesn't exist
 
 ## Limitations
 

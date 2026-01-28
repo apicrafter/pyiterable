@@ -1,0 +1,28 @@
+# Tasks
+
+-   [x] Add dependencies to `pyproject.toml`
+    -   [x] `netCDF4` (extra: `netcdf`)
+    -   [x] `mapbox-vector-tile` (extra: `geospatial` or `mvt`)
+    -   [x] `topojson` (extra: `geospatial` or `topojson`)
+    -   [x] `feedparser` (extra: `feed`)
+    -   [x] `ezdxf` (extra: `dxf`)
+-   [x] Implement `NetCDFIterable`
+    -   [x] Create `iterable/datatypes/netcdf.py`
+    -   [x] Register in `iterable/helpers/detect.py`
+    -   [x] Add tests
+-   [x] Implement `MVTIterable`
+    -   [x] Create `iterable/datatypes/mvt.py`
+    -   [x] Register in `iterable/helpers/detect.py`
+    -   [x] Add tests
+-   [x] Implement `TopoJSONIterable`
+    -   [x] Create `iterable/datatypes/topojson.py`
+    -   [x] Register in `iterable/helpers/detect.py`
+    -   [x] Add tests
+-   [x] Implement `FeedIterable`
+    -   [x] Create `iterable/datatypes/feed.py`
+    -   [x] Register in `iterable/helpers/detect.py`
+    -   [x] Add tests
+-   [x] Implement `DXFIterable`
+    -   [x] Create `iterable/datatypes/dxf.py`
+    -   [x] Register in `iterable/helpers/detect.py`
+    -   [x] Add tests

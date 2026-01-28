@@ -1,13 +1,12 @@
 """Tests for observability features: progress callbacks, metrics, and logging."""
 
 import os
-import time
 
 import pytest
 
 from iterable.convert.core import convert
 from iterable.datatypes import CSVIterable, JSONLinesIterable
-from iterable.pipeline import Pipeline, pipeline
+from iterable.pipeline import pipeline
 from iterable.types import ConversionResult, PipelineResult
 
 
@@ -170,7 +169,7 @@ class TestConvertProgress:
 
         # Use a format that supports totals (like Parquet if available)
         # For now, test with CSV which may not support totals
-        result = convert(input_file, output_file, progress=progress_callback, use_totals=True)
+        convert(input_file, output_file, progress=progress_callback, use_totals=True)
 
         assert len(progress_calls) > 0
         # estimated_total may be None if format doesn't support it
@@ -264,9 +263,7 @@ class TestPipelineProgress:
         def progress_callback(stats):
             progress_calls.append(stats.copy())
 
-        result = pipeline(
-            source=source, destination=destination, process_func=process_func, progress=progress_callback
-        )
+        result = pipeline(source=source, destination=destination, process_func=process_func, progress=progress_callback)
 
         # Progress callback should have been called at least once
         assert len(progress_calls) > 0
@@ -300,9 +297,7 @@ class TestPipelineProgress:
         def progress_callback(stats):
             progress_calls.append(stats.copy())
 
-        result = pipeline(
-            source=source, destination=destination, process_func=process_func, progress=progress_callback
-        )
+        pipeline(source=source, destination=destination, process_func=process_func, progress=progress_callback)
 
         # Check that later calls include throughput
         for call in progress_calls:

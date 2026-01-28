@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import typing
+from typing import Any
 
 try:
     import ijson
@@ -11,18 +12,21 @@ try:
 except ImportError:
     HAS_IJSON = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import WriteError
+from ..types import Row
+from typing import Any
 
 
 class JSONIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode="r",
         tagname: str = None,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -109,7 +113,7 @@ class JSONIterable(BaseFileIterable):
         return "json"
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -128,7 +132,7 @@ class JSONIterable(BaseFileIterable):
         """Returns True if using streaming parser"""
         return self._streaming
 
-    def read(self, skip_empty: bool = False) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single JSON record"""
         if self._streaming:
             # Use streaming parser
@@ -152,7 +156,7 @@ class JSONIterable(BaseFileIterable):
             self.pos += 1
             return row
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk JSON records"""
         chunk = []
         if self._streaming:
@@ -178,14 +182,18 @@ class JSONIterable(BaseFileIterable):
             self.pos += read_count
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single JSON record (array item)."""
         self.write_bulk([record])
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk JSON records (array items)."""
         if self.mode not in ["w", "wr"]:
-            raise ValueError("Write mode not enabled")
+            raise WriteError(
+                "Write mode not enabled",
+                filename=self.filename,
+                error_code="INVALID_MODE",
+            )
         if not records:
             return
         for record in records:

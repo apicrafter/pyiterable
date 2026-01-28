@@ -16,18 +16,19 @@ except ImportError:
         HAS_PYEDN = False
         HAS_EDN_FORMAT = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from typing import Any
 
 
 class EDNIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -116,7 +117,7 @@ class EDNIterable(BaseFileIterable):
         else:
             return obj
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single EDN record"""
         row = next(self.iterator)
         self.pos += 1
@@ -127,7 +128,7 @@ class EDNIterable(BaseFileIterable):
         else:
             return self._convert_to_dict(row)
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk EDN records"""
         chunk = []
         for _n in range(0, num):
@@ -137,7 +138,7 @@ class EDNIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single EDN record"""
         if HAS_EDN_FORMAT:
             edn_str = edn_format.dumps(record)
@@ -145,7 +146,7 @@ class EDNIterable(BaseFileIterable):
             edn_str = pyedn.write(record)
         self.fobj.write(edn_str + "\n")
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk EDN records"""
         for record in records:
             self.write(record)

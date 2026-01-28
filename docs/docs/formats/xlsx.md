@@ -84,9 +84,61 @@ dest.close()
 
 ## Parameters
 
-- `page` (int or str): Sheet index (int) or name (str) to read/write (default: `0`)
-- `keys` (list[str]): Column names (default: extracted from first row when reading)
-- `start_line` (int): Row to start reading from (default: `0`)
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| `page` | int or str | `0` | No | Sheet index (int, 0-indexed) or name (str) to read/write. Use `0` for first sheet, `1` for second sheet, or sheet name like `'Sheet2'`. |
+| `keys` | list[str] | auto-detected | No | Column names. When reading, extracted from first row if not specified. When writing, required if first row doesn't contain headers. |
+| `start_line` | int | `0` | No | Row number to start reading from (0-indexed). Useful for skipping header rows or starting at a specific row. |
+
+## Error Handling
+
+```python
+from iterable.helpers.detect import open_iterable
+
+try:
+    # Reading with error handling
+    with open_iterable('data.xlsx', iterableargs={
+        'page': 0  # or sheet name
+    }) as source:
+        for row in source:
+            process(row)
+except FileNotFoundError:
+    print("XLSX file not found")
+except ValueError as e:
+    # May occur if sheet index/name is invalid
+    print(f"Invalid sheet: {e}")
+    # List available sheets first
+    from iterable.datatypes.xlsx import XLSXIterable
+    sheets = XLSXIterable('data.xlsx').list_tables('data.xlsx')
+    print(f"Available sheets: {sheets}")
+except ImportError as e:
+    print(f"Missing dependency: {e}")
+    print("Install with: pip install iterabledata[xlsx] or pip install openpyxl")
+except Exception as e:
+    print(f"Error reading XLSX: {e}")
+
+try:
+    # Writing with error handling
+    with open_iterable('output.xlsx', mode='w', iterableargs={
+        'page': 'Sheet1'  # Optional: specify sheet name
+    }) as dest:
+        dest.write({'id': 1, 'name': 'John', 'age': 30})
+except KeyError as e:
+    # May occur if keys parameter is required but not provided
+    print(f"Missing required field: {e}")
+except ImportError as e:
+    print(f"Missing dependency: {e}")
+    print("Install with: pip install iterabledata[xlsx] or pip install openpyxl")
+except Exception as e:
+    print(f"Error writing XLSX: {e}")
+```
+
+### Common Errors
+
+- **ValueError**: Invalid sheet index or name - use `list_tables()` to see available sheets
+- **ImportError**: Missing `openpyxl` package - install with `pip install openpyxl`
+- **FileNotFoundError**: File path is incorrect or file doesn't exist
+- **KeyError**: When writing, ensure all records have consistent keys or provide `keys` parameter
 
 ## Limitations
 

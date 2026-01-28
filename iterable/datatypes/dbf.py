@@ -4,7 +4,8 @@ import typing
 
 from dbfread import DBF
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from typing import Any
 
 
 class DBFIterable(BaseFileIterable):
@@ -13,11 +14,11 @@ class DBFIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode="r",
         encoding: str = "utf-8",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -48,7 +49,7 @@ class DBFIterable(BaseFileIterable):
         return True
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -56,7 +57,7 @@ class DBFIterable(BaseFileIterable):
         """Returns file totals"""
         return len(self.table)
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single DBF record"""
         try:
             record = next(self.iterator)
@@ -65,7 +66,7 @@ class DBFIterable(BaseFileIterable):
         except StopIteration:
             raise StopIteration from None
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk DBF records"""
         chunk = []
         for _n in range(0, num):

@@ -3,19 +3,20 @@ from __future__ import annotations
 import re
 import typing
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from typing import Any
 
 
 class MySQLDumpIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
         table_name: str = None,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -172,13 +173,13 @@ class MySQLDumpIterable(BaseFileIterable):
 
         return result
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single MySQL dump record"""
         row = next(self.iterator)
         self.pos += 1
         return row
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk MySQL dump records"""
         chunk = []
         for _n in range(0, num):
@@ -188,7 +189,7 @@ class MySQLDumpIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single MySQL dump record"""
         table = record.pop("_table", "data")
 
@@ -220,7 +221,7 @@ class MySQLDumpIterable(BaseFileIterable):
         else:
             self.fobj.write(f"  {values_str}")
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk MySQL dump records"""
         for record in records:
             self.write(record)

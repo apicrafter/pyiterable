@@ -4,6 +4,7 @@ import typing
 
 from ..base import BaseCodec
 from .csv import CSVIterable
+from typing import Any
 
 
 class PSVIterable(CSVIterable):
@@ -12,14 +13,14 @@ class PSVIterable(CSVIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
-        keys: list[str] = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
+        keys: list[str] | None = None,
         quotechar: str = '"',
         mode: str = "r",
-        encoding: str = None,
+        encoding: str | None = None,
         autodetect: bool = False,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         # Force delimiter to pipe
         if options is None:
@@ -53,14 +54,14 @@ class SSVIterable(CSVIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
-        keys: list[str] = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
+        keys: list[str] | None = None,
         quotechar: str = '"',
         mode: str = "r",
-        encoding: str = None,
+        encoding: str | None = None,
         autodetect: bool = False,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         # Force delimiter to semicolon
         if options is None:

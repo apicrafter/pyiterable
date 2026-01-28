@@ -5,18 +5,20 @@ import mailbox
 import typing
 from email.utils import parsedate_to_datetime
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import ReadError, WriteError
+from typing import Any
 
 
 class MBOXIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -37,7 +39,11 @@ class MBOXIterable(BaseFileIterable):
             self.iterator = iter(self.mbox)
         else:
             if self.filename is None:
-                raise ValueError("MBOX format requires filename for writing")
+                raise WriteError(
+                    "MBOX format requires filename for writing",
+                    filename=None,
+                    error_code="RESOURCE_REQUIREMENT_NOT_MET",
+                )
             self.mbox = mailbox.mbox(self.filename, create=True)
 
     @staticmethod
@@ -119,13 +125,13 @@ class MBOXIterable(BaseFileIterable):
 
         return result
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single MBOX record"""
         msg = next(self.iterator)
         self.pos += 1
         return self._email_to_dict(msg)
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk MBOX records"""
         chunk = []
         for _n in range(0, num):
@@ -135,7 +141,7 @@ class MBOXIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single MBOX record"""
         msg = email.message.EmailMessage()
 
@@ -161,7 +167,7 @@ class MBOXIterable(BaseFileIterable):
         self.mbox.add(msg)
         self.mbox.flush()
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk MBOX records"""
         for record in records:
             self.write(record)

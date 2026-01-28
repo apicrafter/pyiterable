@@ -11,6 +11,7 @@ from typing import Any
 
 from ..types import Row
 from .base import DBDriver
+from .pooling import get_pool
 
 
 class PostgresDriver(DBDriver):
@@ -33,10 +34,19 @@ class PostgresDriver(DBDriver):
                 - filter: WHERE clause fragment (e.g., "active = TRUE")
                 - server_side_cursor: Use server-side cursor (default: True)
                 - connect_args: Additional arguments for psycopg2.connect()
+                - pool: Pool configuration dict with keys:
+                    - enabled: Enable connection pooling (default: True)
+                    - min_size: Minimum pool size (default: 1)
+                    - max_size: Maximum pool size (default: 10)
+                    - timeout: Connection acquisition timeout in seconds (default: 30.0)
+                    - max_idle: Maximum idle time in seconds (default: 300.0)
         """
         super().__init__(source, **kwargs)
         self._cursor: Any = None
         self._column_names: list[str] | None = None
+        self._pool: Any = None
+        self._pooled_conn: Any = None
+        self._pooled_created_time: float | None = None
 
     def connect(self) -> None:
         """Establish PostgreSQL connection.
@@ -53,7 +63,7 @@ class PostgresDriver(DBDriver):
                 "psycopg2-binary is required for PostgreSQL support. Install it with: pip install psycopg2-binary"
             ) from None
 
-        # If source is already a connection object, use it
+        # If source is already a connection object, use it (no pooling)
         if hasattr(self.source, "cursor") and hasattr(self.source, "close"):
             self.conn = self.source
             self._connected = True
@@ -65,21 +75,67 @@ class PostgresDriver(DBDriver):
                 f"PostgreSQL source must be a connection string or connection object, got {type(self.source)}"
             )
 
+        # Extract pool configuration
+        pool_config = self.kwargs.get("pool", {})
+        use_pool = pool_config.get("enabled", True) if isinstance(pool_config, dict) else bool(pool_config)
+
         # Extract connection arguments
         connect_args = self.kwargs.get("connect_args", {})
+        read_only = self.kwargs.get("read_only", True)
 
         try:
-            self.conn = psycopg2.connect(self.source, **connect_args)
-            self._connected = True
+            if use_pool:
+                # Use connection pool
+                pool_key = f"postgres:{self.source}"
 
-            # Set read-only transaction if requested (default: True)
-            read_only = self.kwargs.get("read_only", True)
-            if read_only:
-                # Set transaction to read-only
-                self.conn.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
-                with self.conn.cursor() as cur:
-                    cur.execute("SET TRANSACTION READ ONLY")
-                    self.conn.commit()
+                def factory():
+                    """Factory function to create new PostgreSQL connection."""
+                    conn = psycopg2.connect(self.source, **connect_args)
+                    # Set read-only transaction if requested
+                    if read_only:
+                        conn.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
+                        with conn.cursor() as cur:
+                            cur.execute("SET TRANSACTION READ ONLY")
+                            conn.commit()
+                    return conn
+
+                def validate(conn: Any) -> bool:
+                    """Validate PostgreSQL connection."""
+                    try:
+                        # Check if connection is closed
+                        if hasattr(conn, "closed") and conn.closed:
+                            return False
+                        # Try a simple query
+                        with conn.cursor() as cur:
+                            cur.execute("SELECT 1")
+                        return True
+                    except Exception:
+                        return False
+
+                # Get pool configuration
+                pool_cfg = {
+                    "min_size": pool_config.get("min_size", 1) if isinstance(pool_config, dict) else 1,
+                    "max_size": pool_config.get("max_size", 10) if isinstance(pool_config, dict) else 10,
+                    "timeout": pool_config.get("timeout", 30.0) if isinstance(pool_config, dict) else 30.0,
+                    "max_idle": pool_config.get("max_idle", 300.0) if isinstance(pool_config, dict) else 300.0,
+                    "validate": validate,
+                }
+
+                self._pool = get_pool(pool_key, factory, pool_cfg)
+                self._pooled_conn, self._pooled_created_time = self._pool.acquire()
+                self.conn = self._pooled_conn
+            else:
+                # Direct connection (no pooling)
+                self.conn = psycopg2.connect(self.source, **connect_args)
+                # Set read-only transaction if requested (default: True)
+                if read_only:
+                    # Set transaction to read-only
+                    self.conn.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
+                    with self.conn.cursor() as cur:
+                        cur.execute("SET TRANSACTION READ ONLY")
+                        self.conn.commit()
+
+            self._connected = True
         except Exception as e:
             self._connected = False
             raise ConnectionError(f"Failed to connect to PostgreSQL: {e}") from e
@@ -246,8 +302,27 @@ class PostgresDriver(DBDriver):
                 pass
             self._cursor = None
 
-        # Close connection
-        super().close()
+        # Return connection to pool if pooled, otherwise close directly
+        if self._pool and self._pooled_conn is not None and self._pooled_created_time is not None:
+            try:
+                self._pool.release(self._pooled_conn, self._pooled_created_time)
+            except Exception:
+                # If release fails, try to close connection directly
+                try:
+                    if hasattr(self._pooled_conn, "close"):
+                        self._pooled_conn.close()
+                except Exception:
+                    pass
+            finally:
+                self._pooled_conn = None
+                self._pooled_created_time = None
+                self._pool = None
+                self.conn = None
+                self._connected = False
+                self._closed = True
+        else:
+            # Direct close (no pooling)
+            super().close()
 
     @staticmethod
     def list_tables(

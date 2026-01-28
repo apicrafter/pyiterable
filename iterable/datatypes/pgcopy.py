@@ -3,20 +3,21 @@ from __future__ import annotations
 import csv
 import typing
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from typing import Any
 
 
 class PGCopyIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         encoding: str = "utf8",
         delimiter: str = "\t",
         null: str = "\\N",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -64,7 +65,7 @@ class PGCopyIterable(BaseFileIterable):
     def is_flatonly() -> bool:
         return True
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single PostgreSQL COPY record"""
         if hasattr(self, "has_header") and not self.has_header:
             row = next(self.reader)
@@ -85,7 +86,7 @@ class PGCopyIterable(BaseFileIterable):
             self.pos += 1
             return row
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk PostgreSQL COPY records"""
         chunk = []
         for _n in range(0, num):
@@ -95,7 +96,7 @@ class PGCopyIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single PostgreSQL COPY record"""
         if self.writer is None:
             # Initialize writer on first write
@@ -116,7 +117,7 @@ class PGCopyIterable(BaseFileIterable):
 
         self.writer.writerow(row)
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk PostgreSQL COPY records"""
         if not records:
             return

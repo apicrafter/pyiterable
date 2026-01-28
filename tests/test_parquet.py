@@ -3,6 +3,19 @@ from fixdata import FIXTURES, FIXTURES_TYPES
 from iterable.datatypes import ParquetIterable
 
 
+def test_parquet_has_tables():
+    """Test Parquet doesn't support tables"""
+    assert ParquetIterable.has_tables() is False
+
+
+def test_parquet_list_tables():
+    """Test Parquet list_tables returns None"""
+    iterable = ParquetIterable("fixtures/2cols6rows.parquet")
+    assert iterable.list_tables() is None
+    assert iterable.list_tables("fixtures/2cols6rows.parquet") is None
+    iterable.close()
+
+
 class TestParquet:
     def test_id(self):
         datatype_id = ParquetIterable.id()

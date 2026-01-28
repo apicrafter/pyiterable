@@ -41,6 +41,41 @@ source = open_iterable('/path/to/delta/table')
 for row in source:
     print(row)
 source.close()
+
+# Note: Delta Lake typically uses single table directories
+# list_tables() returns None for single table directories
+# Catalog-based listing would require additional configuration
+
+from iterable.datatypes.delta import DeltaIterable
+
+# Check if format supports table listing
+if DeltaIterable.has_tables():
+    # For catalog-based Delta Lake (requires additional setup)
+    iterable = DeltaIterable('/path/to/catalog')
+    tables = iterable.list_tables('/path/to/catalog')
+    if tables:
+        print(f"Available tables: {tables}")
+else:
+    # Most Delta Lake usage is single table directories
+    print("Delta Lake table listing not available for single table directories")
+```
+
+### Table Listing
+
+Delta Lake typically works with single table directories (each directory is one table). The `list_tables()` method returns `None` for single table directories, which is the most common usage pattern.
+
+For catalog-based Delta Lake (Unity Catalog, Hive Metastore), table listing would require additional catalog configuration. Currently, `has_tables()` returns `False` and `list_tables()` returns `None` to indicate that table listing is not applicable for single-table directories.
+
+```python
+from iterable.datatypes.delta import DeltaIterable
+
+# Check if format supports table listing
+assert DeltaIterable.has_tables() is False  # Single table directories
+
+# list_tables() returns None for single table directories
+iterable = DeltaIterable('/path/to/delta/table')
+tables = iterable.list_tables()
+assert tables is None  # Single table directory, listing not applicable
 ```
 
 ## Parameters

@@ -5,7 +5,8 @@ from collections import defaultdict
 
 import lxml.etree as etree
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from typing import Any
 
 
 def etree_to_dict(t, prefix_strip=True):
@@ -187,12 +188,12 @@ class GMLIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode="r",
         prefix_strip: bool = True,
         feature_member: str = None,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -252,7 +253,7 @@ class GMLIterable(BaseFileIterable):
         return False
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -262,13 +263,13 @@ class GMLIterable(BaseFileIterable):
             return len(self.features)
         return 0
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single GML feature"""
         feature = next(self.iterator)
         self.pos += 1
         return feature
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk GML features"""
         chunk = []
         for _n in range(0, num):
@@ -278,7 +279,7 @@ class GMLIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single GML feature"""
         # Convert GeoJSON-like feature to GML
         if "type" not in record or record["type"] != "Feature":
@@ -334,7 +335,7 @@ class GMLIterable(BaseFileIterable):
         self.fobj.write(xml_str.encode("utf-8") if self.binary else xml_str)
         self.pos += 1
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk GML features"""
         for record in records:
             self.write(record)

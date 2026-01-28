@@ -6,6 +6,7 @@ from typing import Any
 
 from ..base import BaseFileIterable, BaseIterable
 from ..types import PipelineResult, Row
+from ..helpers.debug import performance_logger, is_debug_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ def pipeline(
     debug: bool = False,
     batch_size: int = 1000,
     progress: Callable[[dict[str, Any]], None] | None = None,
+    progress_interval: int = DEFAULT_PROGRESS_INTERVAL,
     atomic: bool = False,
 ) -> PipelineResult:
     """Wrapper over Pipeline class to simplify data processing pipelines execution.
@@ -42,6 +44,9 @@ def pipeline(
         debug: If True, raise exceptions instead of catching them
         batch_size: Number of records to batch before writing
         progress: Optional callback function for progress updates
+        progress_interval: Number of rows between progress callback invocations.
+                          Default: 1000. Set to smaller value for more frequent updates,
+                          or larger value to reduce callback overhead.
         atomic: If True and destination is a file, use atomic writes. Default: False.
 
     Returns:
@@ -61,6 +66,7 @@ def pipeline(
         start_state=start_state,
         batch_size=batch_size,
         progress=progress,
+        progress_interval=progress_interval,
         atomic=atomic,
     )
     return runner.run(debug)
@@ -82,6 +88,7 @@ class Pipeline:
         start_state: dict[str, Any] | None = None,
         batch_size: int = 1000,
         progress: Callable[[dict[str, Any]], None] | None = None,
+        progress_interval: int = DEFAULT_PROGRESS_INTERVAL,
         atomic: bool = False,
     ) -> None:
         if start_state is None:
@@ -97,6 +104,7 @@ class Pipeline:
         self.start_state = start_state
         self.batch_size = batch_size
         self.progress = progress
+        self.progress_interval = progress_interval
         self.atomic = atomic
         self._original_destination_filename: str | None = None
         self._temp_file: str | None = None
@@ -106,6 +114,12 @@ class Pipeline:
         time_start = time.time()
         stats: dict[str, Any] = {"rec_count": 0, "nulls": 0, "exceptions": 0, "time_start": time_start}
         state = self.start_state
+        
+        perf_debug = debug or is_debug_enabled()
+        if perf_debug:
+            performance_logger.debug("Starting pipeline execution")
+            performance_logger.debug(f"Source: {type(self.source).__name__}, Destination: {type(self.destination).__name__ if self.destination else None}")
+            performance_logger.debug(f"Batch size: {self.batch_size}, Reset iterables: {self.reset_iterables}")
 
         # Setup atomic writes if enabled and destination is a file
         if self.atomic and self.destination is not None:
@@ -220,7 +234,7 @@ class Pipeline:
                 stats["rec_count"] += 1
 
                 # Invoke progress callback periodically
-                if stats["rec_count"] % DEFAULT_PROGRESS_INTERVAL == 0:
+                if stats["rec_count"] % self.progress_interval == 0:
                     invoke_progress_callback()
 
                 if stats["rec_count"] % self.trigger_on == 0 and self.trigger_func is not None:
@@ -248,6 +262,13 @@ class Pipeline:
         time_end = time.time()
         stats["time_end"] = time_end
         stats["duration"] = time_end - time_start
+        
+        if perf_debug:
+            throughput = stats["rec_count"] / stats["duration"] if stats["duration"] > 0 else 0
+            performance_logger.debug(
+                f"Pipeline completed: {stats['rec_count']} records processed in {stats['duration']:.2f}s "
+                f"(throughput: {throughput:.2f} records/sec, exceptions: {stats['exceptions']}, nulls: {stats['nulls']})"
+            )
 
         # Perform atomic rename if atomic writes are enabled (only on success)
         if self.atomic and self._temp_file is not None and self._original_destination_filename is not None:

@@ -12,7 +12,9 @@ try:
 except ImportError:
     HAS_PYICEBERG = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import WriteNotSupportedError, ReadError
+from typing import Any
 
 
 class IcebergIterable(BaseFileIterable):
@@ -21,12 +23,12 @@ class IcebergIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
         catalog_name: str = None,
         table_name: str = None,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -40,9 +42,17 @@ class IcebergIterable(BaseFileIterable):
         if "table_name" in options:
             self.table_name = options["table_name"]
         if stream is not None:
-            raise ValueError("Iceberg requires catalog and table names, not a stream")
+            raise ReadError(
+                "Iceberg requires catalog and table names, not a stream",
+                filename=None,
+                error_code="RESOURCE_REQUIREMENT_NOT_MET",
+            )
         if self.catalog_name is None or self.table_name is None:
-            raise ValueError("Iceberg requires catalog_name and table_name parameters")
+            raise ReadError(
+                "Iceberg requires catalog_name and table_name parameters",
+                filename=None,
+                error_code="RESOURCE_REQUIREMENT_NOT_MET",
+            )
         self.table = None
         self.scan_result = None
         self.iterator = None
@@ -71,10 +81,10 @@ class IcebergIterable(BaseFileIterable):
             # Convert to iterator of dicts
             self.iterator = iter(self.scan_result.to_arrow().to_pylist())
         else:
-            raise NotImplementedError("Iceberg writing is not yet supported")
+            raise WriteNotSupportedError("iceberg", "Iceberg writing is not yet implemented")
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -151,7 +161,7 @@ class IcebergIterable(BaseFileIterable):
         except Exception:
             return None
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single Iceberg record"""
         try:
             row = next(self.iterator)
@@ -160,7 +170,7 @@ class IcebergIterable(BaseFileIterable):
         except (StopIteration, EOFError, ValueError):
             raise StopIteration from None
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk Iceberg records"""
         chunk = []
         for _n in range(0, num):
@@ -170,10 +180,10 @@ class IcebergIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single Iceberg record"""
-        raise NotImplementedError("Iceberg writing is not yet supported")
+        raise WriteNotSupportedError("iceberg", "Iceberg writing is not yet implemented")
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk Iceberg records"""
-        raise NotImplementedError("Iceberg writing is not yet supported")
+        raise WriteNotSupportedError("iceberg", "Iceberg writing is not yet implemented")

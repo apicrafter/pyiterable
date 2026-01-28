@@ -68,3 +68,54 @@ class TestHDF5:
                 iterable.close()
         except ImportError:
             pytest.skip("HDF5 support requires h5py package")
+
+    def test_has_tables(self):
+        try:
+            flag = HDF5Iterable.has_tables()
+            assert flag is True
+        except ImportError:
+            pytest.skip("HDF5 support requires h5py package")
+
+    def test_list_tables_instance_method(self):
+        """Test list_tables on an already-opened instance"""
+        try:
+            if os.path.exists(FIXTURE_FILE):
+                iterable = HDF5Iterable(FIXTURE_FILE, dataset_path="/data")
+                # Read a row to ensure file is open
+                _ = iterable.read()
+                # Now list tables - should reuse file handle
+                datasets = iterable.list_tables()
+                assert isinstance(datasets, list)
+                assert len(datasets) > 0
+                assert "/data" in datasets
+                iterable.close()
+        except ImportError:
+            pytest.skip("HDF5 support requires h5py package")
+
+    def test_list_tables_with_filename(self):
+        """Test list_tables with filename parameter (class-like usage)"""
+        try:
+            if os.path.exists(FIXTURE_FILE):
+                iterable = HDF5Iterable(FIXTURE_FILE, dataset_path="/data")
+                datasets = iterable.list_tables(FIXTURE_FILE)
+                assert isinstance(datasets, list)
+                assert len(datasets) > 0
+                assert "/data" in datasets
+                iterable.close()
+        except ImportError:
+            pytest.skip("HDF5 support requires h5py package")
+
+    def test_list_tables_reuses_file_handle(self):
+        """Test that list_tables reuses open file handle"""
+        try:
+            if os.path.exists(FIXTURE_FILE):
+                iterable = HDF5Iterable(FIXTURE_FILE, dataset_path="/data")
+                # Read a row to ensure file is open
+                _ = iterable.read()
+                # Now list tables - should reuse file handle
+                datasets1 = iterable.list_tables()
+                datasets2 = iterable.list_tables()
+                assert datasets1 == datasets2
+                iterable.close()
+        except ImportError:
+            pytest.skip("HDF5 support requires h5py package")

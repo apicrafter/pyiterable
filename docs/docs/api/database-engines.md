@@ -27,6 +27,16 @@ PostgreSQL support is available via the `postgres` or `postgresql` engine.
 **Driver**: `psycopg2`  
 **Optional dependency**: `psycopg2-binary`
 
+### ClickHouse
+
+ClickHouse support is available via the `clickhouse` engine.
+
+**Status**: ✅ Available  
+**Driver**: `clickhouse-connect` (official ClickHouse driver)  
+**Optional dependency**: `clickhouse-connect`
+
+ClickHouse is a high-performance columnar OLAP database optimized for analytical workloads, real-time analytics, and data warehousing.
+
 ### MySQL/MariaDB
 
 **Status**: 🚧 Planned  
@@ -64,6 +74,12 @@ Database engines require optional dependencies. Install them based on your datab
 
 ```bash
 pip install psycopg2-binary
+```
+
+### ClickHouse
+
+```bash
+pip install clickhouse-connect
 ```
 
 Or install all database dependencies:
@@ -261,6 +277,45 @@ iterableargs={
 }
 ```
 
+#### `pool` (optional)
+
+Connection pooling configuration. Connection pooling improves performance when processing multiple queries to the same database by reusing connections:
+
+```python
+iterableargs={
+    "query": "users",
+    "pool": {
+        "enabled": True,      # Enable pooling (default: True)
+        "min_size": 1,        # Minimum pool size (default: 1)
+        "max_size": 10,       # Maximum pool size (default: 10)
+        "timeout": 30.0,      # Connection acquisition timeout in seconds (default: 30.0)
+        "max_idle": 300.0,    # Maximum idle time before connection closed (default: 300.0 = 5 minutes)
+    }
+}
+```
+
+**Benefits of Connection Pooling**:
+- ✅ **Reduced overhead**: Reuse connections instead of creating new ones
+- ✅ **Better performance**: Faster query execution for multiple operations
+- ✅ **Concurrent access**: Pool handles multiple concurrent requests
+- ✅ **Automatic cleanup**: Stale connections are automatically validated and replaced
+
+**When Pooling Helps**:
+- Multiple queries to the same database
+- High-frequency queries
+- Concurrent database access
+- Long-running processes with many database operations
+
+**Disable Pooling**:
+```python
+iterableargs={
+    "query": "users",
+    "pool": {"enabled": False}  # Disable pooling for this connection
+}
+```
+
+**Note**: Connection pooling is enabled by default. Connections are automatically returned to the pool when the iterable is closed, allowing reuse across multiple operations.
+
 ### Examples
 
 #### Reading a Table
@@ -379,6 +434,362 @@ Returns a list of dictionaries with keys:
 - `schema`: Schema name
 - `table`: Table name
 - `row_count`: Estimated row count (may be `None` if statistics unavailable)
+
+## ClickHouse
+
+### Connection String Format
+
+ClickHouse connection strings follow the standard URL format:
+
+```
+clickhouse://[user[:password]@][host][:port][/database][?param1=value1&...]
+```
+
+Examples:
+
+```python
+# Basic connection
+"clickhouse://localhost:9000/mydb"
+
+# With authentication
+"clickhouse://user:password@localhost:9000/mydb"
+
+# With SSL (via connect_args)
+import clickhouse_connect
+client = clickhouse_connect.get_client(
+    host="localhost",
+    port=8443,
+    username="user",
+    password="password",
+    secure=True
+)
+# Pass client object directly
+with open_iterable(client, engine="clickhouse", iterableargs={"query": "events"}) as source:
+    ...
+```
+
+### Query Parameters
+
+The `iterableargs` parameter accepts ClickHouse-specific options:
+
+#### `query` (required) or `table` (alternative)
+
+SQL query string or table name:
+
+```python
+# Table name (auto-builds SELECT * FROM table)
+iterableargs={"query": "events"}
+
+# Or use table parameter
+iterableargs={"table": "events"}
+
+# SQL query string
+iterableargs={"query": "SELECT id, name, timestamp FROM events WHERE active = 1"}
+
+# Complex query
+iterableargs={"query": """
+    SELECT 
+        toDate(timestamp) as date,
+        count() as event_count,
+        uniq(user_id) as unique_users
+    FROM events
+    WHERE timestamp >= now() - INTERVAL 7 DAY
+    GROUP BY date
+    ORDER BY date DESC
+"""}
+```
+
+#### `database` (optional)
+
+Database name (if not in connection string):
+
+```python
+iterableargs={
+    "query": "events",
+    "database": "analytics"
+}
+# Builds: SELECT * FROM `analytics`.`events`
+```
+
+#### `columns` (optional)
+
+List of column names for projection:
+
+```python
+iterableargs={
+    "query": "events",
+    "columns": ["id", "name", "timestamp"]
+}
+# Builds: SELECT `id`, `name`, `timestamp` FROM `events`
+```
+
+#### `filter` (optional)
+
+WHERE clause fragment:
+
+```python
+iterableargs={
+    "query": "events",
+    "filter": "active = 1 AND timestamp > '2024-01-01'"
+}
+# Builds: SELECT * FROM `events` WHERE active = 1 AND timestamp > '2024-01-01'
+```
+
+#### `settings` (optional)
+
+ClickHouse query settings dictionary:
+
+```python
+iterableargs={
+    "query": "SELECT * FROM large_table",
+    "settings": {
+        "max_threads": 4,
+        "max_memory_usage": 10000000000,
+        "max_execution_time": 300
+    }
+}
+```
+
+#### `format` (optional)
+
+Result format: `"native"` (default, more efficient) or `"JSONEachRow"` (text-based):
+
+```python
+# Native format (default, binary, faster)
+iterableargs={"query": "events", "format": "native"}
+
+# JSONEachRow format (text-based, more compatible)
+iterableargs={"query": "events", "format": "JSONEachRow"}
+```
+
+#### `batch_size` (optional)
+
+Number of rows per batch for streaming (default: 10000). Maps to ClickHouse's `max_block_size`:
+
+```python
+iterableargs={
+    "query": "events",
+    "batch_size": 5000
+}
+```
+
+#### `read_only` (optional)
+
+Validate queries are read-only (default: `True`):
+
+```python
+iterableargs={
+    "query": "events",
+    "read_only": True  # Default, prevents non-SELECT queries
+}
+```
+
+**Note**: ClickHouse doesn't support explicit read-only transactions like PostgreSQL. Instead, queries are validated to ensure they only contain SELECT statements.
+
+### Examples
+
+#### Basic Table Query
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# Query entire table
+with open_iterable(
+    "clickhouse://user:password@localhost:9000/analytics",
+    engine="clickhouse",
+    iterableargs={"query": "events"}
+) as source:
+    for row in source:
+        print(row)
+```
+
+#### Column Projection
+
+```python
+# Only read specific columns
+with open_iterable(
+    "clickhouse://localhost:9000/analytics",
+    engine="clickhouse",
+    iterableargs={
+        "query": "events",
+        "columns": ["id", "name", "timestamp"]
+    }
+) as source:
+    for row in source:
+        print(row)  # Only contains id, name, timestamp keys
+```
+
+#### Filtering Rows
+
+```python
+# Filter active events
+with open_iterable(
+    "clickhouse://localhost:9000/analytics",
+    engine="clickhouse",
+    iterableargs={
+        "query": "events",
+        "filter": "active = 1 AND timestamp > '2024-01-01'"
+    }
+) as source:
+    for row in source:
+        print(row)
+```
+
+#### Using Query Settings
+
+```python
+# Optimize query with ClickHouse settings
+with open_iterable(
+    "clickhouse://localhost:9000/analytics",
+    engine="clickhouse",
+    iterableargs={
+        "query": "SELECT * FROM large_table",
+        "settings": {
+            "max_threads": 8,
+            "max_memory_usage": 20000000000
+        }
+    }
+) as source:
+    for row in source:
+        process(row)
+```
+
+#### Database Selection
+
+```python
+# Query different database without changing connection string
+with open_iterable(
+    "clickhouse://localhost:9000",
+    engine="clickhouse",
+    iterableargs={
+        "query": "events",
+        "database": "analytics"
+    }
+) as source:
+    for row in source:
+        print(row)
+```
+
+### Helper Functions
+
+#### List Tables
+
+The `list_tables()` function lists all tables in a ClickHouse database:
+
+```python
+from iterable.db.clickhouse import ClickHouseDriver
+
+# List all tables
+tables = ClickHouseDriver.list_tables("clickhouse://localhost:9000")
+for table in tables:
+    print(f"{table['database']}.{table['table']}: {table['row_count']} rows")
+
+# List tables in specific database
+tables = ClickHouseDriver.list_tables(
+    "clickhouse://localhost:9000",
+    database="analytics"
+)
+```
+
+Returns a list of dictionaries with keys:
+- `database`: Database name
+- `table`: Table name
+- `row_count`: Estimated row count (may be `None` if statistics unavailable)
+
+## Connection Pooling
+
+Connection pooling is enabled by default for all database engines. It improves performance by reusing database connections across multiple queries to the same database.
+
+### Basic Usage
+
+Connection pooling works automatically - no configuration needed:
+
+```python
+from iterable.helpers.detect import open_iterable
+
+# First query - creates connection and pool
+with open_iterable(
+    "postgresql://localhost/mydb",
+    engine="postgres",
+    iterableargs={"query": "SELECT * FROM users"}
+) as source:
+    for row in source:
+        process(row)
+# Connection returned to pool
+
+# Second query - reuses connection from pool
+with open_iterable(
+    "postgresql://localhost/mydb",
+    engine="postgres",
+    iterableargs={"query": "SELECT * FROM orders"}
+) as source:
+    for row in source:
+        process(row)
+# Connection returned to pool again
+```
+
+### Custom Pool Configuration
+
+Configure pool size and behavior:
+
+```python
+with open_iterable(
+    "postgresql://localhost/mydb",
+    engine="postgres",
+    iterableargs={
+        "query": "users",
+        "pool": {
+            "min_size": 2,      # Pre-create 2 connections
+            "max_size": 20,     # Allow up to 20 connections
+            "timeout": 60.0,    # Wait up to 60s for connection
+            "max_idle": 600.0,  # Close idle connections after 10 minutes
+        }
+    }
+) as source:
+    for row in source:
+        process(row)
+```
+
+### Disable Pooling
+
+Disable pooling for specific connections:
+
+```python
+with open_iterable(
+    "postgresql://localhost/mydb",
+    engine="postgres",
+    iterableargs={
+        "query": "users",
+        "pool": {"enabled": False}  # Use direct connection, no pooling
+    }
+) as source:
+    for row in source:
+        process(row)
+```
+
+### Pool Statistics
+
+Get pool statistics for monitoring:
+
+```python
+from iterable.db.pooling import get_pool_stats
+
+stats = get_pool_stats()
+for pool_key, pool_info in stats.items():
+    print(f"{pool_key}: {pool_info['created']} connections created, "
+          f"{pool_info['available']} available")
+```
+
+### Cleanup
+
+Close all pools when done (usually not necessary, but useful for testing):
+
+```python
+from iterable.db.pooling import close_all_pools
+
+# Close all connection pools
+close_all_pools()
+```
 
 ## Integration with convert()
 

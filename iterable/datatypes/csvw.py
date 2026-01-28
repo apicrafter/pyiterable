@@ -6,8 +6,9 @@ import logging
 import os
 import typing
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
 from ..helpers.utils import rowincount
+from typing import Any
 
 DEFAULT_ENCODING = "utf8"
 DEFAULT_DELIMITER = ","
@@ -19,14 +20,14 @@ class CSVWIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         metadata_file: str = None,
-        delimiter: str = None,
+        delimiter: str | None = None,
         quotechar: str = '"',
         mode: str = "r",
-        encoding: str = None,
-        options: dict = None,
+        encoding: str | None = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -117,7 +118,7 @@ class CSVWIterable(BaseFileIterable):
             self.columns = []
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -227,7 +228,7 @@ class CSVWIterable(BaseFileIterable):
         self.pos += 1
         return row
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk CSVW records"""
         chunk = []
         for _n in range(0, num):
@@ -237,7 +238,7 @@ class CSVWIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single CSVW record"""
         if self.writer:
             self.writer.writerow(record)
@@ -251,7 +252,7 @@ class CSVWIterable(BaseFileIterable):
             self.csv_writer.writerow(record)
         self.pos += 1
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk CSVW records"""
         if self.writer:
             self.writer.writerows(records)

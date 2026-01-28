@@ -16,7 +16,8 @@ except ImportError:
         HAS_CBOR = False
         HAS_CBOR2 = False
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from typing import Any
 
 
 class CBORIterable(BaseFileIterable):
@@ -25,10 +26,10 @@ class CBORIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode: str = "r",
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -90,7 +91,7 @@ class CBORIterable(BaseFileIterable):
     def is_flatonly() -> bool:
         return False
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single CBOR record"""
         try:
             row = next(self.iterator)
@@ -99,7 +100,7 @@ class CBORIterable(BaseFileIterable):
         except (StopIteration, EOFError, ValueError):
             raise StopIteration from None
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk CBOR records"""
         chunk = []
         for _n in range(0, num):
@@ -109,7 +110,7 @@ class CBORIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single CBOR record"""
         if HAS_CBOR2:
             encoded = cbor2.dumps(record)
@@ -117,7 +118,7 @@ class CBORIterable(BaseFileIterable):
         else:
             cbor.dump(record, self.fobj)
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk CBOR records"""
         for record in records:
             self.write(record)

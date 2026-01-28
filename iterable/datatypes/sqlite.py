@@ -3,7 +3,9 @@ from __future__ import annotations
 import sqlite3
 import typing
 
-from ..base import BaseCodec, BaseFileIterable
+from ..base import BaseCodec, BaseFileIterable, DEFAULT_BULK_NUMBER
+from ..exceptions import ReadError, WriteError, FormatNotSupportedError
+from typing import Any
 
 
 class SQLiteIterable(BaseFileIterable):
@@ -12,12 +14,12 @@ class SQLiteIterable(BaseFileIterable):
     def __init__(
         self,
         filename: str = None,
-        stream: typing.IO = None,
-        codec: BaseCodec = None,
+        stream: typing.IO[Any] | None = None,
+        codec: BaseCodec | None = None,
         mode="r",
         table: str = None,
         query: str = None,
-        options: dict = None,
+        options: dict[str, Any] | None = None,
     ):
         if options is None:
             options = {}
@@ -29,9 +31,17 @@ class SQLiteIterable(BaseFileIterable):
         if "query" in options:
             self.query = options["query"]
         if stream is not None:
-            raise ValueError("SQLite requires a filename, not a stream")
+            raise ReadError(
+                "SQLite requires a filename, not a stream",
+                filename=None,
+                error_code="RESOURCE_REQUIREMENT_NOT_MET",
+            )
         if filename is None:
-            raise ValueError("SQLite requires a filename")
+            raise ReadError(
+                "SQLite requires a filename",
+                filename=None,
+                error_code="RESOURCE_REQUIREMENT_NOT_MET",
+            )
         self.connection = None
         self.cursor = None
         self.reset()
@@ -82,7 +92,7 @@ class SQLiteIterable(BaseFileIterable):
         self.pos = 0
 
     @staticmethod
-    def has_totals():
+    def has_totals() -> bool:
         """Has totals indicator"""
         return True
 
@@ -136,7 +146,7 @@ class SQLiteIterable(BaseFileIterable):
         finally:
             connection.close()
 
-    def read(self) -> dict:
+    def read(self, skip_empty: bool = True) -> dict:
         """Read single SQLite record"""
         if self.cursor is None:
             raise ValueError("No tables found in SQLite database")
@@ -148,7 +158,7 @@ class SQLiteIterable(BaseFileIterable):
         self.pos += 1
         return result
 
-    def read_bulk(self, num: int = 10) -> list[dict]:
+    def read_bulk(self, num: int = DEFAULT_BULK_NUMBER) -> list[dict]:
         """Read bulk SQLite records"""
         chunk = []
         for _n in range(0, num):
@@ -158,12 +168,20 @@ class SQLiteIterable(BaseFileIterable):
                 break
         return chunk
 
-    def write(self, record: dict):
+    def write(self, record: Row) -> None:
         """Write single SQLite record"""
         if self.mode not in ["w", "wr"]:
-            raise ValueError("Write mode not enabled")
+            raise WriteError(
+                "Write mode not enabled",
+                filename=self.filename,
+                error_code="INVALID_MODE",
+            )
         if self.table is None:
-            raise ValueError("Table name required for writing")
+            raise WriteError(
+                "Table name required for writing",
+                filename=self.filename,
+                error_code="INVALID_PARAMETER",
+            )
 
         if self.connection is None:
             self.connection = sqlite3.connect(self.filename)
@@ -187,12 +205,20 @@ class SQLiteIterable(BaseFileIterable):
         self.connection.commit()
         self.pos += 1
 
-    def write_bulk(self, records: list[dict]):
+    def write_bulk(self, records: list[Row]) -> None:
         """Write bulk SQLite records"""
         if self.mode not in ["w", "wr"]:
-            raise ValueError("Write mode not enabled")
+            raise WriteError(
+                "Write mode not enabled",
+                filename=self.filename,
+                error_code="INVALID_MODE",
+            )
         if self.table is None:
-            raise ValueError("Table name required for writing")
+            raise WriteError(
+                "Table name required for writing",
+                filename=self.filename,
+                error_code="INVALID_PARAMETER",
+            )
 
         if self.connection is None:
             self.connection = sqlite3.connect(self.filename)
